@@ -1,0 +1,10 @@
+namespace Graphite.Domain.Models;
+
+public class GitHubConfig
+{
+    public int Id { get; set; }
+    public string Organization { get; set; } = string.Empty;
+    public string PersonalAccessToken { get; set; } = string.Empty;
+    public DateTime? LastRefresh { get; set; }
+    public int RefreshIntervalMinutes { get; set; } = 5;
+}
