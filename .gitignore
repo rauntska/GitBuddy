@@ -1,0 +1,22 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.log
+*.db
+graphite.db
+graphite.db-shm
+graphite.db-wal
+
+# Vue
+graphite-vue/node_modules/
+graphite-vue/dist/
+graphite-vue/.DS_Store
+graphite-vue/.vite/
+
+# Environment
+.env
+.env.local
+.env.*.local

@@ -117,7 +117,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted } from 'vue';
 import { usePullRequests } from '../composables/usePullRequests';
 import StatsSummary from '../components/StatsSummary.vue';
 import PRGroup from '../components/PRGroup.vue';

@@ -25,11 +25,15 @@ export function useSettings() {
     }
   };
 
-  const saveSettings = async () => {
+  const saveSettings = async (settingsToSave?: Settings) => {
     loading.value = true;
     error.value = null;
     try {
-      await apiService.saveSettings(settings.value);
+      const dataToSave = settingsToSave || settings.value;
+      await apiService.saveSettings(dataToSave);
+      if (settingsToSave) {
+        settings.value = { ...settingsToSave };
+      }
       return true;
     } catch (err) {
       error.value = 'Failed to save settings';

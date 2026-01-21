@@ -46,7 +46,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+
 import type { PullRequest } from '../types';
 import StatusBadge from './StatusBadge.vue';
 import ReviewerAvatars from './ReviewerAvatars.vue';

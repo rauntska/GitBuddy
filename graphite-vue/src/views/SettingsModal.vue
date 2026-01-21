@@ -156,7 +156,12 @@ const formatDate = (dateString: string): string => {
 };
 
 const handleSave = async () => {
-  const success = await saveSettingsAction();
+  const settingsToSave = {
+    organization: localSettings.value.organization,
+    personalAccessToken: localSettings.value.personalAccessToken,
+    refreshIntervalMinutes: localSettings.value.refreshIntervalMinutes,
+  };
+  const success = await saveSettingsAction(settingsToSave);
   if (success) {
     emit('saved');
   }

@@ -1,6 +1,6 @@
-import { ref, onMounted } from 'vue';
+import { ref } from 'vue';
 import { apiService } from '../services/api';
-import type { GroupedPRs, PRStats, PullRequest } from '../types';
+import type { GroupedPRs, PRStats } from '../types';
 
 export function usePullRequests() {
   const pullRequests = ref<GroupedPRs>({});

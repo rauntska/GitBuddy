@@ -1,7 +1,7 @@
 <template>
   <div class="flex items-center -space-x-2">
     <div
-      v-for="(review, index) in displayedReviews"
+      v-for="review in displayedReviews"
       :key="review.reviewer"
       class="relative group"
     >

@@ -1,7 +1,7 @@
 import axios from 'axios';
-import type { PullRequest, GroupedPRs, PRStats, Settings } from '../types';
+import type { GroupedPRs, PRStats, Settings } from '../types';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = 'http://localhost:5247/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
