@@ -63,14 +63,12 @@ public class CacheService : ICacheService
                 await _context.SaveChangesAsync();
             }
 
-            var reviewsData = await _gitHubService.GetReviewsAsync(organization, prData.Repository, prData.Id, token);
-
             var existingReviewers = existingPR.Reviews.Select(r => r.Reviewer).ToHashSet();
-            var incomingReviewers = reviewsData.Select(r => r.Reviewer).ToHashSet();
+            var incomingReviewers = (prData.Reviews ?? []).Select(r => r.Reviewer).ToHashSet();
 
             foreach (var reviewer in incomingReviewers.Except(existingReviewers))
             {
-                var reviewData = reviewsData.First(r => r.Reviewer == reviewer);
+                var reviewData = prData.Reviews.First(r => r.Reviewer == reviewer);
                 _context.Reviews.Add(new Review
                 {
                     PullRequestId = existingPR.Id,
@@ -87,8 +85,7 @@ public class CacheService : ICacheService
                 _context.Reviews.Remove(review);
             }
 
-            var commentsData = await _gitHubService.GetCommentsAsync(organization, prData.Repository, prData.Id, token);
-            var commentData = commentsData.FirstOrDefault();
+            var commentData = prData.Comments;
 
             if (existingPR.Comment == null)
             {
@@ -110,31 +107,6 @@ public class CacheService : ICacheService
                 existingPR.Comment.ResolvedCount = commentData?.ResolvedCount ?? 0;
                 existingPR.Comment.PendingCount = commentData?.PendingCount ?? 0;
                 existingPR.Comment.LastUpdated = commentData?.LastUpdated;
-            }
-
-            var hasApprovedReview = existingPR.Reviews.Any(r => r.State == "APPROVED");
-            var hasChangesRequested = existingPR.Reviews.Any(r => r.State == "CHANGES_REQUESTED");
-            var hasPendingReviews = existingPR.Reviews.Any(r => r.State == "COMMENTED" || r.State == "DISMISSED");
-
-            if (prData.Draft)
-            {
-                existingPR.Status = "Draft";
-            }
-            else if (hasApprovedReview && !hasChangesRequested)
-            {
-                existingPR.Status = "Approved";
-            }
-            else if (hasChangesRequested)
-            {
-                existingPR.Status = "ChangesRequested";
-            }
-            else if (existingPR.Reviews.Any())
-            {
-                existingPR.Status = "Reviewed";
-            }
-            else
-            {
-                existingPR.Status = "AwaitingReview";
             }
         }
 

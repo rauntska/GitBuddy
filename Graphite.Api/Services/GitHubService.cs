@@ -1,33 +1,44 @@
 using Octokit;
-
+using Octokit.GraphQL;
+using static Octokit.GraphQL.Variable;
+using System.Linq;
 namespace Graphite.Api.Services;
 
 public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
 {
-    private readonly GitHubClient _client = new(new ProductHeaderValue("Graphite-PR-Dashboard"));
+    private readonly GitHubClient _restClient = new(new Octokit.ProductHeaderValue("Graphite-PR-Dashboard"));
+    private readonly HttpClient _httpClient = new();
 
     public async Task<List<GitHubPRData>> GetOpenPullRequestsAsync(string organization, string token)
     {
-        _client.Credentials = new Credentials(token);
+        _restClient.Credentials = new Octokit.Credentials(token);
 
         var pullRequests = new List<GitHubPRData>();
 
-        var repositories = await _client.Repository.GetAllForOrg(organization);
+        var repositories = await _restClient.Repository.GetAllForOrg(organization);
 
         foreach (var repo in repositories)
         {
             try
             {
-                var prs = await _client.PullRequest.GetAllForRepository(organization, repo.Name, new PullRequestRequest
+                var prs = await _restClient.PullRequest.GetAllForRepository(organization, repo.Name, new Octokit.PullRequestRequest
                 {
-                    State = ItemStateFilter.Open
+                    State = Octokit.ItemStateFilter.Open
                 });
-              
+
                 logger.LogInformation("Found {PrsCount} open PRs in repository {RepoName}", prs.Count, repo.Name);
                 foreach (var pr in prs)
                 {
-                    var specificPrFromApi = await _client.PullRequest.Get(organization, repo.Name, pr.Number); // Example of fetching a specific PR by number
-                    var status = DeterminePRStatus(specificPrFromApi);
+                    var specificPrFromApi = await _restClient.PullRequest.Get(organization, repo.Name, pr.Number);
+                    var reviews = await _restClient.PullRequest.Review.GetAll(organization, repo.Name, pr.Number);
+                    var reviewData = reviews.Select(r => new GitHubReviewData(
+                        r.User.Login,
+                        r.User.AvatarUrl,
+                        r.State.ToString(),
+                        r.SubmittedAt.UtcDateTime
+                    )).ToList();
+
+                    var status = DeterminePRStatus(specificPrFromApi, reviewData);
 
                     pullRequests.Add(new GitHubPRData(
                         specificPrFromApi.Number,
@@ -42,7 +53,9 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
                         specificPrFromApi.Deletions,
                         specificPrFromApi.ChangedFiles,
                         specificPrFromApi.CreatedAt.UtcDateTime,
-                        specificPrFromApi.UpdatedAt.UtcDateTime
+                        specificPrFromApi.UpdatedAt.UtcDateTime,
+                        reviewData,
+                        null
                     ));
                 }
             }
@@ -57,11 +70,11 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
 
     public async Task<List<GitHubReviewData>> GetReviewsAsync(string organization, string repository, int pullRequestNumber, string token)
     {
-        _client.Credentials = new Credentials(token);
+        _restClient.Credentials = new Octokit.Credentials(token);
 
         try
         {
-            var reviews = await _client.PullRequest.Review.GetAll(organization, repository, pullRequestNumber);
+            var reviews = await _restClient.PullRequest.Review.GetAll(organization, repository, pullRequestNumber);
 
             return reviews.Select(r => new GitHubReviewData(
                 r.User.Login,
@@ -76,47 +89,66 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
         }
     }
 
+
+
+    private static string DeterminePRStatus(Octokit.PullRequest pr, List<GitHubReviewData> reviews)
+    {
+        if (pr.Draft) return "Draft";
+
+        var hasApproved = reviews.Any(r => r.State == "APPROVED");
+        var hasChangesRequested = reviews.Any(r => r.State == "CHANGES_REQUESTED");
+        var hasComments = reviews.Any(r => r.State == "COMMENTED");
+
+        if (hasApproved && !hasChangesRequested) return "Approved";
+        if (hasChangesRequested) return "ChangesRequested";
+        if (hasComments) return "Reviewed";
+        return "AwaitingReview";
+    }
+
+
     public async Task<List<GitHubCommentData>> GetCommentsAsync(string organization, string repository, int pullRequestNumber, string token)
     {
-        _client.Credentials = new Credentials(token);
+        _restClient.Credentials = new Octokit.Credentials(token);
 
         try
         {
-            var issueComments = await _client.Issue.Comment.GetAllForIssue(organization, repository, pullRequestNumber);
-            var reviewComments = await _client.PullRequest.ReviewComment.GetAll(organization, repository, pullRequestNumber);
-            
+            var issueComments = await _restClient.Issue.Comment.GetAllForIssue(organization, repository, pullRequestNumber);
+
+            var connection = new Octokit.GraphQL.Connection(new Octokit.GraphQL.ProductHeaderValue("Graphite-PR-Dashboard"), token);
+            var query = new Octokit.GraphQL.Query()
+                .Repository(organization, repository)
+                .PullRequest(pullRequestNumber)
+                .ReviewThreads(first: 100)
+                .Nodes
+                .Select(t => t.IsResolved)
+                .Compile();
+
+            var reviewThreadsResolved = await connection.Run(query);
+            var reviewThreadsList = reviewThreadsResolved.ToList();
+
+            var totalIssueComments = issueComments.Count;
+            var resolvedCount = reviewThreadsList.Count(isResolved => isResolved);
+            var pendingCount = reviewThreadsList.Count(isResolved => !isResolved);
+            var totalReviewComments = reviewThreadsList.Count;
+
             DateTime? lastUpdated = null;
-            if (issueComments.Any())
+            var allDates = issueComments
+                .Where(c => c.UpdatedAt.HasValue)
+                .Select(c => c.UpdatedAt.Value.UtcDateTime)
+                .ToList();
+            if (allDates.Any())
             {
-                var latestComment = issueComments.OrderByDescending(c => c.UpdatedAt).FirstOrDefault();
-                lastUpdated = latestComment?.UpdatedAt?.UtcDateTime;
+                lastUpdated = allDates.Max();
             }
-
-            if (reviewComments.Any())
-            {
-                var latestReviewComment = reviewComments.OrderByDescending(c => c.UpdatedAt).FirstOrDefault();
-                if (lastUpdated == null || latestReviewComment.UpdatedAt.UtcDateTime > lastUpdated)
-                {
-                    lastUpdated = latestReviewComment.UpdatedAt.UtcDateTime;
-                }
-            }
-
-            var resolvedCount = reviewComments.Count(c => c.OriginalCommitId != c.CommitId);
-            var pendingCount = reviewComments.Count - resolvedCount;
 
             return new List<GitHubCommentData>
             {
-                new(issueComments.Count + reviewComments.Count, resolvedCount, pendingCount, lastUpdated)
+                new(totalIssueComments + totalReviewComments, resolvedCount, pendingCount, lastUpdated)
             };
         }
         catch
         {
             return new List<GitHubCommentData>();
         }
-    }
-
-    private static string DeterminePRStatus(Octokit.PullRequest pr)
-    {
-        return pr.Draft ? "Draft" : "Open";
     }
 }

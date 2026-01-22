@@ -22,7 +22,9 @@ public record GitHubPRData(
     int Deletions,
     int ChangedFiles,
     DateTime CreatedAt,
-    DateTime UpdatedAt
+    DateTime UpdatedAt,
+    List<GitHubReviewData>? Reviews,
+    GitHubCommentData? Comments
 );
 
 public record GitHubReviewData(
