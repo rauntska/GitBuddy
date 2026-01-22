@@ -11,6 +11,8 @@ public record ReviewDto(
 public record CommentDto(
     int Id,
     int Count,
+    int ResolvedCount,
+    int PendingCount,
     DateTime? LastUpdated
 );
 

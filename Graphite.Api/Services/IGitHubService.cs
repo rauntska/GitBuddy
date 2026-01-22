@@ -34,5 +34,7 @@ public record GitHubReviewData(
 
 public record GitHubCommentData(
     int Count,
+    int ResolvedCount,
+    int PendingCount,
     DateTime? LastUpdated
 );

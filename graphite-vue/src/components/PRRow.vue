@@ -26,6 +26,15 @@
       <ReviewerAvatars :reviews="pr.reviews" :max-display="4" />
     </div>
 
+    <div class="relative flex-shrink-0" v-if="pr.comment?.pendingCount && pr.comment.pendingCount > 0">
+      <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+      </svg>
+      <span class="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-0.5 flex items-center justify-center text-[10px] font-medium rounded-full bg-orange-500 text-white">
+        {{ pr.comment.pendingCount }}
+      </span>
+    </div>
+
     <div
       class="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-mono"
       title="Lines changed"

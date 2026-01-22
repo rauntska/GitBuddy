@@ -9,6 +9,8 @@ export interface Review {
 export interface Comment {
   id: number;
   count: number;
+  resolvedCount: number;
+  pendingCount: number;
   lastUpdated?: string;
 }
 
@@ -37,6 +39,9 @@ export interface PRStats {
   draft: number;
   approved: number;
   awaitingReview: number;
+  totalComments: number;
+  resolvedComments: number;
+  pendingComments: number;
 }
 
 export interface GroupedPRs {

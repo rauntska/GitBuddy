@@ -16,5 +16,8 @@ public record PRStats(
     int TotalOpen,
     int Draft,
     int Approved,
-    int AwaitingReview
+    int AwaitingReview,
+    int TotalComments,
+    int ResolvedComments,
+    int PendingComments
 );

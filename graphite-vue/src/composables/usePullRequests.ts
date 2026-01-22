@@ -27,8 +27,8 @@ export function usePullRequests() {
     loading.value = true;
     error.value = null;
     try {
-      await apiService.refreshPullRequests();
-      await fetchPullRequests();
+      pullRequests.value = await apiService.getPullRequests();
+      stats.value = await apiService.getStats();
     } catch (err) {
       error.value = 'Failed to refresh pull requests';
       console.error(err);

@@ -33,6 +33,8 @@ public static class MappingExtensions
             pr.Comment != null ? new CommentDto(
                 pr.Comment.Id,
                 pr.Comment.Count,
+                pr.Comment.ResolvedCount,
+                pr.Comment.PendingCount,
                 pr.Comment.LastUpdated
             ) : null
         );

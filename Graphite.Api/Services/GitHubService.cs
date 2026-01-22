@@ -1,16 +1,10 @@
-using Graphite.Api.Services;
 using Octokit;
 
 namespace Graphite.Api.Services;
 
-public class GitHubService : IGitHubService
+public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
 {
-    private readonly GitHubClient _client;
-
-    public GitHubService()
-    {
-        _client = new GitHubClient(new ProductHeaderValue("Graphite-PR-Dashboard"));
-    }
+    private readonly GitHubClient _client = new(new ProductHeaderValue("Graphite-PR-Dashboard"));
 
     public async Task<List<GitHubPRData>> GetOpenPullRequestsAsync(string organization, string token)
     {
@@ -28,7 +22,8 @@ public class GitHubService : IGitHubService
                 {
                     State = ItemStateFilter.Open
                 });
-
+              
+                logger.LogInformation("Found {PrsCount} open PRs in repository {RepoName}", prs.Count, repo.Name);
                 foreach (var pr in prs)
                 {
                     var specificPrFromApi = await _client.PullRequest.Get(organization, repo.Name, pr.Number); // Example of fetching a specific PR by number
@@ -87,17 +82,31 @@ public class GitHubService : IGitHubService
 
         try
         {
-            var comments = await _client.Issue.Comment.GetAllForIssue(organization, repository, pullRequestNumber);
+            var issueComments = await _client.Issue.Comment.GetAllForIssue(organization, repository, pullRequestNumber);
+            var reviewComments = await _client.PullRequest.ReviewComment.GetAll(organization, repository, pullRequestNumber);
+            
             DateTime? lastUpdated = null;
-            if (comments.Any())
+            if (issueComments.Any())
             {
-                var latestComment = comments.OrderByDescending(c => c.UpdatedAt).FirstOrDefault();
+                var latestComment = issueComments.OrderByDescending(c => c.UpdatedAt).FirstOrDefault();
                 lastUpdated = latestComment?.UpdatedAt?.UtcDateTime;
             }
 
+            if (reviewComments.Any())
+            {
+                var latestReviewComment = reviewComments.OrderByDescending(c => c.UpdatedAt).FirstOrDefault();
+                if (lastUpdated == null || latestReviewComment.UpdatedAt.UtcDateTime > lastUpdated)
+                {
+                    lastUpdated = latestReviewComment.UpdatedAt.UtcDateTime;
+                }
+            }
+
+            var resolvedCount = reviewComments.Count(c => c.OriginalCommitId != c.CommitId);
+            var pendingCount = reviewComments.Count - resolvedCount;
+
             return new List<GitHubCommentData>
             {
-                new(comments.Count, lastUpdated)
+                new(issueComments.Count + reviewComments.Count, resolvedCount, pendingCount, lastUpdated)
             };
         }
         catch

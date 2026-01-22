@@ -136,6 +136,10 @@ const {
 const showSettings = ref(false);
 const expandedGroups = ref<Record<string, boolean>>({});
 
+window.setInterval(() => {
+  refreshPullRequests();
+}, 60000);
+
 const groupTitle = (status: string): string => {
   const titles: Record<string, string> = {
     AwaitingReview: 'Awaiting Review',

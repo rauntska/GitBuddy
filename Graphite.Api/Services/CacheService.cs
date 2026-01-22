@@ -98,6 +98,8 @@ public class CacheService : ICacheService
                     {
                         PullRequestId = existingPR.Id,
                         Count = commentData.Count,
+                        ResolvedCount = commentData.ResolvedCount,
+                        PendingCount = commentData.PendingCount,
                         LastUpdated = commentData.LastUpdated
                     };
                 }
@@ -105,6 +107,8 @@ public class CacheService : ICacheService
             else
             {
                 existingPR.Comment.Count = commentData?.Count ?? 0;
+                existingPR.Comment.ResolvedCount = commentData?.ResolvedCount ?? 0;
+                existingPR.Comment.PendingCount = commentData?.PendingCount ?? 0;
                 existingPR.Comment.LastUpdated = commentData?.LastUpdated;
             }
 
@@ -135,7 +139,7 @@ public class CacheService : ICacheService
         }
 
         await _context.SaveChangesAsync();
-        await CleanupOldPRsAsync(prDataList);
+        // await CleanupOldPRsAsync(prDataList);
     }
 
     private async Task CleanupOldPRsAsync(List<GitHubPRData> currentPRs)
@@ -169,13 +173,20 @@ public class CacheService : ICacheService
 
     public async Task<PRStats> GetPullRequestStatsAsync()
     {
-        var pullRequests = await _context.PullRequests.ToListAsync();
+        var pullRequests = await _context.PullRequests.Include(pr => pr.Comment).ToListAsync();
+
+        var totalComments = pullRequests.Sum(pr => pr.Comment?.Count ?? 0);
+        var resolvedComments = pullRequests.Sum(pr => pr.Comment?.ResolvedCount ?? 0);
+        var pendingComments = pullRequests.Sum(pr => pr.Comment?.PendingCount ?? 0);
 
         return new PRStats(
             TotalOpen: pullRequests.Count,
             Draft: pullRequests.Count(pr => pr.Status == "Draft"),
             Approved: pullRequests.Count(pr => pr.Status == "Approved"),
-            AwaitingReview: pullRequests.Count(pr => pr.Status == "AwaitingReview")
+            AwaitingReview: pullRequests.Count(pr => pr.Status == "AwaitingReview"),
+            TotalComments: totalComments,
+            ResolvedComments: resolvedComments,
+            PendingComments: pendingComments
         );
     }
 
