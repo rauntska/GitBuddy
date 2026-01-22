@@ -6,25 +6,20 @@
     class="group flex items-center gap-3 p-3 rounded-lg border border-slate-700/50 bg-slate-800/50 hover:bg-slate-800 transition-all duration-150 cursor-pointer"
   >
     <StatusBadge :status="pr.status" />
-    
+
     <div class="flex-shrink-0 min-w-[120px]">
       <div class="text-sm font-medium text-slate-200 truncate">{{ pr.repository }}</div>
       <div class="text-xs text-slate-500">PR #{{ pr.gitHubId }}</div>
+    </div>
+
+    <div class="flex-shrink-0 min-w-[100px]">
+      <div class="text-sm text-slate-300 truncate">{{ pr.author }}</div>
     </div>
 
     <div class="flex-1 min-w-0">
       <div class="text-sm text-slate-300 truncate group-hover:text-white transition-colors">
         {{ pr.title }}
       </div>
-    </div>
-
-    <div class="flex items-center gap-2 flex-shrink-0">
-      <img
-        :src="pr.authorAvatar"
-        :alt="pr.author"
-        :title="pr.author"
-        class="w-6 h-6 rounded-full"
-      />
     </div>
 
     <div class="flex items-center gap-3 flex-shrink-0">

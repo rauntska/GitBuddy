@@ -1,3 +1,4 @@
+using Graphite.Api.Extensions;
 using Graphite.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,7 +19,14 @@ public class PullRequestsController : ControllerBase
     public async Task<IActionResult> Get()
     {
         var groupedPRs = await _cacheService.GetCachedPullRequestsAsync();
-        return Ok(groupedPRs);
+        
+        var groupedPRsDtos = new Dictionary<string, object>();
+        foreach (var group in groupedPRs)
+        {
+            groupedPRsDtos[group.Key] = group.Value.ToDto();
+        }
+        
+        return Ok(groupedPRsDtos);
     }
 
     [HttpGet("stats")]

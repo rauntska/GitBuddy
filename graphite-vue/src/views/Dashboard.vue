@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen bg-slate-900 text-slate-100">
     <header class="sticky top-0 z-10 bg-slate-900/95 backdrop-blur border-b border-slate-800">
-      <div class="max-w-7xl mx-auto px-4 py-4">
+      <div class="max-w-screen-2xl mx-auto px-4 py-4">
         <div class="flex items-center justify-between">
           <h1 class="text-xl font-semibold text-white flex items-center gap-2">
             <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -63,7 +63,7 @@
       </div>
     </header>
 
-    <main class="max-w-7xl mx-auto px-4 py-6">
+    <main class="max-w-screen-2xl mx-auto px-4 py-6">
       <div v-if="error" class="mb-6 p-4 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
         {{ error }}
       </div>

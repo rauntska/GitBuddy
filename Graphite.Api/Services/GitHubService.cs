@@ -31,22 +31,23 @@ public class GitHubService : IGitHubService
 
                 foreach (var pr in prs)
                 {
-                    var status = DeterminePRStatus(pr);
+                    var specificPrFromApi = await _client.PullRequest.Get(organization, repo.Name, pr.Number); // Example of fetching a specific PR by number
+                    var status = DeterminePRStatus(specificPrFromApi);
 
                     pullRequests.Add(new GitHubPRData(
-                        pr.Number,
-                        pr.Title,
+                        specificPrFromApi.Number,
+                        specificPrFromApi.Title,
                         repo.Name,
-                        pr.User.Login,
-                        pr.User.AvatarUrl,
+                        specificPrFromApi.User.Login,
+                        specificPrFromApi.User.AvatarUrl,
                         status,
-                        pr.Draft,
-                        pr.HtmlUrl,
-                        pr.Additions,
-                        pr.Deletions,
-                        pr.ChangedFiles,
-                        pr.CreatedAt.UtcDateTime,
-                        pr.UpdatedAt.UtcDateTime
+                        specificPrFromApi.Draft,
+                        specificPrFromApi.HtmlUrl,
+                        specificPrFromApi.Additions,
+                        specificPrFromApi.Deletions,
+                        specificPrFromApi.ChangedFiles,
+                        specificPrFromApi.CreatedAt.UtcDateTime,
+                        specificPrFromApi.UpdatedAt.UtcDateTime
                     ));
                 }
             }
