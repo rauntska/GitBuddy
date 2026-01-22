@@ -68,7 +68,7 @@ public class CacheService : ICacheService
 
             foreach (var reviewer in incomingReviewers.Except(existingReviewers))
             {
-                var reviewData = prData.Reviews.First(r => r.Reviewer == reviewer);
+                var reviewData = prData.Reviews!.First(r => r.Reviewer == reviewer);
                 _context.Reviews.Add(new Review
                 {
                     PullRequestId = existingPR.Id,

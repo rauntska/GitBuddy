@@ -1,13 +1,11 @@
 using Octokit;
 using Octokit.GraphQL;
-using static Octokit.GraphQL.Variable;
-using System.Linq;
+
 namespace Graphite.Api.Services;
 
 public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
 {
     private readonly GitHubClient _restClient = new(new Octokit.ProductHeaderValue("Graphite-PR-Dashboard"));
-    private readonly HttpClient _httpClient = new();
 
     public async Task<List<GitHubPRData>> GetOpenPullRequestsAsync(string organization, string token)
     {
@@ -39,6 +37,9 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
                     )).ToList();
 
                     var status = DeterminePRStatus(specificPrFromApi, reviewData);
+                    
+                    var comments = await GetCommentsAsync(organization, repo.Name, pr.Number, token);
+                    var commentData = comments.FirstOrDefault();
 
                     pullRequests.Add(new GitHubPRData(
                         specificPrFromApi.Number,
@@ -55,7 +56,7 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
                         specificPrFromApi.CreatedAt.UtcDateTime,
                         specificPrFromApi.UpdatedAt.UtcDateTime,
                         reviewData,
-                        null
+                        commentData
                     ));
                 }
             }
@@ -112,8 +113,10 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
 
         try
         {
+            // Use REST API for issue comments (simpler and no expression tree issues)
             var issueComments = await _restClient.Issue.Comment.GetAllForIssue(organization, repository, pullRequestNumber);
 
+            // Use GraphQL for review threads with resolved/pending status
             var connection = new Octokit.GraphQL.Connection(new Octokit.GraphQL.ProductHeaderValue("Graphite-PR-Dashboard"), token);
             var query = new Octokit.GraphQL.Query()
                 .Repository(organization, repository)
@@ -134,7 +137,7 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
             DateTime? lastUpdated = null;
             var allDates = issueComments
                 .Where(c => c.UpdatedAt.HasValue)
-                .Select(c => c.UpdatedAt.Value.UtcDateTime)
+                .Select(c => c.UpdatedAt!.Value.UtcDateTime)
                 .ToList();
             if (allDates.Any())
             {
@@ -146,8 +149,9 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
                 new(totalIssueComments + totalReviewComments, resolvedCount, pendingCount, lastUpdated)
             };
         }
-        catch
+        catch(Exception ex)
         {
+            logger.LogError(ex, "Error fetching GitHub comments for PR {Organization}/{Repository}#{PullRequestNumber}", organization, repository, pullRequestNumber);
             return new List<GitHubCommentData>();
         }
     }
