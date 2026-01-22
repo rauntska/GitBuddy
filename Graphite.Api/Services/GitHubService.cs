@@ -119,7 +119,7 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
             // Use GraphQL for review threads with resolved/pending status
             var connection = new Octokit.GraphQL.Connection(new Octokit.GraphQL.ProductHeaderValue("Graphite-PR-Dashboard"), token);
             var query = new Octokit.GraphQL.Query()
-                .Repository(organization, repository)
+                .Repository(repository, organization)
                 .PullRequest(pullRequestNumber)
                 .ReviewThreads(first: 100)
                 .Nodes
