@@ -1,3 +1,7 @@
+#rider
+.idea/
+#misc
+/graphite-vue/.vscode/extensions.json
 # .NET
 bin/
 obj/

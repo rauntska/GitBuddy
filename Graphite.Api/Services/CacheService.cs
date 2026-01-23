@@ -110,8 +110,8 @@ public class CacheService : ICacheService
             }
         }
 
-        await _context.SaveChangesAsync();
-        // await CleanupOldPRsAsync(prDataList);
+        await _context.SaveChangesAsync(); 
+        await CleanupOldPRsAsync(prDataList);
     }
 
     private async Task CleanupOldPRsAsync(List<GitHubPRData> currentPRs)

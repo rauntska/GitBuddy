@@ -19,7 +19,7 @@ public class PRRefreshService : BackgroundService
     {
         _logger.LogInformation("PR Refresh Service is starting");
 
-        await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+        await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
 
         while (!stoppingToken.IsCancellationRequested)
         {

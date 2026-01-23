@@ -43,30 +43,30 @@ const remainingCount = computed(() => Math.max(0, props.reviews.length - maxDisp
 
 const getReviewStateColor = (state: string): string => {
   const colors: Record<string, string> = {
-    APPROVED: 'ring-green-500',
-    CHANGES_REQUESTED: 'ring-orange-500',
-    COMMENTED: 'ring-blue-500',
-    DISMISSED: 'ring-gray-500',
+    Approved: 'ring-green-500',
+    ChangesRequested: 'ring-orange-500',
+    Commented: 'ring-blue-500',
+    Dismissed: 'ring-gray-500',
   };
   return colors[state] || 'ring-gray-500';
 };
 
 const getReviewStateDotColor = (state: string): string => {
   const colors: Record<string, string> = {
-    APPROVED: 'bg-green-500',
-    CHANGES_REQUESTED: 'bg-orange-500',
-    COMMENTED: 'bg-blue-500',
-    DISMISSED: 'bg-gray-500',
+    Approved: 'bg-green-500',
+    ChangesRequested: 'bg-orange-500',
+    Commented: 'bg-blue-500',
+    Dismissed: 'bg-gray-500',
   };
   return colors[state] || 'bg-gray-500';
 };
 
 const getReviewStateLabel = (state: string): string => {
   const labels: Record<string, string> = {
-    APPROVED: 'Approved',
-    CHANGES_REQUESTED: 'Changes Requested',
-    COMMENTED: 'Commented',
-    DISMISSED: 'Dismissed',
+    Approved: 'Approved',
+    ChangesRequested: 'Changes Requested',
+    Commented: 'Commented',
+    Dismissed: 'Dismissed',
   };
   return labels[state] || state;
 };
