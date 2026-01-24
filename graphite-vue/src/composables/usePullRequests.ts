@@ -4,7 +4,15 @@ import type { GroupedPRs, PRStats } from '../types';
 
 export function usePullRequests() {
   const pullRequests = ref<GroupedPRs>({});
-  const stats = ref<PRStats>({ totalOpen: 0, draft: 0, approved: 0, awaitingReview: 0 });
+  const stats = ref<PRStats>({ 
+    totalOpen: 0, 
+    draft: 0, 
+    approved: 0, 
+    awaitingReview: 0,
+    totalComments: 0,
+    resolvedComments: 0,
+    pendingComments: 0
+  });
   const loading = ref(false);
   const error = ref<string | null>(null);
   const lastRefresh = ref<string | null>(null);
