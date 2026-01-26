@@ -24,7 +24,7 @@ public record GitHubPRData(
     DateTime CreatedAt,
     DateTime UpdatedAt,
     List<GitHubReviewData>? Reviews,
-    GitHubCommentData? Comments
+    List<GitHubCommentData>? Comments
 );
 
 public record GitHubReviewData(
@@ -35,8 +35,10 @@ public record GitHubReviewData(
 );
 
 public record GitHubCommentData(
-    int Count,
-    int ResolvedCount,
-    int PendingCount,
-    DateTime? LastUpdated
+    long GitHubId,
+    string Author,
+    string Body,
+    DateTime CreatedAt,
+    DateTime? UpdatedAt,
+    bool IsResolved
 );

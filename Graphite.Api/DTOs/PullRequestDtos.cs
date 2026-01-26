@@ -10,10 +10,12 @@ public record ReviewDto(
 
 public record CommentDto(
     int Id,
-    int Count,
-    int ResolvedCount,
-    int PendingCount,
-    DateTime? LastUpdated
+    long GitHubId,
+    string Author,
+    string Body,
+    DateTime CreatedAt,
+    DateTime? UpdatedAt,
+    bool IsResolved
 );
 
 public record PullRequestDto(
@@ -33,5 +35,5 @@ public record PullRequestDto(
     DateTime UpdatedAt,
     DateTime LastSyncedAt,
     List<ReviewDto> Reviews,
-    CommentDto? Comment
+    List<CommentDto> Comments
 );

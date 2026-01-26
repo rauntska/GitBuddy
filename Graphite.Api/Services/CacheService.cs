@@ -23,7 +23,7 @@ public class CacheService : ICacheService
         {
             var existingPR = await _context.PullRequests
                 .Include(pr => pr.Reviews)
-                .Include(pr => pr.Comment)
+                .Include(pr => pr.Comments)
                 .FirstOrDefaultAsync(pr => pr.GitHubId == prData.Id);
 
             if (existingPR != null)
@@ -85,28 +85,39 @@ public class CacheService : ICacheService
                 _context.Reviews.Remove(review);
             }
 
-            var commentData = prData.Comments;
+            var existingCommentIds = existingPR.Comments.Select(c => c.GitHubId).ToHashSet();
+            var incomingCommentIds = (prData.Comments ?? []).Select(c => c.GitHubId).ToHashSet();
 
-            if (existingPR.Comment == null)
+            foreach (var comment in prData.Comments ?? [])
             {
-                if (commentData != null)
+                if (!existingCommentIds.Contains(comment.GitHubId))
                 {
-                    existingPR.Comment = new Comment
+                    _context.Comments.Add(new Comment
                     {
                         PullRequestId = existingPR.Id,
-                        Count = commentData.Count,
-                        ResolvedCount = commentData.ResolvedCount,
-                        PendingCount = commentData.PendingCount,
-                        LastUpdated = commentData.LastUpdated
-                    };
+                        GitHubId = comment.GitHubId,
+                        Author = comment.Author,
+                        Body = comment.Body,
+                        CreatedAt = comment.CreatedAt,
+                        UpdatedAt = comment.UpdatedAt,
+                        IsResolved = comment.IsResolved
+                    });
+                }
+                else
+                {
+                    var existingComment = existingPR.Comments.First(c => c.GitHubId == comment.GitHubId);
+                    existingComment.Author = comment.Author;
+                    existingComment.Body = comment.Body;
+                    existingComment.CreatedAt = comment.CreatedAt;
+                    existingComment.UpdatedAt = comment.UpdatedAt;
+                    existingComment.IsResolved = comment.IsResolved;
                 }
             }
-            else
+
+            foreach (var commentId in existingCommentIds.Except(incomingCommentIds))
             {
-                existingPR.Comment.Count = commentData?.Count ?? 0;
-                existingPR.Comment.ResolvedCount = commentData?.ResolvedCount ?? 0;
-                existingPR.Comment.PendingCount = commentData?.PendingCount ?? 0;
-                existingPR.Comment.LastUpdated = commentData?.LastUpdated;
+                var comment = existingPR.Comments.First(c => c.GitHubId == commentId);
+                _context.Comments.Remove(comment);
             }
         }
 
@@ -129,7 +140,7 @@ public class CacheService : ICacheService
     {
         var pullRequests = await _context.PullRequests
             .Include(pr => pr.Reviews)
-            .Include(pr => pr.Comment)
+            .Include(pr => pr.Comments)
             .OrderByDescending(pr => pr.UpdatedAt)
             .ToListAsync();
 
@@ -145,11 +156,13 @@ public class CacheService : ICacheService
 
     public async Task<PRStats> GetPullRequestStatsAsync()
     {
-        var pullRequests = await _context.PullRequests.Include(pr => pr.Comment).ToListAsync();
+        var pullRequests = await _context.PullRequests
+            .Include(pullRequest => pullRequest.Comments)
+            .ToListAsync();
 
-        var totalComments = pullRequests.Sum(pr => pr.Comment?.Count ?? 0);
-        var resolvedComments = pullRequests.Sum(pr => pr.Comment?.ResolvedCount ?? 0);
-        var pendingComments = pullRequests.Sum(pr => pr.Comment?.PendingCount ?? 0);
+        var totalComments = pullRequests.Sum(pr => pr.Comments.Count);
+        var resolvedComments = pullRequests.Sum(pr => pr.Comments.Count(c => c.IsResolved));
+        var pendingComments = pullRequests.Sum(pr => pr.Comments.Count(c => !c.IsResolved));
 
         return new PRStats(
             TotalOpen: pullRequests.Count,

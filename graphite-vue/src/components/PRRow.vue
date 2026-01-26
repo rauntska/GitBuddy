@@ -4,7 +4,7 @@
     target="_blank"
     rel="noopener noreferrer"
     :class="[
-      'group relative flex items-center gap-3 p-3 rounded-lg border cursor-pointer',
+      'group relative flex items-center gap-4 p-3 rounded-lg border cursor-pointer',
       'border-slate-700/50 bg-slate-800/50',
       'hover:bg-slate-800 hover:shadow-lg',
       'transition-all duration-200 ease-out',
@@ -14,16 +14,18 @@
     ]"
   >
     <!-- Status Badge -->
-    <StatusBadge :status="pr.status" />
+<!--    <div class="flex-shrink-0 w-[32px]">-->
+<!--      <StatusBadge :status="pr.status" />-->
+<!--    </div>-->
 
     <!-- Repository & PR Number -->
-    <div class="flex-shrink-0 min-w-[110px]">
+    <div class="flex-shrink-0 w-[140px]">
       <div class="text-sm font-medium text-slate-200 truncate">{{ pr.repository }}</div>
       <div class="text-xs text-slate-500">PR #{{ pr.gitHubId }}</div>
     </div>
 
     <!-- Author -->
-    <div class="flex-shrink-0 min-w-[90px]">
+    <div class="flex-shrink-0 w-[120px]">
       <div class="text-sm text-slate-300 truncate">{{ pr.author }}</div>
     </div>
 
@@ -35,65 +37,77 @@
     </div>
 
     <!-- Metadata Section (Compact) -->
-    <div class="flex items-center gap-2 flex-shrink-0">
+    <div class="flex items-center gap-3 flex-shrink-0 w-[440px] justify-end">
       <!-- PR Size Badge -->
-      <PRSizeBadge :additions="pr.additions" :deletions="pr.deletions" />
+      <div class="w-[60px] flex justify-center">
+        <PRSizeBadge :additions="pr.additions" :deletions="pr.deletions" />
+      </div>
 
-      <!-- Stale Indicator -->
-      <div
-        v-if="isStale(pr.createdAt)"
-        class="flex items-center gap-1 text-xs text-red-400"
-        :title="`Created ${formatAge(pr.createdAt)} ago`"
-      >
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-        </svg>
-        <span class="font-medium">{{ formatAge(pr.createdAt) }}</span>
+      <!-- Stale Indicator / Spacer -->
+      <div class="w-[50px] flex justify-center">
+        <div
+          v-if="isStale(pr.createdAt)"
+          class="flex items-center gap-1 text-xs text-red-400"
+          :title="`Created ${formatAge(pr.createdAt)} ago`"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <span class="font-medium">{{ formatAge(pr.createdAt) }}</span>
+        </div>
       </div>
 
       <!-- Reviewer Avatars -->
-      <ReviewerAvatars :reviews="pr.reviews" :max-display="3" />
+      <div class="w-[80px] flex justify-center">
+        <ReviewerAvatars :reviews="pr.reviews" :max-display="3" />
+      </div>
 
       <!-- Comments (Resolved/Total) -->
-      <div
-        v-if="pr.comment?.pendingCount && pr.comment.pendingCount > 0"
-        class="flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-700/30 text-xs"
-        :title="`${pr.comment.resolvedCount} resolved, ${pr.comment.pendingCount} pending`"
-      >
-        <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-        </svg>
-        <span class="text-slate-300 font-medium">
-          {{ pr.comment.resolvedCount }}/{{ pr.comment.count }}
-        </span>
+      <div class="w-[50px] flex justify-center">
+        <div
+          v-if="pr.comment?.pendingCount && pr.comment.pendingCount > 0"
+          class="flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-700/30 text-xs"
+          :title="`${pr.comment.resolvedCount} resolved, ${pr.comment.pendingCount} pending`"
+        >
+          <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+          <span class="text-slate-300 font-medium">
+            {{ pr.comment.resolvedCount }}/{{ pr.comment.count }}
+          </span>
+        </div>
       </div>
 
       <!-- Files Changed -->
-      <div
-        class="flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-700/30 text-xs text-slate-300"
-        :title="`${pr.changedFiles} ${pr.changedFiles === 1 ? 'file' : 'files'} changed`"
-      >
-        <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-        </svg>
-        <span class="font-medium">{{ pr.changedFiles }}</span>
+      <div class="w-[45px] flex justify-center">
+        <div
+          class="flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-700/30 text-xs text-slate-300"
+          :title="`${pr.changedFiles} ${pr.changedFiles === 1 ? 'file' : 'files'} changed`"
+        >
+          <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                  d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+          </svg>
+          <span class="font-medium">{{ pr.changedFiles }}</span>
+        </div>
       </div>
 
       <!-- Line Changes (Compact) -->
-      <div
-        class="flex items-center gap-1 text-xs font-mono"
-        title="Lines changed"
-      >
-        <span class="text-green-400 font-medium">+{{ pr.additions }}</span>
-        <span class="text-slate-600">/</span>
-        <span class="text-red-400 font-medium">-{{ pr.deletions }}</span>
+      <div class="w-[90px] flex justify-center">
+        <div
+          class="flex items-center gap-1 text-xs font-mono"
+          title="Lines changed"
+        >
+          <span class="text-green-400 font-medium">+{{ pr.additions }}</span>
+          <span class="text-slate-600">/</span>
+          <span class="text-red-400 font-medium">-{{ pr.deletions }}</span>
+        </div>
       </div>
 
       <!-- Last Updated Time -->
-      <div class="text-xs text-slate-500 flex-shrink-0 min-w-[45px] text-right">
+      <div class="w-[50px] text-xs text-slate-500 text-right">
         {{ formatRelativeTime(pr.updatedAt) }}
       </div>
     </div>

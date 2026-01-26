@@ -19,5 +19,5 @@ public class PullRequest
     public DateTime LastSyncedAt { get; set; }
 
     public List<Review> Reviews { get; set; } = new();
-    public Comment? Comment { get; set; }
+    public List<Comment> Comments { get; set; }
 }

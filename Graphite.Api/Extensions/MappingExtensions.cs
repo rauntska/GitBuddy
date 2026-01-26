@@ -30,14 +30,17 @@ public static class MappingExtensions
                 r.State,
                 r.SubmittedAt
             )).ToList(),
-            pr.Comment != null ? new CommentDto(
-                pr.Comment.Id,
-                pr.Comment.Count,
-                pr.Comment.ResolvedCount,
-                pr.Comment.PendingCount,
-                pr.Comment.LastUpdated
-            ) : null
+            pr.Comments.Select(c => new CommentDto(
+                c.Id,
+                c.GitHubId,
+                c.Author,
+                c.Body,
+                c.CreatedAt,
+                c.UpdatedAt,
+                c.IsResolved
+            )).ToList()
         );
+
     }
 
     public static List<PullRequestDto> ToDto(this List<PullRequest> pullRequests)

@@ -28,9 +28,9 @@ public class AppDbContext : DbContext
                 .HasForeignKey(r => r.PullRequestId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            entity.HasOne(e => e.Comment)
+            entity.HasMany(e => e.Comments)
                 .WithOne(c => c.PullRequest)
-                .HasForeignKey<Comment>(c => c.PullRequestId)
+                .HasForeignKey(c => c.PullRequestId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

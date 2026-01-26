@@ -53,10 +53,9 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
                 var reviews = await GetReviewsAsync(organization, repoName, pr.Number, token);
                 var reviewData = reviews;
 
-                var status = DeterminePRStatus(pr.IsDraft, reviewData);
+                var status = DeterminePrStatus(pr.IsDraft, reviewData);
 
                 var comments = await GetCommentsAsync(organization, repoName, pr.Number, token);
-                var commentData = comments.FirstOrDefault() ?? new GitHubCommentData(0, 0, 0, null);
 
                 pullRequests.Add(new GitHubPRData(
                     pr.Number,
@@ -73,7 +72,7 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
                     pr.CreatedAt.UtcDateTime,
                     pr.UpdatedAt.UtcDateTime,
                     reviewData,
-                    commentData
+                    comments
                 ));
             }
         }
@@ -111,20 +110,17 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
         }
         catch
         {
-            return new List<GitHubReviewData>();
+            return [];
         }
     }
 
-
-
-    private static string DeterminePRStatus(bool isDraft, List<GitHubReviewData> reviews)
+    private static string DeterminePrStatus(bool isDraft, List<GitHubReviewData> reviews)
     {
         if (isDraft) return "Draft";
 
         var hasApproved = reviews.Any(r => r.State == "Approved");
         var hasChangesRequested = reviews.Any(r => r.State == "ChangesRequested");
         var hasComments = reviews.Any(r => r.State == "Commented");
-        var hasPending = reviews.Any(r => r.State == "Pending");
 
         if (hasApproved && !hasChangesRequested) return "Approved";
         if (hasChangesRequested) return "ChangesRequested";
@@ -139,40 +135,28 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
         {
             var connection = new Octokit.GraphQL.Connection(new Octokit.GraphQL.ProductHeaderValue("Graphite-PR-Dashboard"), token);
 
-            var commentsQuery = new Octokit.GraphQL.Query()
+            // Get issue comments
+            var issueCommentsQuery = new Octokit.GraphQL.Query()
                 .Repository(repository, organization)
                 .PullRequest(pullRequestNumber)
-                .Comments(100, null,null,null,null).Nodes
-                .Select(c => c.UpdatedAt)
+                .Comments(100, null, null, null, null).Nodes
+                .Select(c => new
+                {
+                    GitHubId = (long)c.DatabaseId,
+                    Author = c.Author.Login,
+                    Body = c.Body,
+                    CreatedAt = c.CreatedAt,
+                    UpdatedAt = c.UpdatedAt
+                })
                 .Compile();
 
-            var comments = await connection.Run(commentsQuery);
+            var issueComments = await connection.Run(issueCommentsQuery);
 
-            var reviewThreadsQuery = new Octokit.GraphQL.Query()
-                .Repository(repository, organization)
-                .PullRequest(pullRequestNumber)
-                .ReviewThreads(100).Nodes
-                .Select(rt => rt.IsResolved)
-                .Compile();
+            var issueCommentData = issueComments.Select(c => new GitHubCommentData(c.GitHubId, c.Author, c.Body, c.CreatedAt.UtcDateTime, c.UpdatedAt.UtcDateTime, true)).ToList();
 
-            var reviewThreads = await connection.Run(reviewThreadsQuery);
-
-            var commentsList = comments.ToList();
-            var reviewThreadsList = reviewThreads.ToList();
-
-            var totalIssueComments = commentsList.Count;
-            var resolvedCount = reviewThreadsList.Count(rt => rt);
-            var pendingCount = reviewThreadsList.Count(rt => !rt);
-            var totalReviewComments = reviewThreadsList.Count;
-
-            DateTime? lastUpdated = commentsList.Any() ? (DateTime?)commentsList.Max(c => c.UtcDateTime) : null;
-
-            return new List<GitHubCommentData>
-            {
-                new(totalIssueComments + totalReviewComments, resolvedCount, pendingCount, lastUpdated)
-            };
+            return issueCommentData;
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
             logger.LogError(ex, "Error fetching GitHub comments for PR {Organization}/{Repository}#{PullRequestNumber}", organization, repository, pullRequestNumber);
             return new List<GitHubCommentData>();
