@@ -29,6 +29,10 @@ using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     dbContext.Database.Migrate();
+    
+    // Seed sample data for file diffs and comments
+    // await SampleDataSeeder.SeedFileDiffsAsync(dbContext);
+    // await SampleDataSeeder.SeedCommentsAsync(dbContext);
 }
 
 app.UseCors("AllowVueDev");

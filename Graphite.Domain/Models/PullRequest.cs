@@ -17,6 +17,13 @@ public class PullRequest
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public DateTime LastSyncedAt { get; set; }
+    
+    // Additional fields for PR details
+    public string Description { get; set; } = string.Empty;
+    public string SourceBranch { get; set; } = string.Empty;
+    public string TargetBranch { get; set; } = string.Empty;
+    public string? MergeableState { get; set; }
+    public string? ChecksStatus { get; set; }
 
     public List<Review> Reviews { get; set; } = new();
     public List<ReviewThread> ReviewThreads { get; set; } = new();

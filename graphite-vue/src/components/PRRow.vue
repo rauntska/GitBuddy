@@ -1,10 +1,8 @@
 <template>
-  <a
-    :href="pr.url"
-    target="_blank"
-    rel="noopener noreferrer"
+  <router-link
+    :to="{ name: 'pr-detail', params: { id: pr.id } }"
     :class="[
-      'group relative flex items-center gap-4 p-3 rounded-lg border cursor-pointer',
+      'group relative flex items-center gap-4 p-2 rounded-lg border cursor-pointer',
       'border-slate-700/50 bg-slate-800/50',
       'hover:bg-slate-800 hover:shadow-lg',
       'transition-all duration-200 ease-out',
@@ -121,11 +119,11 @@
         <div class="flex items-center justify-between gap-4">
           <span>Created: {{ formatDate(pr.createdAt) }}</span>
           <span>Last synced: {{ formatRelativeTime(pr.lastSyncedAt) }}</span>
-          <span class="text-slate-500">Click to view on GitHub →</span>
+          <span class="text-slate-500">Click to view details →</span>
         </div>
       </div>
     </div>
-  </a>
+  </router-link>
 </template>
 
 <script setup lang="ts">

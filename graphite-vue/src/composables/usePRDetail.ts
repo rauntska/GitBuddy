@@ -1,0 +1,95 @@
+import { ref } from 'vue';
+import type { PRDetail, Comment, FileDiff } from '../types';
+import { apiService } from '../services/api';
+
+export function usePRDetail() {
+  const prDetail = ref<PRDetail | null>(null);
+  const loading = ref(false);
+  const error = ref<string | null>(null);
+  const commentsPanel = ref(false);
+  const fileTreeVisible = ref(true);
+
+  const fetchPRDetail = async (id: number) => {
+    loading.value = true;
+    error.value = null;
+    try {
+      prDetail.value = await apiService.getPRDetail(id);
+    } catch (err: any) {
+      error.value = err.response?.data?.message || 'Failed to fetch PR details';
+      console.error('Error fetching PR details:', err);
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  const addComment = async (
+    prId: number,
+    comment: { body: string; path?: string; line?: number }
+  ): Promise<Comment | null> => {
+    try {
+      const newComment = await apiService.addComment(prId, comment);
+      
+      // Optimistically add comment to local state
+      if (prDetail.value) {
+        prDetail.value.allComments = [...prDetail.value.allComments, newComment];
+      }
+      
+      return newComment;
+    } catch (err: any) {
+      error.value = err.response?.data?.message || 'Failed to add comment';
+      console.error('Error adding comment:', err);
+      return null;
+    }
+  };
+
+  const submitReview = async (
+    prId: number,
+    review: { state: 'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENT'; body?: string }
+  ) => {
+    try {
+      await apiService.submitReview(prId, review);
+      // Refresh PR details after submitting review
+      await fetchPRDetail(prId);
+      return true;
+    } catch (err: any) {
+      error.value = err.response?.data?.message || 'Failed to submit review';
+      console.error('Error submitting review:', err);
+      return false;
+    }
+  };
+
+  const mergePR = async (prId: number) => {
+    try {
+      await apiService.mergePR(prId);
+      // Refresh PR details after merging
+      await fetchPRDetail(prId);
+      return true;
+    } catch (err: any) {
+      error.value = err.response?.data?.message || 'Failed to merge PR';
+      console.error('Error merging PR:', err);
+      return false;
+    }
+  };
+
+  const toggleCommentsPanel = () => {
+    commentsPanel.value = !commentsPanel.value;
+  };
+
+  const toggleFileTree = () => {
+    fileTreeVisible.value = !fileTreeVisible.value;
+  };
+
+  return {
+    prDetail,
+    loading,
+    error,
+    commentsPanel,
+    fileTreeVisible,
+    fetchPRDetail,
+    addComment,
+    submitReview,
+    mergePR,
+    toggleCommentsPanel,
+    toggleFileTree,
+  };
+}

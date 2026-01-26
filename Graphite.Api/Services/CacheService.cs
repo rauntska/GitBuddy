@@ -39,6 +39,10 @@ public class CacheService : ICacheService
                 existingPR.ChangedFiles = prData.ChangedFiles;
                 existingPR.UpdatedAt = prData.UpdatedAt;
                 existingPR.LastSyncedAt = DateTime.UtcNow;
+                existingPR.Description = prData.Description;
+                existingPR.SourceBranch = prData.SourceBranch;
+                existingPR.TargetBranch = prData.TargetBranch;
+                existingPR.MergeableState = prData.MergeableState;
             }
             else
             {
@@ -57,7 +61,11 @@ public class CacheService : ICacheService
                     ChangedFiles = prData.ChangedFiles,
                     CreatedAt = prData.CreatedAt,
                     UpdatedAt = prData.UpdatedAt,
-                    LastSyncedAt = DateTime.UtcNow
+                    LastSyncedAt = DateTime.UtcNow,
+                    Description = prData.Description,
+                    SourceBranch = prData.SourceBranch,
+                    TargetBranch = prData.TargetBranch,
+                    MergeableState = prData.MergeableState
                 };
                 _context.PullRequests.Add(existingPR);
                 await _context.SaveChangesAsync();
@@ -128,10 +136,83 @@ public class CacheService : ICacheService
                 var thread = existingPR.ReviewThreads.First(rt => rt.GitHubId == threadId);
                 _context.ReviewThreads.Remove(thread);
             }
+
+            // Fetch and store file diffs
+            try
+            {
+                var fileDiffs = await _gitHubService.GetFileDiffsAsync(organization, prData.Repository, prData.Id, token);
+                var existingFileDiffs = await _context.FileDiffs
+                    .Where(f => f.PullRequestId == existingPR.Id)
+                    .ToListAsync();
+
+                // Remove old file diffs
+                _context.FileDiffs.RemoveRange(existingFileDiffs);
+
+                // Add new file diffs with language detection
+                foreach (var fileDiff in fileDiffs)
+                {
+                    var language = DetectLanguage(fileDiff.Path);
+                    _context.FileDiffs.Add(new FileDiff
+                    {
+                        PullRequestId = existingPR.Id,
+                        Path = fileDiff.Path,
+                        OldPath = fileDiff.OldPath,
+                        Status = fileDiff.Status,
+                        Additions = fileDiff.Additions,
+                        Deletions = fileDiff.Deletions,
+                        Changes = fileDiff.Changes,
+                        Patch = fileDiff.Patch,
+                        Language = language
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log error but continue with other PRs
+                Console.WriteLine($"Error fetching file diffs for PR {prData.Id}: {ex.Message}");
+            }
         }
 
         await _context.SaveChangesAsync(); 
         await CleanupOldPRsAsync(prDataList);
+    }
+
+    private string DetectLanguage(string path)
+    {
+        var ext = Path.GetExtension(path).ToLower();
+        return ext switch
+        {
+            ".cs" => "csharp",
+            ".vue" => "vue",
+            ".ts" => "typescript",
+            ".js" => "javascript",
+            ".tsx" => "typescript",
+            ".jsx" => "javascript",
+            ".css" => "css",
+            ".scss" => "scss",
+            ".sass" => "sass",
+            ".less" => "less",
+            ".html" => "markup",
+            ".xml" => "markup",
+            ".json" => "json",
+            ".yml" => "yaml",
+            ".yaml" => "yaml",
+            ".md" => "markdown",
+            ".sql" => "sql",
+            ".py" => "python",
+            ".rb" => "ruby",
+            ".java" => "java",
+            ".go" => "go",
+            ".rs" => "rust",
+            ".cpp" => "cpp",
+            ".c" => "c",
+            ".h" => "c",
+            ".hpp" => "cpp",
+            ".sh" => "bash",
+            ".ps1" => "powershell",
+            ".dockerfile" => "docker",
+            _ => path.EndsWith("Dockerfile") ? "docker" : "text"
+        };
     }
 
     private async Task CleanupOldPRsAsync(List<GitHubPRData> currentPRs)

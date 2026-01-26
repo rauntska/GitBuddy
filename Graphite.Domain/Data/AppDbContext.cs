@@ -11,6 +11,8 @@ public class AppDbContext : DbContext
     public DbSet<Review> Reviews { get; set; }
     public DbSet<ReviewThread> ReviewThreads { get; set; }
     public DbSet<GitHubConfig> GitHubConfigs { get; set; }
+    public DbSet<Comment> Comments { get; set; }
+    public DbSet<FileDiff> FileDiffs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -53,6 +55,30 @@ public class AppDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.PersonalAccessToken)
                 .IsRequired();
+        });
+
+        modelBuilder.Entity<Comment>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.PullRequestId);
+            entity.HasIndex(e => e.GitHubId).IsUnique();
+            
+            entity.HasOne(e => e.PullRequest)
+                .WithMany()
+                .HasForeignKey(e => e.PullRequestId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<FileDiff>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.PullRequestId);
+            entity.HasIndex(e => new { e.PullRequestId, e.Path }).IsUnique();
+            
+            entity.HasOne(e => e.PullRequest)
+                .WithMany()
+                .HasForeignKey(e => e.PullRequestId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

@@ -7,6 +7,7 @@ public interface IGitHubService
     Task<List<GitHubPRData>> GetOpenPullRequestsAsync(string organization, string token);
     Task<List<GitHubReviewData>> GetReviewsAsync(string organization, string repository, int pullRequestNumber, string token);
     Task<List<GitHubReviewThreadData>> GetReviewThreadsAsync(string organization, string repository, int pullRequestNumber, string token);
+    Task<List<GitHubFileDiffData>> GetFileDiffsAsync(string organization, string repository, int pullRequestNumber, string token);
 }
 
 public record GitHubPRData(
@@ -24,7 +25,11 @@ public record GitHubPRData(
     DateTime CreatedAt,
     DateTime UpdatedAt,
     List<GitHubReviewData>? Reviews,
-    List<GitHubReviewThreadData>? ReviewThreads
+    List<GitHubReviewThreadData>? ReviewThreads,
+    string Description,
+    string SourceBranch,
+    string TargetBranch,
+    string? MergeableState
 );
 
 public record GitHubReviewData(
@@ -46,4 +51,14 @@ public record GitHubReviewThreadData(
     string FirstCommentAuthor,
     string FirstCommentBody,
     int CommentCount
+);
+
+public record GitHubFileDiffData(
+    string Path,
+    string? OldPath,
+    string Status,
+    int Additions,
+    int Deletions,
+    int Changes,
+    string? Patch
 );

@@ -61,3 +61,53 @@ export interface Settings {
   refreshIntervalMinutes: number;
   lastRefresh?: string;
 }
+
+export interface Comment {
+  id: number;
+  gitHubId: string;
+  author: string;
+  authorAvatar?: string;
+  body: string;
+  createdAt: string;
+  updatedAt?: string;
+  path?: string;
+  line?: number;
+  isOutdated: boolean;
+}
+
+export interface FileDiff {
+  path: string;
+  oldPath?: string;
+  status: 'added' | 'modified' | 'deleted' | 'renamed';
+  additions: number;
+  deletions: number;
+  changes: number;
+  patch?: string;
+  language?: string;
+}
+
+export interface DiffHunk {
+  oldStart: number;
+  oldLines: number;
+  newStart: number;
+  newLines: number;
+  lines: DiffLine[];
+}
+
+export interface DiffLine {
+  type: 'add' | 'delete' | 'context';
+  content: string;
+  oldLineNumber?: number;
+  newLineNumber?: number;
+  hasComment?: boolean;
+}
+
+export interface PRDetail extends PullRequest {
+  description: string;
+  sourceBranch: string;
+  targetBranch: string;
+  files: FileDiff[];
+  allComments: Comment[];
+  mergeableState?: string;
+  checksStatus?: 'pending' | 'success' | 'failure';
+}

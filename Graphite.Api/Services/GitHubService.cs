@@ -1,4 +1,5 @@
 using Octokit.GraphQL;
+using Octokit;
 
 namespace Graphite.Api.Services;
 
@@ -40,7 +41,11 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
                     pr.Deletions,
                     pr.ChangedFiles,
                     pr.CreatedAt,
-                    pr.UpdatedAt
+                    pr.UpdatedAt,
+                    pr.Body,
+                    HeadRefName = pr.HeadRefName,
+                    BaseRefName = pr.BaseRefName,
+                    pr.Mergeable
                 })
                 .Compile();
 
@@ -72,7 +77,11 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
                     pr.CreatedAt.UtcDateTime,
                     pr.UpdatedAt.UtcDateTime,
                     reviewData,
-                    reviewThreads
+                    reviewThreads,
+                    pr.Body ?? string.Empty,
+                    pr.HeadRefName,
+                    pr.BaseRefName,
+                    pr.Mergeable.ToString()
                 ));
             }
         }
@@ -184,6 +193,43 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
         {
             logger.LogError(ex, "Error fetching GitHub review threads for PR {Organization}/{Repository}#{PullRequestNumber}", organization, repository, pullRequestNumber);
             return new List<GitHubReviewThreadData>();
+        }
+    }
+
+    public async Task<List<GitHubFileDiffData>> GetFileDiffsAsync(string organization, string repository, int pullRequestNumber, string token)
+    {
+        try
+        {
+            var client = new GitHubClient(new Octokit.ProductHeaderValue("Graphite-PR-Dashboard"))
+            {
+                Credentials = new Credentials(token)
+            };
+
+            var files = await client.PullRequest.Files(organization, repository, pullRequestNumber);
+
+            return files.Select(file =>
+            {
+                var status = file.Status.ToLowerInvariant();
+                if (status == "removed") status = "deleted";
+                if (status == "renamed") status = "renamed";
+                if (status == "added") status = "added";
+                if (status == "modified") status = "modified";
+
+                return new GitHubFileDiffData(
+                    file.FileName,
+                    file.PreviousFileName,
+                    status,
+                    file.Additions,
+                    file.Deletions,
+                    file.Changes,
+                    file.Patch
+                );
+            }).ToList();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error fetching file diffs for PR {Organization}/{Repository}#{PullRequestNumber}", organization, repository, pullRequestNumber);
+            return new List<GitHubFileDiffData>();
         }
     }
 }

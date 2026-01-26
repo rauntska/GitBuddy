@@ -42,3 +42,66 @@ public record PullRequestDto(
     List<ReviewDto> Reviews,
     List<ReviewThreadDto> ReviewThreads
 );
+
+public record CommentDto(
+    int Id,
+    long GitHubId,
+    string Author,
+    string? AuthorAvatar,
+    string Body,
+    DateTime CreatedAt,
+    DateTime? UpdatedAt,
+    string? Path,
+    int? Line,
+    bool IsOutdated
+);
+
+public record FileDiffDto(
+    int Id,
+    string Path,
+    string? OldPath,
+    string Status,
+    int Additions,
+    int Deletions,
+    int Changes,
+    string? Patch,
+    string? Language
+);
+
+public record PRDetailDto(
+    int Id,
+    int GitHubId,
+    string Title,
+    string Repository,
+    string Author,
+    string? AuthorAvatar,
+    string Status,
+    bool Draft,
+    string Url,
+    int Additions,
+    int Deletions,
+    int ChangedFiles,
+    DateTime CreatedAt,
+    DateTime UpdatedAt,
+    DateTime LastSyncedAt,
+    string Description,
+    string SourceBranch,
+    string TargetBranch,
+    string? MergeableState,
+    string? ChecksStatus,
+    List<ReviewDto> Reviews,
+    List<ReviewThreadDto> ReviewThreads,
+    List<FileDiffDto> Files,
+    List<CommentDto> AllComments
+);
+
+public record AddCommentRequest(
+    string Body,
+    string? Path,
+    int? Line
+);
+
+public record SubmitReviewRequest(
+    string State,
+    string? Body
+);

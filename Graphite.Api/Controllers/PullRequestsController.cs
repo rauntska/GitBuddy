@@ -1,6 +1,9 @@
+using Graphite.Api.DTOs;
 using Graphite.Api.Extensions;
 using Graphite.Api.Services;
+using Graphite.Domain.Data;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace Graphite.Api.Controllers;
 
@@ -9,10 +12,12 @@ namespace Graphite.Api.Controllers;
 public class PullRequestsController : ControllerBase
 {
     private readonly ICacheService _cacheService;
+    private readonly AppDbContext _context;
 
-    public PullRequestsController(ICacheService cacheService)
+    public PullRequestsController(ICacheService cacheService, AppDbContext context)
     {
         _cacheService = cacheService;
+        _context = context;
     }
 
     [HttpGet]
@@ -27,6 +32,30 @@ public class PullRequestsController : ControllerBase
         }
         
         return Ok(groupedPRsDtos);
+    }
+
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById(int id)
+    {
+        var pr = await _context.PullRequests
+            .Include(p => p.Reviews)
+            .Include(p => p.ReviewThreads)
+            .FirstOrDefaultAsync(p => p.Id == id);
+
+        if (pr == null)
+        {
+            return NotFound(new { message = "Pull request not found" });
+        }
+
+        var files = await _context.FileDiffs
+            .Where(f => f.PullRequestId == id)
+            .ToListAsync();
+
+        var comments = await _context.Comments
+            .Where(c => c.PullRequestId == id)
+            .ToListAsync();
+
+        return Ok(pr.ToDetailDto(files, comments));
     }
 
     [HttpGet("stats")]
@@ -56,5 +85,88 @@ public class PullRequestsController : ControllerBase
         {
             return BadRequest(new { error = ex.Message });
         }
+    }
+
+    [HttpGet("{id}/files/{*filePath}")]
+    public async Task<IActionResult> GetFileDiff(int id, string filePath)
+    {
+        var fileDiff = await _context.FileDiffs
+            .FirstOrDefaultAsync(f => f.PullRequestId == id && f.Path == filePath);
+
+        if (fileDiff == null)
+        {
+            return NotFound(new { message = "File not found" });
+        }
+
+        return Ok(fileDiff.ToDto());
+    }
+
+    [HttpGet("{id}/comments")]
+    public async Task<IActionResult> GetComments(int id)
+    {
+        var comments = await _context.Comments
+            .Where(c => c.PullRequestId == id)
+            .ToListAsync();
+
+        return Ok(comments.Select(c => c.ToDto()));
+    }
+
+    [HttpPost("{id}/comments")]
+    public async Task<IActionResult> AddComment(int id, [FromBody] AddCommentRequest request)
+    {
+        var pr = await _context.PullRequests.FindAsync(id);
+        if (pr == null)
+        {
+            return NotFound(new { message = "Pull request not found" });
+        }
+
+        // In a real implementation, this would use GitHub API
+        // For now, we'll just create a mock comment
+        var comment = new Domain.Models.Comment
+        {
+            PullRequestId = id,
+            GitHubId = DateTime.UtcNow.Ticks, // Mock GitHub ID
+            Author = "Current User", // Would come from auth
+            AuthorAvatar = null,
+            Body = request.Body,
+            CreatedAt = DateTime.UtcNow,
+            Path = request.Path,
+            Line = request.Line,
+            IsOutdated = false,
+            IsResolved = false
+        };
+
+        _context.Comments.Add(comment);
+        await _context.SaveChangesAsync();
+
+        return Ok(comment.ToDto());
+    }
+
+    [HttpPost("{id}/review")]
+    public async Task<IActionResult> SubmitReview(int id, [FromBody] SubmitReviewRequest request)
+    {
+        var pr = await _context.PullRequests.FindAsync(id);
+        if (pr == null)
+        {
+            return NotFound(new { message = "Pull request not found" });
+        }
+
+        // In a real implementation, this would use GitHub API
+        // For now, we'll just return a success message
+        return Ok(new { message = $"Review submitted: {request.State}" });
+    }
+
+    [HttpPost("{id}/merge")]
+    public async Task<IActionResult> MergePR(int id)
+    {
+        var pr = await _context.PullRequests.FindAsync(id);
+        if (pr == null)
+        {
+            return NotFound(new { message = "Pull request not found" });
+        }
+
+        // In a real implementation, this would use GitHub API
+        // For now, we'll just return a success message
+        return Ok(new { message = "Pull request merge initiated" });
     }
 }
