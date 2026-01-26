@@ -9,7 +9,7 @@ public class AppDbContext : DbContext
 
     public DbSet<PullRequest> PullRequests { get; set; }
     public DbSet<Review> Reviews { get; set; }
-    public DbSet<Comment> Comments { get; set; }
+    public DbSet<ReviewThread> ReviewThreads { get; set; }
     public DbSet<GitHubConfig> GitHubConfigs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -28,9 +28,9 @@ public class AppDbContext : DbContext
                 .HasForeignKey(r => r.PullRequestId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            entity.HasMany(e => e.Comments)
-                .WithOne(c => c.PullRequest)
-                .HasForeignKey(c => c.PullRequestId)
+            entity.HasMany(e => e.ReviewThreads)
+                .WithOne(rt => rt.PullRequest)
+                .HasForeignKey(rt => rt.PullRequestId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
@@ -40,10 +40,12 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => e.PullRequestId);
         });
 
-        modelBuilder.Entity<Comment>(entity =>
+        modelBuilder.Entity<ReviewThread>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.PullRequestId);
+            entity.HasIndex(e => e.GitHubId).IsUnique();
+            entity.HasIndex(e => e.State);
         });
 
         modelBuilder.Entity<GitHubConfig>(entity =>

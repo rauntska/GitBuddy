@@ -6,7 +6,7 @@ public interface IGitHubService
 {
     Task<List<GitHubPRData>> GetOpenPullRequestsAsync(string organization, string token);
     Task<List<GitHubReviewData>> GetReviewsAsync(string organization, string repository, int pullRequestNumber, string token);
-    Task<List<GitHubCommentData>> GetCommentsAsync(string organization, string repository, int pullRequestNumber, string token);
+    Task<List<GitHubReviewThreadData>> GetReviewThreadsAsync(string organization, string repository, int pullRequestNumber, string token);
 }
 
 public record GitHubPRData(
@@ -24,7 +24,7 @@ public record GitHubPRData(
     DateTime CreatedAt,
     DateTime UpdatedAt,
     List<GitHubReviewData>? Reviews,
-    List<GitHubCommentData>? Comments
+    List<GitHubReviewThreadData>? ReviewThreads
 );
 
 public record GitHubReviewData(
@@ -34,11 +34,16 @@ public record GitHubReviewData(
     DateTime? SubmittedAt
 );
 
-public record GitHubCommentData(
-    long GitHubId,
-    string Author,
-    string Body,
+public record GitHubReviewThreadData(
+    string GitHubId,
+    string Path,
+    int? Line,
+    string State,
+    bool IsResolved,
+    bool IsOutdated,
     DateTime CreatedAt,
     DateTime? UpdatedAt,
-    bool IsResolved
+    string FirstCommentAuthor,
+    string FirstCommentBody,
+    int CommentCount
 );

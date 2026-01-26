@@ -66,16 +66,16 @@
       <!-- Comments (Resolved/Total) -->
       <div class="w-[50px] flex justify-center">
         <div
-          v-if="pr.comment?.pendingCount && pr.comment.pendingCount > 0"
+          v-if="pendingThreadsCount > 0"
           class="flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-700/30 text-xs"
-          :title="`${pr.comment.resolvedCount} resolved, ${pr.comment.pendingCount} pending`"
+          :title="`${resolvedThreadsCount} resolved, ${pendingThreadsCount} pending`"
         >
           <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                   d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
           </svg>
           <span class="text-slate-300 font-medium">
-            {{ pr.comment.resolvedCount }}/{{ pr.comment.count }}
+            {{ resolvedThreadsCount }}/{{ totalThreadsCount }}
           </span>
         </div>
       </div>
@@ -129,8 +129,8 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import type { PullRequest } from '../types';
-import StatusBadge from './StatusBadge.vue';
 import ReviewerAvatars from './ReviewerAvatars.vue';
 import PRSizeBadge from './PRSizeBadge.vue';
 import {
@@ -144,6 +144,10 @@ import {
 const props = defineProps<{
   pr: PullRequest;
 }>();
+
+const totalThreadsCount = computed(() => props.pr.reviewThreads?.length || 0);
+const resolvedThreadsCount = computed(() => props.pr.reviewThreads?.filter(rt => rt.isResolved).length || 0);
+const pendingThreadsCount = computed(() => props.pr.reviewThreads?.filter(rt => !rt.isResolved).length || 0);
 
 const formatRelativeTime = (dateString: string): string => {
   const date = new Date(dateString);

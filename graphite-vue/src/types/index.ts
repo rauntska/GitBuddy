@@ -6,12 +6,19 @@ export interface Review {
   submittedAt?: string;
 }
 
-export interface Comment {
+export interface ReviewThread {
   id: number;
-  count: number;
-  resolvedCount: number;
-  pendingCount: number;
-  lastUpdated?: string;
+  gitHubId: string;
+  path: string;
+  line?: number;
+  state: string;
+  isResolved: boolean;
+  isOutdated: boolean;
+  createdAt: string;
+  updatedAt?: string;
+  firstCommentAuthor: string;
+  firstCommentBody: string;
+  commentCount: number;
 }
 
 export interface PullRequest {
@@ -31,7 +38,7 @@ export interface PullRequest {
   updatedAt: string;
   lastSyncedAt: string;
   reviews: Review[];
-  comment?: Comment;
+  reviewThreads: ReviewThread[];
 }
 
 export interface PRStats {

@@ -55,7 +55,7 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
 
                 var status = DeterminePrStatus(pr.IsDraft, reviewData);
 
-                var comments = await GetCommentsAsync(organization, repoName, pr.Number, token);
+                var reviewThreads = await GetReviewThreadsAsync(organization, repoName, pr.Number, token);
 
                 pullRequests.Add(new GitHubPRData(
                     pr.Number,
@@ -72,7 +72,7 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
                     pr.CreatedAt.UtcDateTime,
                     pr.UpdatedAt.UtcDateTime,
                     reviewData,
-                    comments
+                    reviewThreads
                 ));
             }
         }
@@ -129,37 +129,61 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
     }
 
 
-    public async Task<List<GitHubCommentData>> GetCommentsAsync(string organization, string repository, int pullRequestNumber, string token)
+    public async Task<List<GitHubReviewThreadData>> GetReviewThreadsAsync(string organization, string repository, int pullRequestNumber, string token)
     {
         try
         {
             var connection = new Octokit.GraphQL.Connection(new Octokit.GraphQL.ProductHeaderValue("Graphite-PR-Dashboard"), token);
 
-            // Get issue comments
-            var issueCommentsQuery = new Octokit.GraphQL.Query()
+            // Get review threads
+            var reviewThreadsQuery = new Octokit.GraphQL.Query()
                 .Repository(repository, organization)
                 .PullRequest(pullRequestNumber)
-                .Comments(100, null, null, null, null).Nodes
-                .Select(c => new
+                .ReviewThreads(100, null, null, null)
+                .Nodes
+                .Select(rt => new
                 {
-                    GitHubId = (long)c.DatabaseId,
-                    Author = c.Author.Login,
-                    Body = c.Body,
-                    CreatedAt = c.CreatedAt,
-                    UpdatedAt = c.UpdatedAt
+                    Id = rt.Id.Value,
+                    Path = rt.Path,
+                    Line = rt.Line,
+                    IsResolved = rt.IsResolved,
+                    IsOutdated = rt.IsOutdated,
+                    Comments = rt.Comments(100, null, null, null, null).Nodes.Select(c => new
+                    {
+                        Author = c.Author.Login,
+                        Body = c.Body,
+                        CreatedAt = c.CreatedAt,
+                        UpdatedAt = c.UpdatedAt
+                    }).ToList()
                 })
                 .Compile();
 
-            var issueComments = await connection.Run(issueCommentsQuery);
+            var reviewThreads = await connection.Run(reviewThreadsQuery);
 
-            var issueCommentData = issueComments.Select(c => new GitHubCommentData(c.GitHubId, c.Author, c.Body, c.CreatedAt.UtcDateTime, c.UpdatedAt.UtcDateTime, true)).ToList();
-
-            return issueCommentData;
+            return reviewThreads.Select(rt =>
+            {
+                var firstComment = rt.Comments.FirstOrDefault();
+                var state = rt.IsResolved ? "RESOLVED" : "UNRESOLVED";
+                
+                return new GitHubReviewThreadData(
+                    rt.Id,
+                    rt.Path ?? string.Empty,
+                    rt.Line,
+                    state,
+                    rt.IsResolved,
+                    rt.IsOutdated,
+                    firstComment?.CreatedAt.UtcDateTime ?? DateTime.UtcNow,
+                    firstComment?.UpdatedAt.UtcDateTime,
+                    firstComment?.Author ?? string.Empty,
+                    firstComment?.Body ?? string.Empty,
+                    rt.Comments.Count
+                );
+            }).ToList();
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error fetching GitHub comments for PR {Organization}/{Repository}#{PullRequestNumber}", organization, repository, pullRequestNumber);
-            return new List<GitHubCommentData>();
+            logger.LogError(ex, "Error fetching GitHub review threads for PR {Organization}/{Repository}#{PullRequestNumber}", organization, repository, pullRequestNumber);
+            return new List<GitHubReviewThreadData>();
         }
     }
 }

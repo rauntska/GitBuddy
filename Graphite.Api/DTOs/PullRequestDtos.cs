@@ -8,14 +8,19 @@ public record ReviewDto(
     DateTime? SubmittedAt
 );
 
-public record CommentDto(
+public record ReviewThreadDto(
     int Id,
-    long GitHubId,
-    string Author,
-    string Body,
+    string GitHubId,
+    string Path,
+    int? Line,
+    string State,
+    bool IsResolved,
+    bool IsOutdated,
     DateTime CreatedAt,
     DateTime? UpdatedAt,
-    bool IsResolved
+    string FirstCommentAuthor,
+    string FirstCommentBody,
+    int CommentCount
 );
 
 public record PullRequestDto(
@@ -35,5 +40,5 @@ public record PullRequestDto(
     DateTime UpdatedAt,
     DateTime LastSyncedAt,
     List<ReviewDto> Reviews,
-    List<CommentDto> Comments
+    List<ReviewThreadDto> ReviewThreads
 );

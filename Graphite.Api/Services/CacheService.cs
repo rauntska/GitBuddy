@@ -23,7 +23,7 @@ public class CacheService : ICacheService
         {
             var existingPR = await _context.PullRequests
                 .Include(pr => pr.Reviews)
-                .Include(pr => pr.Comments)
+                .Include(pr => pr.ReviewThreads)
                 .FirstOrDefaultAsync(pr => pr.GitHubId == prData.Id);
 
             if (existingPR != null)
@@ -85,39 +85,48 @@ public class CacheService : ICacheService
                 _context.Reviews.Remove(review);
             }
 
-            var existingCommentIds = existingPR.Comments.Select(c => c.GitHubId).ToHashSet();
-            var incomingCommentIds = (prData.Comments ?? []).Select(c => c.GitHubId).ToHashSet();
+            var existingThreadIds = existingPR.ReviewThreads.Select(rt => rt.GitHubId).ToHashSet();
+            var incomingThreadIds = (prData.ReviewThreads ?? []).Select(rt => rt.GitHubId).ToHashSet();
 
-            foreach (var comment in prData.Comments ?? [])
+            foreach (var thread in prData.ReviewThreads ?? [])
             {
-                if (!existingCommentIds.Contains(comment.GitHubId))
+                if (!existingThreadIds.Contains(thread.GitHubId))
                 {
-                    _context.Comments.Add(new Comment
+                    _context.ReviewThreads.Add(new ReviewThread
                     {
                         PullRequestId = existingPR.Id,
-                        GitHubId = comment.GitHubId,
-                        Author = comment.Author,
-                        Body = comment.Body,
-                        CreatedAt = comment.CreatedAt,
-                        UpdatedAt = comment.UpdatedAt,
-                        IsResolved = comment.IsResolved
+                        GitHubId = thread.GitHubId,
+                        Path = thread.Path,
+                        Line = thread.Line,
+                        State = thread.State,
+                        IsResolved = thread.IsResolved,
+                        IsOutdated = thread.IsOutdated,
+                        CreatedAt = thread.CreatedAt,
+                        UpdatedAt = thread.UpdatedAt,
+                        FirstCommentAuthor = thread.FirstCommentAuthor,
+                        FirstCommentBody = thread.FirstCommentBody,
+                        CommentCount = thread.CommentCount
                     });
                 }
                 else
                 {
-                    var existingComment = existingPR.Comments.First(c => c.GitHubId == comment.GitHubId);
-                    existingComment.Author = comment.Author;
-                    existingComment.Body = comment.Body;
-                    existingComment.CreatedAt = comment.CreatedAt;
-                    existingComment.UpdatedAt = comment.UpdatedAt;
-                    existingComment.IsResolved = comment.IsResolved;
+                    var existingThread = existingPR.ReviewThreads.First(rt => rt.GitHubId == thread.GitHubId);
+                    existingThread.Path = thread.Path;
+                    existingThread.Line = thread.Line;
+                    existingThread.State = thread.State;
+                    existingThread.IsResolved = thread.IsResolved;
+                    existingThread.IsOutdated = thread.IsOutdated;
+                    existingThread.UpdatedAt = thread.UpdatedAt;
+                    existingThread.FirstCommentAuthor = thread.FirstCommentAuthor;
+                    existingThread.FirstCommentBody = thread.FirstCommentBody;
+                    existingThread.CommentCount = thread.CommentCount;
                 }
             }
 
-            foreach (var commentId in existingCommentIds.Except(incomingCommentIds))
+            foreach (var threadId in existingThreadIds.Except(incomingThreadIds))
             {
-                var comment = existingPR.Comments.First(c => c.GitHubId == commentId);
-                _context.Comments.Remove(comment);
+                var thread = existingPR.ReviewThreads.First(rt => rt.GitHubId == threadId);
+                _context.ReviewThreads.Remove(thread);
             }
         }
 
@@ -140,7 +149,7 @@ public class CacheService : ICacheService
     {
         var pullRequests = await _context.PullRequests
             .Include(pr => pr.Reviews)
-            .Include(pr => pr.Comments)
+            .Include(pr => pr.ReviewThreads)
             .OrderByDescending(pr => pr.UpdatedAt)
             .ToListAsync();
 
@@ -157,21 +166,21 @@ public class CacheService : ICacheService
     public async Task<PRStats> GetPullRequestStatsAsync()
     {
         var pullRequests = await _context.PullRequests
-            .Include(pullRequest => pullRequest.Comments)
+            .Include(pullRequest => pullRequest.ReviewThreads)
             .ToListAsync();
 
-        var totalComments = pullRequests.Sum(pr => pr.Comments.Count);
-        var resolvedComments = pullRequests.Sum(pr => pr.Comments.Count(c => c.IsResolved));
-        var pendingComments = pullRequests.Sum(pr => pr.Comments.Count(c => !c.IsResolved));
+        var totalThreads = pullRequests.Sum(pr => pr.ReviewThreads.Count);
+        var resolvedThreads = pullRequests.Sum(pr => pr.ReviewThreads.Count(rt => rt.IsResolved));
+        var pendingThreads = pullRequests.Sum(pr => pr.ReviewThreads.Count(rt => !rt.IsResolved));
 
         return new PRStats(
             TotalOpen: pullRequests.Count,
             Draft: pullRequests.Count(pr => pr.Status == "Draft"),
             Approved: pullRequests.Count(pr => pr.Status == "Approved"),
             AwaitingReview: pullRequests.Count(pr => pr.Status == "AwaitingReview"),
-            TotalComments: totalComments,
-            ResolvedComments: resolvedComments,
-            PendingComments: pendingComments
+            TotalComments: totalThreads,
+            ResolvedComments: resolvedThreads,
+            PendingComments: pendingThreads
         );
     }
 

@@ -30,14 +30,19 @@ public static class MappingExtensions
                 r.State,
                 r.SubmittedAt
             )).ToList(),
-            pr.Comments.Select(c => new CommentDto(
-                c.Id,
-                c.GitHubId,
-                c.Author,
-                c.Body,
-                c.CreatedAt,
-                c.UpdatedAt,
-                c.IsResolved
+            pr.ReviewThreads.Select(rt => new ReviewThreadDto(
+                rt.Id,
+                rt.GitHubId,
+                rt.Path,
+                rt.Line,
+                rt.State,
+                rt.IsResolved,
+                rt.IsOutdated,
+                rt.CreatedAt,
+                rt.UpdatedAt,
+                rt.FirstCommentAuthor,
+                rt.FirstCommentBody,
+                rt.CommentCount
             )).ToList()
         );
 
