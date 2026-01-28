@@ -16,13 +16,12 @@
           <p class="text-slate-400 mb-6 max-w-md">
             Please log in with your GitHub account to access the pull request dashboard.
           </p>
-          <LoginButton />
         </div>
       </div>
 
       <!-- Error Banner (only show when authenticated) -->
       <div 
-        v-if="error" 
+        v-if="authStore.isAuthenticated && error" 
         class="mb-6 p-4 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm flex items-start gap-3"
       >
         <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -40,28 +39,31 @@
         </button>
       </div>
 
-      <!-- Stats Summary (hide during initial load) -->
-      <StatsSummary v-if="!loading || hasPRData" :stats="stats" />
+      <!-- Authenticated Content -->
+      <template v-if="authStore.isAuthenticated">
+        <!-- Stats Summary (hide during initial load) -->
+        <StatsSummary v-if="!loading || hasPRData" :stats="stats" />
 
-      <!-- Loading State: Skeleton Screens -->
-      <div v-if="loading && !hasPRData" class="space-y-6">
-        <div class="space-y-3">
-          <div class="flex items-center justify-between mb-3">
-            <div class="h-6 w-40 bg-slate-700/50 rounded shimmer"></div>
+        <!-- Loading State: Skeleton Screens -->
+        <div v-if="loading && !hasPRData" class="space-y-6">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between mb-3">
+              <div class="h-6 w-40 bg-slate-700/50 rounded shimmer"></div>
+            </div>
+            <SkeletonPRRow v-for="i in 3" :key="`skeleton-${i}`" />
           </div>
-          <SkeletonPRRow v-for="i in 3" :key="`skeleton-${i}`" />
-        </div>
-        <div class="space-y-3">
-          <div class="flex items-center justify-between mb-3">
-            <div class="h-6 w-40 bg-slate-700/50 rounded shimmer"></div>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between mb-3">
+              <div class="h-6 w-40 bg-slate-700/50 rounded shimmer"></div>
+            </div>
+            <SkeletonPRRow v-for="i in 2" :key="`skeleton-2-${i}`" />
           </div>
-          <SkeletonPRRow v-for="i in 2" :key="`skeleton-2-${i}`" />
         </div>
-      </div>
+      </template>
 
       <!-- Empty State: No Configuration -->
       <EmptyState
-        v-else-if="!loading && !hasPRData && !hasAttemptedLoad"
+        v-if="authStore.isAuthenticated && !loading && !hasPRData && !hasAttemptedLoad"
         type="no-config"
         title="Welcome to Graphite!"
         description="Track pull requests across your GitHub organization. Configure your GitHub settings to get started."
@@ -77,7 +79,7 @@
 
       <!-- Empty State: No PRs Found -->
       <EmptyState
-        v-else-if="!loading && !hasPRData && hasAttemptedLoad && !error"
+        v-if="authStore.isAuthenticated && !loading && !hasPRData && hasAttemptedLoad && !error"
         type="no-prs"
         title="No Open Pull Requests"
         description="Your team is all caught up! There are no open pull requests at the moment."
@@ -94,7 +96,7 @@
 
       <!-- Empty State: Error -->
       <EmptyState
-        v-else-if="!loading && error && !hasPRData"
+        v-if="authStore.isAuthenticated && !loading && error && !hasPRData"
         type="error"
         title="Failed to Load Pull Requests"
         description="There was an error loading pull requests. This might be due to an invalid GitHub token, network issues, or insufficient permissions."
@@ -114,7 +116,7 @@
       />
 
       <!-- PR Groups -->
-      <div v-if="hasPRData" class="space-y-6">
+      <div v-if="authStore.isAuthenticated && hasPRData" class="space-y-6">
         <PRGroup
           v-for="(group, status) in pullRequests"
           :key="status"
@@ -137,6 +139,7 @@ import StatsSummary from '../components/StatsSummary.vue';
 import PRGroup from '../components/PRGroup.vue';
 import SkeletonPRRow from '../components/SkeletonPRRow.vue';
 import EmptyState from '../components/EmptyState.vue';
+import LoginButton from '../components/LoginButton.vue';
 
 const authStore = useAuthStore();
 
