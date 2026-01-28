@@ -43,7 +43,7 @@
       
       <div
         v-if="pullRequests.length === 0"
-        class="text-center py-8 text-slate-600 text-sm"
+        class="text-center py-2 text-slate-600 text-sm"
       >
         No pull requests in this category
       </div>
