@@ -54,177 +54,316 @@
         No diff content available
       </div>
 
-      <!-- Minimap -->
-      <div
-        v-if="hunks.length > 0"
-        class="absolute right-0 top-0 bottom-0 w-2 bg-slate-800/50 border-l border-slate-700/50 z-10"
-      >
+      <template v-if="hunks.length > 0">
+        <!-- Minimap -->
         <div
-          v-for="(comment, index) in fileComments"
-          :key="index"
-          :style="{ top: getCommentPosition(comment.line) + '%' }"
-          class="absolute w-full h-1 bg-blue-500 cursor-pointer hover:bg-blue-400"
-          :title="`Comment by ${comment.author}`"
-          @click="scrollToLine(comment.line)"
-        />
-      </div>
+          class="absolute right-0 top-0 bottom-0 w-2 bg-slate-800/50 border-l border-slate-700/50 z-10"
+        >
+          <div
+            v-for="(comment, index) in fileComments"
+            :key="index"
+            :style="{ top: getCommentPosition(comment.line) + '%' }"
+            class="absolute w-full h-1 bg-blue-500 cursor-pointer hover:bg-blue-400"
+            :title="`Comment by ${comment.author}`"
+            @click="scrollToLine(comment.line)"
+          />
+        </div>
 
-      <!-- Split View -->
-      <div class="overflow-x-hidden text-xs font-mono" ref="diffContainer">
-        <table class="w-full border-collapse table-fixed">
-          <colgroup>
-            <col style="width: 50px;">
-            <col style="width: calc(50% - 78px);">
-            <col style="width: 50px;">
-            <col style="width: 28px;">
-            <col style="width: calc(50% - 50px);">
-          </colgroup>
-          <tbody>
-            <template v-for="(hunk, hunkIndex) in hunks" :key="hunkIndex">
-              <!-- Hunk Header -->
-              <tr class="bg-slate-800/50">
-                <td colspan="5" class="px-3 py-1.5 text-slate-400 text-xs border-y border-slate-700/50">
-                  @@ -{{ hunk.oldStart }},{{ hunk.oldLines }} +{{ hunk.newStart }},{{ hunk.newLines }} @@
-                </td>
-              </tr>
-
-              <template v-for="(line, lineIndex) in getVisibleLines(hunk.lines)" :key="`${hunkIndex}-${lineIndex}`">
-                <tr
-                  :ref="el => setLineRef(line.newLineNumber || line.oldLineNumber, el)"
-                  :class="[
-                    'hover:bg-slate-800/30 group',
-                    {
-                      'bg-green-500/10': line.type === 'add',
-                      'bg-red-500/10': line.type === 'delete',
-                    }
-                  ]"
-                >
-                  <!-- Old Side -->
-                  <td class="px-2 py-0.5 text-slate-500 text-right select-none border-r border-slate-700/50 bg-slate-900/50">
-                    {{ line.type !== 'add' ? line.oldLineNumber : '' }}
+        <!-- Split View -->
+        <div v-if="viewMode === 'split'" class="overflow-x-hidden text-xs font-mono" ref="diffContainer">
+          <table class="w-full border-collapse table-fixed">
+            <colgroup>
+              <col style="width: 50px;">
+              <col style="width: calc(50% - 78px);">
+              <col style="width: 50px;">
+              <col style="width: 28px;">
+              <col style="width: calc(50% - 50px);">
+            </colgroup>
+            <tbody>
+              <template v-for="(hunk, hunkIndex) in hunks" :key="hunkIndex">
+                <!-- Hunk Header -->
+                <tr class="bg-slate-800/50">
+                  <td colspan="5" class="px-3 py-1.5 text-slate-400 text-xs border-y border-slate-700/50">
+                    @@ -{{ hunk.oldStart }},{{ hunk.oldLines }} +{{ hunk.newStart }},{{ hunk.newLines }} @@
                   </td>
-                  <td
+                </tr>
+
+                <template v-for="(line, lineIndex) in getVisibleLines(hunk.lines)" :key="`${hunkIndex}-${lineIndex}`">
+                  <tr
+                    :ref="el => setLineRef(line.newLineNumber || line.oldLineNumber, el)"
                     :class="[
-                      'px-3 py-0.5 font-mono text-sm overflow-hidden',
-                      line.type === 'delete' ? 'bg-red-500/5' : 'bg-slate-900/30'
+                      'hover:bg-slate-800/30 group',
+                      {
+                        'bg-green-500/10': line.type === 'add',
+                        'bg-red-500/10': line.type === 'delete',
+                      }
                     ]"
                   >
-                    <span v-if="line.type === 'delete'" class="text-red-400 select-none">-</span>
-                    <span v-else class="opacity-0 select-none">·</span>
-                    <code
-                      v-if="line.type !== 'add'"
-                      :class="line.type === 'delete' ? 'text-red-300' : 'text-slate-300'"
-                      style="white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;"
-                      v-html="highlightSyntax(line.content)"
-                    />
-                  </td>
-
-                  <!-- New Side -->
-                  <td class="px-2 py-0.5 text-slate-500 text-right select-none border-x border-slate-700/50 bg-slate-900/50">
-                    {{ line.type !== 'delete' ? line.newLineNumber : '' }}
-                  </td>
-                  <td class="px-1 bg-slate-900/50">
-                    <button
-                      v-if="line.newLineNumber && line.type !== 'delete'"
-                      @click="startComment(line.newLineNumber!)"
-                      class="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-slate-700 rounded transition-opacity"
-                      title="Add comment"
+                    <!-- Old Side -->
+                    <td class="px-2 py-0.5 text-slate-500 text-right select-none border-r border-slate-700/50 bg-slate-900/50">
+                      {{ line.type !== 'add' ? line.oldLineNumber : '' }}
+                    </td>
+                    <td
+                      :class="[
+                        'px-3 py-0.5 font-mono text-sm overflow-hidden',
+                        line.type === 'delete' ? 'bg-red-500/5' : 'bg-slate-900/30'
+                      ]"
                     >
-                      <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                      </svg>
-                    </button>
-                  </td>
-                  <td
-                    :class="[
-                      'px-3 py-0.5 font-mono text-sm overflow-hidden',
-                      line.type === 'add' ? 'bg-green-500/5' : 'bg-slate-900/30'
-                    ]"
-                  >
-                    <span v-if="line.type === 'add'" class="text-green-400 select-none">+</span>
-                    <span v-else-if="line.type === 'delete'" class="text-red-400 select-none mr-1">-</span>
-                    <span v-else class="opacity-0 select-none mr-1">·</span>
-                    <code style="white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;" v-html="highlightSyntax(line.content)" />
-                  </td>
-                </tr>
-
-                <!-- Comments -->
-                <tr v-if="commentingLine === line.newLineNumber || getCommentsForLine(line.newLineNumber).length > 0">
-                  <td colspan="5" class="p-0 bg-slate-800/50">
-                    <div v-if="commentingLine === line.newLineNumber" class="p-3 border-t border-slate-700/50">
-                      <textarea
-                        v-model="commentText"
-                        placeholder="Add your comment..."
-                        class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-slate-200 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                        rows="3"
-                        ref="commentTextarea"
+                      <span v-if="line.type === 'delete'" class="text-red-400 select-none">-</span>
+                      <span v-else class="opacity-0 select-none">·</span>
+                      <code
+                        v-if="line.type !== 'add'"
+                        :class="line.type === 'delete' ? 'text-red-300' : 'text-slate-300'"
+                        style="white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;"
+                        v-html="highlightSyntax(line.content)"
                       />
-                      <div class="flex gap-2 justify-end mt-2">
-                        <button
-                          @click="cancelComment"
-                          class="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs text-slate-200 transition-colors"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          @click="submitComment"
-                          :disabled="!commentText.trim()"
-                          class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
-                          Comment
-                        </button>
-                      </div>
-                    </div>
+                    </td>
 
-                    <div v-if="getCommentsForLine(line.newLineNumber).length > 0" class="p-3 space-y-2 border-t border-slate-700/50">
-                      <div
-                        v-for="comment in getCommentsForLine(line.newLineNumber)"
-                        :key="comment.id"
-                        class="flex gap-2 p-2 bg-slate-900/80 rounded border border-slate-700/50 hover:border-slate-600 transition-colors"
+                    <!-- New Side -->
+                    <td class="px-2 py-0.5 text-slate-500 text-right select-none border-x border-slate-700/50 bg-slate-900/50">
+                      {{ line.type !== 'delete' ? line.newLineNumber : '' }}
+                    </td>
+                    <td class="px-1 bg-slate-900/50">
+                      <button
+                        v-if="line.newLineNumber && line.type !== 'delete'"
+                        @click="startComment(line.newLineNumber!)"
+                        class="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-slate-700 rounded transition-opacity"
+                        title="Add comment"
                       >
-                        <img
-                          v-if="comment.authorAvatar"
-                          :src="comment.authorAvatar"
-                          :alt="comment.author"
-                          class="w-6 h-6 rounded-full flex-shrink-0"
+                        <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                      </button>
+                    </td>
+                    <td
+                      :class="[
+                        'px-3 py-0.5 font-mono text-sm overflow-hidden',
+                        line.type === 'add' ? 'bg-green-500/5' : 'bg-slate-900/30'
+                      ]"
+                    >
+                      <span v-if="line.type === 'add'" class="text-green-400 select-none">+</span>
+                      <span v-else-if="line.type === 'delete'" class="text-red-400 select-none mr-1">-</span>
+                      <span v-else class="opacity-0 select-none mr-1">·</span>
+                      <code style="white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;" v-html="highlightSyntax(line.content)" />
+                    </td>
+                  </tr>
+
+                  <!-- Comments -->
+                  <tr v-if="commentingLine === line.newLineNumber || getCommentsForLine(line.newLineNumber).length > 0">
+                    <td colspan="5" class="p-0 bg-slate-800/50">
+                      <div v-if="commentingLine === line.newLineNumber" class="p-3 border-t border-slate-700/50">
+                        <textarea
+                          v-model="commentText"
+                          placeholder="Add your comment..."
+                          class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-slate-200 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          rows="3"
+                          ref="commentTextarea"
                         />
-                        <div class="flex-1 min-w-0">
-                          <div class="flex items-center gap-2 mb-1">
-                            <span class="text-sm font-medium text-slate-200">{{ comment.author }}</span>
-                            <span class="text-xs text-slate-500">{{ formatRelativeTime(comment.createdAt) }}</span>
-                          </div>
-
-                          <!-- File Path and Line -->
-                          <div v-if="comment.path" class="flex items-center gap-2 text-xs text-slate-400">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M7 21h10a2 2 0 002-2V9.414a1 1 0 01-1.414 0l-4-4a1 1 0 01-1.414 1.414L8 12.586l7.293-7.293a1 1 0 01-1.414 1.414 0z" clip-rule="evenodd" />
-                            </svg>
-                            <span class="truncate font-mono">{{ comment.path }}</span>
-                            <span v-if="comment.line">:{{ comment.line }}</span>
-                          </div>
-
-                          <!-- Outdated Badge -->
-                          <span
-                            v-if="comment.isOutdated"
-                            class="px-2 py-0.5 text-xs bg-orange-900/30 text-orange-400 rounded border border-orange-700/50"
+                        <div class="flex gap-2 justify-end mt-2">
+                          <button
+                            @click="cancelComment"
+                            class="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs text-slate-200 transition-colors"
                           >
-                            Outdated
-                          </span>
+                            Cancel
+                          </button>
+                          <button
+                            @click="submitComment"
+                            :disabled="!commentText.trim()"
+                            class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          >
+                            Comment
+                          </button>
                         </div>
-
-                        <!-- Comment Body -->
-                        <p class="text-sm text-slate-300 whitespace-pre-wrap">{{ comment.body }}</p>
                       </div>
-                    </div>
-                  </td>
-                </tr>
+
+                      <div v-if="getCommentsForLine(line.newLineNumber).length > 0" class="p-3 space-y-2 border-t border-slate-700/50">
+                        <div
+                          v-for="comment in getCommentsForLine(line.newLineNumber)"
+                          :key="comment.id"
+                          class="flex gap-2 p-2 bg-slate-900/80 rounded border border-slate-700/50 hover:border-slate-600 transition-colors"
+                        >
+                          <img
+                            v-if="comment.authorAvatar"
+                            :src="comment.authorAvatar"
+                            :alt="comment.author"
+                            class="w-6 h-6 rounded-full flex-shrink-0"
+                          />
+                          <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-1">
+                              <span class="text-sm font-medium text-slate-200">{{ comment.author }}</span>
+                              <span class="text-xs text-slate-500">{{ formatRelativeTime(comment.createdAt) }}</span>
+                            </div>
+
+                            <!-- File Path and Line -->
+                            <div v-if="comment.path" class="flex items-center gap-2 text-xs text-slate-400">
+                              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M7 21h10a2 2 0 002-2V9.414a1 1 0 01-1.414 0l-4-4a1 1 0 01-1.414 1.414L8 12.586l7.293-7.293a1 1 0 01-1.414 1.414 0z" clip-rule="evenodd" />
+                              </svg>
+                              <span class="truncate font-mono">{{ comment.path }}</span>
+                              <span v-if="comment.line">:{{ comment.line }}</span>
+                            </div>
+
+                            <!-- Outdated Badge -->
+                            <span
+                              v-if="comment.isOutdated"
+                              class="px-2 py-0.5 text-xs bg-orange-900/30 text-orange-400 rounded border border-orange-700/50"
+                            >
+                              Outdated
+                            </span>
+                          </div>
+
+                          <!-- Comment Body -->
+                          <p class="text-sm text-slate-300 whitespace-pre-wrap">{{ comment.body }}</p>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                </template>
               </template>
-            </template>
             </tbody>
           </table>
         </div>
-      </div>
+
+        <!-- Unified View -->
+        <div v-else class="overflow-x-hidden text-xs font-mono" ref="diffContainer">
+          <table class="w-full border-collapse table-fixed">
+            <colgroup>
+              <col style="width: 50px;">
+              <col style="width: 50px;">
+              <col style="width: 28px;">
+              <col style="width: calc(100% - 128px);">
+            </colgroup>
+            <tbody>
+              <template v-for="(hunk, hunkIndex) in hunks" :key="hunkIndex">
+                <!-- Hunk Header -->
+                <tr class="bg-slate-800/50">
+                  <td colspan="4" class="px-3 py-1.5 text-slate-400 text-xs border-y border-slate-700/50">
+                    @@ -{{ hunk.oldStart }},{{ hunk.oldLines }} +{{ hunk.newStart }},{{ hunk.newLines }} @@
+                  </td>
+                </tr>
+
+                <template v-for="(line, lineIndex) in getVisibleLines(hunk.lines)" :key="`${hunkIndex}-${lineIndex}`">
+                  <tr
+                    :ref="el => setLineRef(line.newLineNumber || line.oldLineNumber, el)"
+                    :class="[
+                      'hover:bg-slate-800/30 group',
+                      {
+                        'bg-green-500/10': line.type === 'add',
+                        'bg-red-500/10': line.type === 'delete',
+                      }
+                    ]"
+                  >
+                    <!-- Line Numbers -->
+                    <td class="px-2 py-0.5 text-slate-500 text-right select-none border-r border-slate-700/50 bg-slate-900/50">
+                      {{ line.oldLineNumber || '' }}
+                    </td>
+                    <td class="px-2 py-0.5 text-slate-500 text-right select-none border-r border-slate-700/50 bg-slate-900/50">
+                      {{ line.newLineNumber || '' }}
+                    </td>
+                    <td class="px-1 bg-slate-900/50">
+                      <button
+                        v-if="line.newLineNumber"
+                        @click="startComment(line.newLineNumber!)"
+                        class="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-slate-700 rounded transition-opacity"
+                        title="Add comment"
+                      >
+                        <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                      </button>
+                    </td>
+                    <td
+                      :class="[
+                        'px-3 py-0.5 font-mono text-sm overflow-hidden',
+                        line.type === 'add' ? 'bg-green-500/5' : line.type === 'delete' ? 'bg-red-500/5' : 'bg-slate-900/30'
+                      ]"
+                    >
+                      <span v-if="line.type === 'add'" class="text-green-400 select-none mr-1">+</span>
+                      <span v-else-if="line.type === 'delete'" class="text-red-400 select-none mr-1">-</span>
+                      <span v-else class="mr-1"> </span>
+                      <code style="white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;" v-html="highlightSyntax(line.content)" />
+                    </td>
+                  </tr>
+
+                  <!-- Comments -->
+                  <tr v-if="commentingLine === line.newLineNumber || getCommentsForLine(line.newLineNumber).length > 0">
+                    <td colspan="4" class="p-0 bg-slate-800/50">
+                      <div v-if="commentingLine === line.newLineNumber" class="p-3 border-t border-slate-700/50">
+                        <textarea
+                          v-model="commentText"
+                          placeholder="Add your comment..."
+                          class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-slate-200 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          rows="3"
+                          ref="commentTextarea"
+                        />
+                        <div class="flex gap-2 justify-end mt-2">
+                          <button
+                            @click="cancelComment"
+                            class="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs text-slate-200 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            @click="submitComment"
+                            :disabled="!commentText.trim()"
+                            class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          >
+                            Comment
+                          </button>
+                        </div>
+                      </div>
+
+                      <div v-if="getCommentsForLine(line.newLineNumber).length > 0" class="p-3 space-y-2 border-t border-slate-700/50">
+                        <div
+                          v-for="comment in getCommentsForLine(line.newLineNumber)"
+                          :key="comment.id"
+                          class="flex gap-2 p-2 bg-slate-900/80 rounded border border-slate-700/50 hover:border-slate-600 transition-colors"
+                        >
+                          <img
+                            v-if="comment.authorAvatar"
+                            :src="comment.authorAvatar"
+                            :alt="comment.author"
+                            class="w-6 h-6 rounded-full flex-shrink-0"
+                          />
+                          <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-1">
+                              <span class="text-sm font-medium text-slate-200">{{ comment.author }}</span>
+                              <span class="text-xs text-slate-500">{{ formatRelativeTime(comment.createdAt) }}</span>
+                            </div>
+
+                            <!-- File Path and Line -->
+                            <div v-if="comment.path" class="flex items-center gap-2 text-xs text-slate-400">
+                              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M7 21h10a2 2 0 002-2V9.414a1 1 0 01-1.414 0l-4-4a1 1 0 01-1.414 1.414L8 12.586l7.293-7.293a1 1 0 01-1.414 1.414 0z" clip-rule="evenodd" />
+                              </svg>
+                              <span class="truncate font-mono">{{ comment.path }}</span>
+                              <span v-if="comment.line">:{{ comment.line }}</span>
+                            </div>
+
+                            <!-- Outdated Badge -->
+                            <span
+                              v-if="comment.isOutdated"
+                              class="px-2 py-0.5 text-xs bg-orange-900/30 text-orange-400 rounded border border-orange-700/50"
+                            >
+                              Outdated
+                            </span>
+                          </div>
+
+                          <!-- Comment Body -->
+                          <p class="text-sm text-slate-300 whitespace-pre-wrap">{{ comment.body }}</p>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                </template>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </template>
+    </div>
 
     <!-- Loading State -->
     <div v-if="loading" class="p-6 text-center text-slate-400 bg-slate-900/50">
@@ -297,7 +436,7 @@ watch(expanded, (newValue) => {
 
 const viewMode = computed(() => preferences.value.diffViewMode);
 
-const fileComments = computed(() => 
+const fileComments = computed(() =>
   props.comments.filter(c => c.path === props.file.path && c.line)
 );
 
