@@ -11,14 +11,110 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Graphite.Domain.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260126171410_AddReviewThreadsReplaceComments")]
-    partial class AddReviewThreadsReplaceComments
+    [Migration("20260128064927_InitialCreateWithComments")]
+    partial class InitialCreateWithComments
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.0");
+
+            modelBuilder.Entity("Graphite.Domain.Models.Comment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Author")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AuthorAvatar")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("GitHubId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsOutdated")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsResolved")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("Line")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Path")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PullRequestId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GitHubId")
+                        .IsUnique();
+
+                    b.HasIndex("PullRequestId");
+
+                    b.ToTable("Comments");
+                });
+
+            modelBuilder.Entity("Graphite.Domain.Models.FileDiff", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Additions")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Changes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Deletions")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Language")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OldPath")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Patch")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PullRequestId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PullRequestId");
+
+                    b.HasIndex("PullRequestId", "Path")
+                        .IsUnique();
+
+                    b.ToTable("FileDiffs");
+                });
 
             modelBuilder.Entity("Graphite.Domain.Models.GitHubConfig", b =>
                 {
@@ -64,11 +160,18 @@ namespace Graphite.Domain.Migrations
                     b.Property<int>("ChangedFiles")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("ChecksStatus")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Deletions")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
 
                     b.Property<bool>("Draft")
                         .HasColumnType("INTEGER");
@@ -79,11 +182,22 @@ namespace Graphite.Domain.Migrations
                     b.Property<DateTime>("LastSyncedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("MergeableState")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Repository")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("SourceBranch")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TargetBranch")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
@@ -199,6 +313,87 @@ namespace Graphite.Domain.Migrations
                     b.ToTable("ReviewThreads");
                 });
 
+            modelBuilder.Entity("Graphite.Domain.Models.User", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("Username")
+                        .IsUnique();
+
+                    b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("Graphite.Domain.Models.UserPreferences", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CommentsPanelWidth")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("DiffViewMode")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("FileTreeVisible")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("FileTreeWidth")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("UserPreferences");
+                });
+
+            modelBuilder.Entity("Graphite.Domain.Models.Comment", b =>
+                {
+                    b.HasOne("Graphite.Domain.Models.PullRequest", null)
+                        .WithMany("Comments")
+                        .HasForeignKey("PullRequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Graphite.Domain.Models.FileDiff", b =>
+                {
+                    b.HasOne("Graphite.Domain.Models.PullRequest", "PullRequest")
+                        .WithMany()
+                        .HasForeignKey("PullRequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PullRequest");
+                });
+
             modelBuilder.Entity("Graphite.Domain.Models.Review", b =>
                 {
                     b.HasOne("Graphite.Domain.Models.PullRequest", "PullRequest")
@@ -221,11 +416,29 @@ namespace Graphite.Domain.Migrations
                     b.Navigation("PullRequest");
                 });
 
+            modelBuilder.Entity("Graphite.Domain.Models.UserPreferences", b =>
+                {
+                    b.HasOne("Graphite.Domain.Models.User", "User")
+                        .WithOne("Preferences")
+                        .HasForeignKey("Graphite.Domain.Models.UserPreferences", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Graphite.Domain.Models.PullRequest", b =>
                 {
+                    b.Navigation("Comments");
+
                     b.Navigation("ReviewThreads");
 
                     b.Navigation("Reviews");
+                });
+
+            modelBuilder.Entity("Graphite.Domain.Models.User", b =>
+                {
+                    b.Navigation("Preferences");
                 });
 #pragma warning restore 612, 618
         }

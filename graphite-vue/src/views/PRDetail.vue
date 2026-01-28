@@ -1,78 +1,33 @@
 <template>
-  <div class="min-h-screen bg-slate-950 text-slate-200">
-    <!-- Header / Navigation -->
+  <div class="flex flex-col h-screen bg-slate-950 text-slate-200">
+    <!-- Compact Header -->
     <div class="sticky top-0 z-20 bg-slate-900/95 backdrop-blur-sm border-b border-slate-700/50">
-      <div class="max-w-screen-2xl mx-auto px-4 py-3">
-        <div class="flex items-center gap-3">
-          <router-link
-            to="/"
-            class="p-1.5 hover:bg-slate-800 rounded transition-colors"
-            title="Back to Dashboard"
-          >
-            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-          </router-link>
-          
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2">
-              <StatusBadge v-if="prDetail" :status="prDetail.status" />
-              <h1 class="text-lg font-semibold text-slate-100 truncate">
-                {{ prDetail?.title || 'Loading...' }}
-              </h1>
-            </div>
-            <div v-if="prDetail" class="flex items-center gap-2 mt-0.5 text-xs text-slate-400">
-              <span>{{ prDetail.repository }} #{{ prDetail.gitHubId }}</span>
-              <span>•</span>
-              <span>{{ prDetail.author }}</span>
-              <span>•</span>
-              <span class="flex items-center gap-1">
-                <span class="text-green-400">{{ prDetail.sourceBranch }}</span>
-                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
-                <span class="text-blue-400">{{ prDetail.targetBranch }}</span>
-              </span>
-            </div>
-          </div>
+      <div class="px-4 py-2 flex items-center gap-3">
+        <router-link
+          to="/"
+          class="p-1 hover:bg-slate-800 rounded transition-colors"
+          title="Back to Dashboard"
+        >
+          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+        </router-link>
+        
+        <div class="flex-1 min-w-0 flex items-center gap-2">
+          <StatusBadge v-if="prDetail" :status="prDetail.status" />
+          <h1 class="text-base font-semibold text-slate-100 truncate">
+            {{ prDetail?.title || 'Loading...' }}
+          </h1>
+        </div>
 
-          <!-- Action Buttons -->
-          <div class="flex items-center gap-2">
-            <button
-              @click="toggleCommentsPanel"
-              :class="[
-                'flex items-center gap-1.5 px-3 py-1.5 rounded text-sm border transition-colors',
-                commentsPanel
-                  ? 'bg-blue-600 border-blue-500 text-white'
-                  : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
-              ]"
-            >
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-              <span>{{ prDetail?.allComments?.length || 0 }}</span>
-            </button>
-
-            <a
-              v-if="prDetail"
-              :href="prDetail.url"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 border border-slate-700 rounded hover:bg-slate-700 text-slate-300 text-sm transition-colors"
-            >
-              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-              </svg>
-              <span>GitHub</span>
-            </a>
-          </div>
+        <div class="flex items-center gap-2 text-xs text-slate-400">
+          <span>{{ prDetail?.repository }} #{{ prDetail?.gitHubId }}</span>
         </div>
       </div>
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading" class="flex items-center justify-center py-20">
+    <div v-if="loading" class="flex items-center justify-center flex-1">
       <div class="text-center">
         <svg class="animate-spin h-12 w-12 mx-auto text-blue-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -83,7 +38,7 @@
     </div>
 
     <!-- Error State -->
-    <div v-else-if="error" class="flex items-center justify-center py-20">
+    <div v-else-if="error" class="flex items-center justify-center flex-1">
       <div class="text-center max-w-md">
         <svg class="w-16 h-16 mx-auto text-red-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
@@ -100,157 +55,207 @@
       </div>
     </div>
 
-    <!-- Main Content -->
-    <div v-else-if="prDetail" class="flex h-[calc(100vh-64px)]">
-      <!-- File Tree Sidebar -->
+    <!-- Main Content - Full Page Layout -->
+    <div v-else-if="prDetail" class="flex flex-1 overflow-hidden">
+      <!-- File Tree Sidebar (Resizable) -->
       <div
-        v-if="fileTreeVisible"
-        class="w-64 flex-shrink-0 overflow-auto bg-slate-900/50 border-r border-slate-700/50"
+        v-if="preferences.fileTreeVisible"
+        :style="{ width: `${fileTreeWidth}px` }"
+        class="flex-shrink-0 overflow-auto bg-slate-900/50 border-r border-slate-700/50 relative"
       >
         <FileTree
           :files="prDetail.files"
-          :selected-file="selectedFile"
+          :selected-file="selectedFile || undefined"
           @select-file="scrollToFile"
+        />
+        <!-- Resize Handle -->
+        <div
+          class="absolute top-0 right-0 w-1 h-full cursor-ew-resize hover:bg-blue-500/50 transition-colors"
+          @mousedown="startResizeFileTree"
         />
       </div>
 
       <!-- Main Content Area -->
-      <div class="flex-1 overflow-auto bg-slate-950">
-        <div class="max-w-7xl mx-auto px-4 py-4 space-y-3">
-          <!-- PR Description -->
-          <div class="p-4 bg-slate-900/50 border border-slate-700/50 rounded-lg">
-            <h2 class="text-sm font-semibold text-slate-200 mb-2">Description</h2>
-            <div v-if="prDetail.description" class="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
-              {{ prDetail.description }}
-            </div>
-            <p v-else class="text-sm text-slate-500 italic">No description provided</p>
-          </div>
-
-          <!-- PR Stats - Compact Row -->
-          <div class="grid grid-cols-4 gap-2">
-            <div class="p-3 bg-slate-900/50 border border-slate-700/50 rounded-lg">
-              <div class="text-xs text-slate-400">Files</div>
-              <div class="text-xl font-semibold text-slate-200">{{ prDetail.changedFiles }}</div>
-            </div>
-            <div class="p-3 bg-slate-900/50 border border-slate-700/50 rounded-lg">
-              <div class="text-xs text-slate-400">Additions</div>
-              <div class="text-xl font-semibold text-green-400">+{{ prDetail.additions }}</div>
-            </div>
-            <div class="p-3 bg-slate-900/50 border border-slate-700/50 rounded-lg">
-              <div class="text-xs text-slate-400">Deletions</div>
-              <div class="text-xl font-semibold text-red-400">-{{ prDetail.deletions }}</div>
-            </div>
-            <div class="p-3 bg-slate-900/50 border border-slate-700/50 rounded-lg">
-              <div class="text-xs text-slate-400">Comments</div>
-              <div class="text-xl font-semibold text-blue-400">{{ prDetail.allComments.length }}</div>
-            </div>
-          </div>
-
-          <!-- Reviews Section - Compact -->
-          <div v-if="prDetail.reviews.length > 0" class="p-4 bg-slate-900/50 border border-slate-700/50 rounded-lg">
-            <h2 class="text-sm font-semibold text-slate-200 mb-3">Reviews</h2>
-            <div class="space-y-2">
-              <div
-                v-for="review in prDetail.reviews"
-                :key="review.id"
-                class="flex items-center gap-2 p-2 bg-slate-800/50 rounded border border-slate-700/50"
-              >
-                <img
-                  v-if="review.reviewerAvatar"
-                  :src="review.reviewerAvatar"
-                  :alt="review.reviewer"
-                  class="w-7 h-7 rounded-full"
-                />
-                <div class="flex-1 min-w-0">
-                  <div class="text-sm font-medium text-slate-200">{{ review.reviewer }}</div>
-                  <div class="text-xs text-slate-500">{{ review.submittedAt ? formatDate(review.submittedAt) : 'Pending' }}</div>
+      <div class="flex-1 flex flex-col overflow-hidden">
+        <!-- Top Section: PR Info -->
+        <div class="flex-shrink-0 border-b border-slate-700/50">
+          <div class="flex gap-4 p-4">
+            <!-- Left: Description (Largest) -->
+            <div class="flex-1 min-w-0">
+              <div class="p-3 bg-slate-900/50 border border-slate-700/50 rounded-lg">
+                <div class="text-xs font-semibold text-slate-200 mb-2">Description</div>
+                <div v-if="prDetail.description" class="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
+                  {{ prDetail.description }}
                 </div>
-                <span
-                  :class="[
-                    'px-2 py-1 rounded text-xs font-medium',
-                    review.state === 'APPROVED' ? 'bg-green-900/30 text-green-400 border border-green-700/50' :
-                    review.state === 'CHANGES_REQUESTED' ? 'bg-red-900/30 text-red-400 border border-red-700/50' :
-                    'bg-slate-700/50 text-slate-300 border border-slate-600/50'
-                  ]"
-                >
-                  {{ review.state.replace('_', ' ') }}
-                </span>
+                <p v-else class="text-xs text-slate-500 italic">No description provided</p>
+              </div>
+            </div>
+
+            <!-- Right: Info & Stats -->
+            <div class="w-80 flex-shrink-0 space-y-3">
+              <!-- Branch Info -->
+              <div class="p-3 bg-slate-900/50 border border-slate-700/50 rounded-lg">
+                <div class="text-xs text-slate-400 mb-1">Branches</div>
+                <div class="flex items-center gap-1 text-sm">
+                  <span class="text-green-400">{{ prDetail.sourceBranch }}</span>
+                  <svg class="w-3 h-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                  <span class="text-blue-400">{{ prDetail.targetBranch }}</span>
+                </div>
+              </div>
+
+              <!-- Stats - Compact Table -->
+              <div class="p-3 bg-slate-900/50 border border-slate-700/50 rounded-lg">
+                <div class="text-xs text-slate-400 mb-2">Stats</div>
+                <table class="w-full text-xs">
+                  <tr>
+                    <td class="text-slate-500 py-0.5">Files</td>
+                    <td class="text-slate-200 text-right font-medium">{{ prDetail.changedFiles }}</td>
+                  </tr>
+                  <tr>
+                    <td class="text-slate-500 py-0.5">Comments</td>
+                    <td class="text-blue-400 text-right font-medium">{{ prDetail.allComments.length }}</td>
+                  </tr>
+                  <tr>
+                    <td class="text-slate-500 py-0.5">Additions</td>
+                    <td class="text-green-400 text-right font-medium">+{{ prDetail.additions }}</td>
+                  </tr>
+                  <tr>
+                    <td class="text-slate-500 py-0.5">Deletions</td>
+                    <td class="text-red-400 text-right font-medium">-{{ prDetail.deletions }}</td>
+                  </tr>
+                </table>
+              </div>
+
+              <!-- Reviewers - Compact with Icons -->
+              <div v-if="prDetail.reviews.length > 0" class="p-3 bg-slate-900/50 border border-slate-700/50 rounded-lg">
+                <div class="text-xs text-slate-400 mb-2">Reviewers</div>
+                <div class="space-y-1.5">
+                  <div
+                    v-for="review in prDetail.reviews"
+                    :key="review.id"
+                    class="flex items-center gap-2"
+                  >
+                    <img
+                      v-if="review.reviewerAvatar"
+                      :src="review.reviewerAvatar"
+                      :alt="review.reviewer"
+                      class="w-5 h-5 rounded-full"
+                    />
+                    <span class="text-xs text-slate-200 flex-1 truncate">{{ review.reviewer }}</span>
+                    <span
+                      :class="[
+                        'text-xs',
+                        review.state === 'APPROVED' ? 'text-green-400' :
+                        review.state === 'CHANGES_REQUESTED' ? 'text-red-400' :
+                        review.state === 'COMMENTED' ? 'text-blue-400' :
+                        'text-slate-500'
+                      ]"
+                    >
+                      <svg v-if="review.state === 'APPROVED'" class="w-3 h-3 inline" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                      </svg>
+                      <svg v-else-if="review.state === 'CHANGES_REQUESTED'" class="w-3 h-3 inline" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                      </svg>
+                      <svg v-else-if="review.state === 'COMMENTED'" class="w-3 h-3 inline" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd" />
+                      </svg>
+                      <span v-else class="opacity-0">•</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Actions -->
+              <div class="p-3 bg-slate-900/50 border border-slate-700/50 rounded-lg space-y-2">
+                <div class="text-xs text-slate-400 mb-1">Actions</div>
+                <div class="grid grid-cols-3 gap-1.5">
+                  <button
+                    @click="showReviewModal = true; reviewAction = 'COMMENT'"
+                    class="px-2 py-1.5 bg-slate-700/50 hover:bg-slate-700 border border-slate-600/50 rounded text-xs text-slate-200 transition-colors"
+                  >
+                    Comment
+                  </button>
+                  <button
+                    @click="showReviewModal = true; reviewAction = 'APPROVED'"
+                    class="px-2 py-1.5 bg-green-600/90 hover:bg-green-600 border border-green-500/50 rounded text-xs text-white transition-colors"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    @click="showReviewModal = true; reviewAction = 'CHANGES_REQUESTED'"
+                    class="px-2 py-1.5 bg-red-600/90 hover:bg-red-600 border border-red-500/50 rounded text-xs text-white transition-colors"
+                  >
+                    Changes
+                  </button>
+                </div>
+                <div class="grid grid-cols-2 gap-1.5">
+                  <button
+                    @click="toggleCommentsPanel"
+                    :class="[
+                      'px-2 py-1.5 rounded text-xs border transition-colors',
+                      commentsPanel
+                        ? 'bg-blue-600 border-blue-500 text-white'
+                        : 'bg-slate-700/50 border-slate-600 hover:bg-slate-700 text-slate-200'
+                    ]"
+                  >
+                    Comments ({{ prDetail.allComments.length }})
+                  </button>
+                  <a
+                    :href="prDetail.url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="px-2 py-1.5 bg-slate-700/50 border border-slate-600 rounded hover:bg-slate-700 text-slate-200 text-xs transition-colors text-center"
+                  >
+                    GitHub
+                  </a>
+                </div>
               </div>
             </div>
           </div>
+        </div>
 
-          <!-- Actions Bar - Compact -->
-          <div class="p-3 bg-slate-900/50 border border-slate-700/50 rounded-lg">
-            <div class="flex items-center justify-between">
-              <div class="text-sm text-slate-400">
-                Submit your review
-              </div>
-              <div class="flex gap-2">
+        <!-- Bottom Section: File Diffs -->
+        <div class="flex-1 overflow-auto">
+          <div class="px-4 py-4">
+            <div class="space-y-3">
+               <!-- Files Changed Header -->
+              <div class="flex items-center justify-between py-2">
+                <h2 class="text-sm font-semibold text-slate-200">
+                  Files Changed ({{ prDetail.files.length }})
+                </h2>
                 <button
-                  @click="showReviewModal = true; reviewAction = 'COMMENT'"
-                  class="px-3 py-1.5 bg-slate-700/50 hover:bg-slate-700 border border-slate-600/50 rounded text-sm text-slate-200 transition-colors"
+                  @click="toggleFileTree"
+                  class="flex items-center gap-1.5 px-2 py-1 bg-slate-800/50 border border-slate-700/50 rounded hover:bg-slate-800 text-slate-300 text-xs transition-colors"
                 >
-                  Comment
-                </button>
-                <button
-                  @click="showReviewModal = true; reviewAction = 'APPROVED'"
-                  class="px-3 py-1.5 bg-green-600/90 hover:bg-green-600 border border-green-500/50 rounded text-sm text-white transition-colors"
-                >
-                  Approve
-                </button>
-                <button
-                  @click="showReviewModal = true; reviewAction = 'CHANGES_REQUESTED'"
-                  class="px-3 py-1.5 bg-red-600/90 hover:bg-red-600 border border-red-500/50 rounded text-sm text-white transition-colors"
-                >
-                  Request Changes
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                          d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                  <span>{{ preferences.fileTreeVisible ? 'Hide' : 'Show' }} Tree</span>
                 </button>
               </div>
-            </div>
-          </div>
 
-          <!-- Files Changed Header -->
-          <div class="flex items-center justify-between mb-3">
-            <h2 class="text-sm font-semibold text-slate-200">
-              Files Changed ({{ prDetail.files.length }})
-            </h2>
-            <button
-              @click="toggleFileTree"
-              class="flex items-center gap-1.5 px-2 py-1 bg-slate-800/50 border border-slate-700/50 rounded hover:bg-slate-800 text-slate-300 text-xs transition-colors"
-            >
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                      d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-              <span>{{ fileTreeVisible ? 'Hide' : 'Show' }} Tree</span>
-            </button>
-          </div>
-
-          <!-- File Diffs -->
-          <div class="space-y-3">
-            <FileDiffViewer
-              v-for="file in prDetail.files"
-              :key="file.path"
-              :ref="el => setFileRef(file.path, el)"
-              :file="file"
-              :comments="prDetail.allComments"
-              :on-add-comment="(line: number, body: string) => handleAddComment(file.path, line, body)"
-            />
-          </div>
-
-          <!-- Keyboard Shortcuts Help -->
-          <div class="mt-6 p-3 bg-slate-900/50 border border-slate-700/50 rounded-lg">
-            <div class="text-xs text-slate-400 mb-2 font-medium">Keyboard Shortcuts</div>
-            <div class="grid grid-cols-2 gap-2 text-xs text-slate-500">
-              <div><kbd class="px-1.5 py-0.5 bg-slate-800/50 rounded text-slate-400">c</kbd> Toggle comments</div>
-              <div><kbd class="px-1.5 py-0.5 bg-slate-800/50 rounded text-slate-400">f</kbd> Toggle file tree</div>
-              <div><kbd class="px-1.5 py-0.5 bg-slate-800/50 rounded text-slate-400">j</kbd> Next file</div>
-              <div><kbd class="px-1.5 py-0.5 bg-slate-800/50 rounded text-slate-400">k</kbd> Previous file</div>
+                <!-- File Diffs -->
+                <FileDiffViewer
+                  v-for="file in prDetail.files"
+                  :key="file.path"
+                  :ref="el => setFileRef(file.path, el)"
+                  :file="file"
+                  :viewed="isFileViewed(file.path!)"
+                  :comments="prDetail.allComments"
+                  :on-add-comment="(line: number, body: string) => handleAddComment(file.path!, line, body)"
+                  :on-toggle-viewed="handleToggleViewed"
+                  :initial-expanded="!isFileViewed(file.path!)"
+                />
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Comments Panel -->
+      <!-- Comments Panel (Resizable) -->
       <Transition
         enter-active-class="transition-transform duration-200"
         enter-from-class="translate-x-full"
@@ -259,11 +264,20 @@
         leave-from-class="translate-x-0"
         leave-to-class="translate-x-full"
       >
-        <div v-if="commentsPanel" class="w-80 flex-shrink-0">
+        <div
+          v-if="commentsPanel"
+          :style="{ width: `${commentsPanelWidth}px` }"
+          class="flex-shrink-0 relative"
+        >
           <CommentsPanel
             :comments="prDetail.allComments"
             @close="toggleCommentsPanel"
             @scroll-to-comment="scrollToComment"
+          />
+          <!-- Resize Handle -->
+          <div
+            class="absolute top-0 left-0 w-1 h-full cursor-ew-resize hover:bg-blue-500/50 transition-colors"
+            @mousedown="startResizeCommentsPanel"
           />
         </div>
       </Transition>
@@ -321,9 +335,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick } from 'vue';
-import { useRoute } from 'vue-router';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { usePRDetail } from '../composables/usePRDetail';
+import { useUserPreferences } from '../composables/useUserPreferences';
 import FileDiffViewer from '../components/FileDiffViewer.vue';
 import FileTree from '../components/FileTree.vue';
 import CommentsPanel from '../components/CommentsPanel.vue';
@@ -334,19 +348,19 @@ const props = defineProps<{
   id: number;
 }>();
 
-const route = useRoute();
 const {
   prDetail,
   loading,
   error,
   commentsPanel,
-  fileTreeVisible,
   fetchPRDetail,
   addComment,
   submitReview,
   toggleCommentsPanel,
   toggleFileTree,
 } = usePRDetail();
+
+const { preferences, loadPreferences, setFileTreeWidth, setCommentsPanelWidth, updatePreferences } = useUserPreferences();
 
 const selectedFile = ref<string | null>(null);
 const showReviewModal = ref(false);
@@ -355,19 +369,69 @@ const reviewComment = ref('');
 const submittingReview = ref(false);
 const fileRefs = ref<Map<string, any>>(new Map());
 
+// Resizable widths
+const fileTreeWidth = ref(256);
+const commentsPanelWidth = ref(320);
+const isResizingFileTree = ref(false);
+const isResizingComments = ref(false);
+
 onMounted(async () => {
-  await fetchPRDetail(props.id);
+  await loadPreferences();
+  fileTreeWidth.value = preferences.value.fileTreeWidth;
+  commentsPanelWidth.value = preferences.value.commentsPanelWidth;
   
-  // Setup keyboard shortcuts
+  await fetchPRDetail(props.id);
+
+  // Load viewed files from preferences
+  if (preferences.value.viewedFilesByPr && preferences.value.viewedFilesByPr[props.id]) {
+    if (prDetail.value) {
+      prDetail.value.viewedFiles = preferences.value.viewedFilesByPr[props.id];
+    }
+  }
+  
   document.addEventListener('keydown', handleKeyPress);
+  document.addEventListener('mousemove', handleMouseMove);
+  document.addEventListener('mouseup', handleMouseUp);
 });
 
 onUnmounted(() => {
   document.removeEventListener('keydown', handleKeyPress);
+  document.removeEventListener('mousemove', handleMouseMove);
+  document.removeEventListener('mouseup', handleMouseUp);
 });
 
+// Resize handlers
+const startResizeFileTree = () => {
+  isResizingFileTree.value = true;
+};
+
+const startResizeCommentsPanel = () => {
+  isResizingComments.value = true;
+};
+
+const handleMouseMove = (e: MouseEvent) => {
+  if (isResizingFileTree.value) {
+    const newWidth = Math.max(200, Math.min(600, e.clientX));
+    fileTreeWidth.value = newWidth;
+  }
+  if (isResizingComments.value) {
+    const newWidth = Math.max(250, Math.min(800, window.innerWidth - e.clientX));
+    commentsPanelWidth.value = newWidth;
+  }
+};
+
+const handleMouseUp = async () => {
+  if (isResizingFileTree.value) {
+    await setFileTreeWidth(fileTreeWidth.value);
+    isResizingFileTree.value = false;
+  }
+  if (isResizingComments.value) {
+    await setCommentsPanelWidth(commentsPanelWidth.value);
+    isResizingComments.value = false;
+  }
+};
+
 const handleKeyPress = (e: KeyboardEvent) => {
-  // Ignore if user is typing in an input
   if ((e.target as HTMLElement).tagName === 'TEXTAREA' || (e.target as HTMLElement).tagName === 'INPUT') {
     return;
   }
@@ -440,16 +504,64 @@ const navigateFile = (direction: 'next' | 'prev') => {
     ? (currentIndex + 1) % prDetail.value.files.length
     : (currentIndex - 1 + prDetail.value.files.length) % prDetail.value.files.length;
   
-  scrollToFile(prDetail.value.files[nextIndex].path);
+  const nextFile = prDetail.value.files[nextIndex];
+  if (nextFile) {
+    scrollToFile(nextFile.path);
+  }
 };
 
-const formatDate = (dateString: string): string => {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+const saveViewedFiles = async () => {
+  if (!prDetail.value) return;
+
+  const viewedFilesByPr = preferences.value.viewedFilesByPr || {};
+  viewedFilesByPr[props.id] = prDetail.value.viewedFiles || [];
+
+  await updatePreferences({ viewedFilesByPr });
+
+  // Sync with GitHub using GraphQL
+  try {
+    await syncViewedFilesToGitHub(props.id, prDetail.value.viewedFiles || []);
+  } catch (error) {
+    console.error('Failed to sync viewed files to GitHub:', error);
+  }
+};
+
+const syncViewedFilesToGitHub = async (prId: number, viewedFiles: string[]) => {
+  // TODO: Implement GitHub GraphQL mutation to mark files as viewed
+  // This would use a GitHub API endpoint or GraphQL mutation to store viewed state
+  console.log('Syncing viewed files to GitHub for PR', prId, ':', viewedFiles);
+};
+
+const isFileViewed = (filePath: string): boolean => {
+  if (!prDetail.value?.viewedFiles) return false;
+  return prDetail.value.viewedFiles.includes(filePath);
+};
+
+const handleToggleViewed = async (filePath: string, viewed: boolean) => {
+  if (!prDetail.value) return;
+
+  if (!prDetail.value.viewedFiles) {
+    prDetail.value.viewedFiles = [];
+  }
+
+  if (viewed) {
+    if (!prDetail.value.viewedFiles.includes(filePath)) {
+      prDetail.value.viewedFiles.push(filePath);
+    }
+  } else {
+    prDetail.value.viewedFiles = prDetail.value.viewedFiles.filter(f => f !== filePath);
+  }
+
+  // Update file object
+  const fileIndex = prDetail.value.files.findIndex(f => f.path === filePath);
+  if (fileIndex !== -1) {
+    prDetail.value.files[fileIndex] = {
+      ...prDetail.value.files[fileIndex],
+      viewed
+    };
+  }
+
+  // Save to preferences and sync with GitHub
+  await saveViewedFiles();
 };
 </script>

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { GroupedPRs, PRStats, Settings, PRDetail, FileDiff, Comment } from '../types';
+import type { GroupedPRs, PRStats, Settings, PRDetail, FileDiff, Comment, UserPreferences } from '../types';
 
 const API_BASE_URL = 'http://localhost:5247/api';
 
@@ -64,6 +64,17 @@ export const apiService = {
 
   mergePR: async (prId: number): Promise<{ message: string }> => {
     const response = await api.post<{ message: string }>(`/pullrequests/${prId}/merge`);
+    return response.data;
+  },
+
+  // User Preferences endpoints
+  getUserPreferences: async (): Promise<UserPreferences> => {
+    const response = await api.get<UserPreferences>('/userpreferences');
+    return response.data;
+  },
+
+  updateUserPreferences: async (preferences: Partial<UserPreferences>): Promise<UserPreferences> => {
+    const response = await api.patch<UserPreferences>('/userpreferences', preferences);
     return response.data;
   },
 };

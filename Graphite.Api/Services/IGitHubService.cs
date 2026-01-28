@@ -7,6 +7,7 @@ public interface IGitHubService
     Task<List<GitHubPRData>> GetOpenPullRequestsAsync(string organization, string token);
     Task<List<GitHubReviewData>> GetReviewsAsync(string organization, string repository, int pullRequestNumber, string token);
     Task<List<GitHubReviewThreadData>> GetReviewThreadsAsync(string organization, string repository, int pullRequestNumber, string token);
+    Task<List<GitHubCommentData>> GetCommentsAsync(string organization, string repository, int pullRequestNumber, string token);
     Task<List<GitHubFileDiffData>> GetFileDiffsAsync(string organization, string repository, int pullRequestNumber, string token);
 }
 
@@ -61,4 +62,16 @@ public record GitHubFileDiffData(
     int Deletions,
     int Changes,
     string? Patch
+);
+
+public record GitHubCommentData(
+    long GitHubId,
+    string Author,
+    string? AuthorAvatar,
+    string Body,
+    string? Path,
+    int? Line,
+    DateTime CreatedAt,
+    DateTime? UpdatedAt,
+    bool IsOutdated
 );

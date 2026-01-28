@@ -13,6 +13,8 @@ public class AppDbContext : DbContext
     public DbSet<GitHubConfig> GitHubConfigs { get; set; }
     public DbSet<Comment> Comments { get; set; }
     public DbSet<FileDiff> FileDiffs { get; set; }
+    public DbSet<User> Users { get; set; }
+    public DbSet<UserPreferences> UserPreferences { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -33,6 +35,11 @@ public class AppDbContext : DbContext
             entity.HasMany(e => e.ReviewThreads)
                 .WithOne(rt => rt.PullRequest)
                 .HasForeignKey(rt => rt.PullRequestId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(e => e.Comments)
+                .WithOne()
+                .HasForeignKey(c => c.PullRequestId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
@@ -62,11 +69,6 @@ public class AppDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.PullRequestId);
             entity.HasIndex(e => e.GitHubId).IsUnique();
-            
-            entity.HasOne(e => e.PullRequest)
-                .WithMany()
-                .HasForeignKey(e => e.PullRequestId)
-                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<FileDiff>(entity =>
@@ -79,6 +81,24 @@ public class AppDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.PullRequestId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Username).IsUnique();
+            entity.HasIndex(e => e.Email).IsUnique();
+            
+            entity.HasOne(e => e.Preferences)
+                .WithOne(p => p.User)
+                .HasForeignKey<UserPreferences>(p => p.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<UserPreferences>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.UserId).IsUnique();
         });
     }
 }

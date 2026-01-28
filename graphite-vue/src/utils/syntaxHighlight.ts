@@ -4,6 +4,7 @@ import 'prismjs/components/prism-javascript';
 import 'prismjs/components/prism-csharp';
 import 'prismjs/components/prism-css';
 import 'prismjs/components/prism-markup'; // HTML
+import 'prismjs/components/prism-markup-templating'; // Required for Vue
 import 'prismjs/components/prism-json';
 import 'prismjs/components/prism-markdown';
 import 'prismjs/components/prism-python';
@@ -16,14 +17,16 @@ import 'prismjs/components/prism-yaml';
 
 export function highlightCode(code: string, language: string): string {
   const lang = getLanguageForHighlight(language);
-  const grammar = Prism.languages[lang];
+  
+  // For Vue files, use markup (HTML) highlighting
+  const grammar = lang === 'vue' ? Prism.languages.markup : Prism.languages[lang];
   
   if (!grammar) {
     return escapeHtml(code);
   }
   
   try {
-    return Prism.highlight(code, grammar, lang);
+    return Prism.highlight(code, grammar, lang === 'vue' ? 'markup' : lang);
   } catch (e) {
     return escapeHtml(code);
   }
@@ -60,11 +63,16 @@ function escapeHtml(text: string): string {
     '"': '&quot;',
     "'": '&#039;'
   };
-  return text.replace(/[&<>"']/g, m => map[m]);
+  return text.replace(/[&<>"']/g, m => map[m] || m);
 }
 
 export function detectLanguageFromPath(path: string): string {
-  const ext = path.split('.').pop()?.toLowerCase() || '';
+  const parts = path.split('.');
+  if (parts.length === 1) return 'text';
+  
+  const ext = parts[parts.length - 1]?.toLowerCase() || '';
+  if (!ext) return 'text';
+  
   const languageMap: Record<string, string> = {
     ts: 'typescript',
     tsx: 'typescript',

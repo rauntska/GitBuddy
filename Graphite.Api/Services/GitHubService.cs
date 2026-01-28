@@ -144,7 +144,6 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
         {
             var connection = new Octokit.GraphQL.Connection(new Octokit.GraphQL.ProductHeaderValue("Graphite-PR-Dashboard"), token);
 
-            // Get review threads
             var reviewThreadsQuery = new Octokit.GraphQL.Query()
                 .Repository(repository, organization)
                 .PullRequest(pullRequestNumber)
@@ -159,7 +158,9 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
                     IsOutdated = rt.IsOutdated,
                     Comments = rt.Comments(100, null, null, null, null).Nodes.Select(c => new
                     {
+                        DatabaseId = c.DatabaseId,
                         Author = c.Author.Login,
+                        AuthorAvatar = c.Author.AvatarUrl(40),
                         Body = c.Body,
                         CreatedAt = c.CreatedAt,
                         UpdatedAt = c.UpdatedAt
@@ -173,7 +174,7 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
             {
                 var firstComment = rt.Comments.FirstOrDefault();
                 var state = rt.IsResolved ? "RESOLVED" : "UNRESOLVED";
-                
+
                 return new GitHubReviewThreadData(
                     rt.Id,
                     rt.Path ?? string.Empty,
@@ -193,6 +194,68 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
         {
             logger.LogError(ex, "Error fetching GitHub review threads for PR {Organization}/{Repository}#{PullRequestNumber}", organization, repository, pullRequestNumber);
             return new List<GitHubReviewThreadData>();
+        }
+    }
+
+    public async Task<List<GitHubCommentData>> GetCommentsAsync(string organization, string repository, int pullRequestNumber, string token)
+    {
+        try
+        {
+            var connection = new Octokit.GraphQL.Connection(new Octokit.GraphQL.ProductHeaderValue("Graphite-PR-Dashboard"), token);
+
+            var reviewThreadsQuery = new Octokit.GraphQL.Query()
+                .Repository(repository, organization)
+                .PullRequest(pullRequestNumber)
+                .ReviewThreads(100, null, null, null)
+                .Nodes
+                .Select(rt => new
+                {
+                    Id = rt.Id.Value,
+                    Path = rt.Path,
+                    Line = rt.Line,
+                    IsResolved = rt.IsResolved,
+                    IsOutdated = rt.IsOutdated,
+                    Comments = rt.Comments(100, null, null, null, null).Nodes.Select(c => new
+                    {
+                        DatabaseId = c.DatabaseId,
+                        FullDatabaseId = c.FullDatabaseId,
+                        Author = c.Author.Login,
+                        AuthorAvatar = c.Author.AvatarUrl(40),
+                        Body = c.Body,
+                        CreatedAt = c.CreatedAt,
+                        UpdatedAt = c.UpdatedAt
+                    }).ToList()
+                })
+                .Compile();
+
+            var reviewThreads = await connection.Run(reviewThreadsQuery);
+
+            var comments = new List<GitHubCommentData>();
+
+            foreach (var thread in reviewThreads)
+            {
+                foreach (var comment in thread.Comments)
+                {
+                    comments.Add(new GitHubCommentData(
+                        comment.DatabaseId ?? 0,
+                        comment.Author,
+                        comment.AuthorAvatar,
+                        comment.Body,
+                        thread.Path,
+                        thread.Line,
+                        comment.CreatedAt.UtcDateTime,
+                        comment.UpdatedAt.UtcDateTime,
+                        thread.IsOutdated
+                    ));
+                }
+            }
+
+            return comments;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error fetching GitHub comments for PR {Organization}/{Repository}#{PullRequestNumber}", organization, repository, pullRequestNumber);
+            return new List<GitHubCommentData>();
         }
     }
 

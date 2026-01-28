@@ -10,6 +10,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<IGitHubService, GitHubService>();
 builder.Services.AddScoped<ICacheService, CacheService>();
+builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddHostedService<PRRefreshService>();
 
 builder.Services.AddControllers();
@@ -29,6 +30,10 @@ using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     dbContext.Database.Migrate();
+    
+    // Create default user
+    var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+    await userService.GetOrCreateDefaultUserAsync();
     
     // Seed sample data for file diffs and comments
     // await SampleDataSeeder.SeedFileDiffsAsync(dbContext);

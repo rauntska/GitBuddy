@@ -1,4 +1,4 @@
-import type { DiffHunk, DiffLine } from '../types';
+import type { DiffHunk } from '../types';
 
 export function parsePatch(patch: string): DiffHunk[] {
   if (!patch) return [];
@@ -15,9 +15,9 @@ export function parsePatch(patch: string): DiffHunk[] {
         hunks.push(currentHunk);
       }
       currentHunk = {
-        oldStart: parseInt(hunkMatch[1]),
+        oldStart: parseInt(hunkMatch[1] || '0'),
         oldLines: parseInt(hunkMatch[2] || '1'),
-        newStart: parseInt(hunkMatch[3]),
+        newStart: parseInt(hunkMatch[3] || '0'),
         newLines: parseInt(hunkMatch[4] || '1'),
         lines: [],
       };
@@ -110,7 +110,50 @@ export function buildFileTree(files: { path: string; status: string }[]): FileTr
     });
   });
 
-  return Object.values(root);
+  // Flatten single-child folder chains
+  return flattenSingleChildFolders(Object.values(root));
+}
+
+// Flatten consecutive folders with single children into a single node
+function flattenSingleChildFolders(nodes: FileTreeNode[]): FileTreeNode[] {
+  return nodes.map(node => {
+    if (node.type === 'file') {
+      return node;
+    }
+
+    // Check if this folder has only one child and that child is also a folder
+    const children = node.children ? Object.values(node.children) : [];
+    
+    if (children.length === 1 && children[0] && children[0].type === 'folder') {
+      // Merge this folder with its single child
+      const child = children[0];
+      const flattened = flattenSingleChildFolders([{
+        ...child,
+        name: `${node.name}/${child.name}`,
+        path: child.path,
+        type: child.type,
+        status: child.status,
+        children: child.children,
+      }]);
+      return flattened[0]!;
+    }
+
+    // Otherwise, recursively process children
+    if (node.children) {
+      const newChildren: Record<string, FileTreeNode> = {};
+      children.forEach(child => {
+        if (child) {
+          const flattened = flattenSingleChildFolders([child]);
+          if (flattened[0]) {
+            newChildren[flattened[0].name] = flattened[0];
+          }
+        }
+      });
+      node.children = newChildren;
+    }
+
+    return node;
+  }).filter((node): node is FileTreeNode => node !== undefined);
 }
 
 export interface FileTreeNode {

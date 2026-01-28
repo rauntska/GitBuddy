@@ -14,6 +14,4 @@ public class Comment
     public string? Path { get; set; }
     public int? Line { get; set; }
     public bool IsOutdated { get; set; }
-
-    public PullRequest PullRequest { get; set; } = null!;
 }

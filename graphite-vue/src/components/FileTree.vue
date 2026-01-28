@@ -31,7 +31,6 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import type { FileDiff } from '../types';
 import { buildFileTree, type FileTreeNode as TreeNode } from '../utils/diffHelpers';
 import FileTreeNode from './FileTreeNode.vue';
 

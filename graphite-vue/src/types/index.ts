@@ -76,14 +76,15 @@ export interface Comment {
 }
 
 export interface FileDiff {
-  path: string;
+  path?: string;
   oldPath?: string;
-  status: 'added' | 'modified' | 'deleted' | 'renamed';
-  additions: number;
-  deletions: number;
-  changes: number;
-  patch?: string;
-  language?: string;
+  status?: 'added' | 'modified' | 'deleted' | 'renamed';
+  Additions?: number;
+  Deletions?: number;
+  Changes?: number;
+  Patch?: string;
+  Language?: string;
+  Viewed?: boolean;
 }
 
 export interface DiffHunk {
@@ -110,4 +111,13 @@ export interface PRDetail extends PullRequest {
   allComments: Comment[];
   mergeableState?: string;
   checksStatus?: 'pending' | 'success' | 'failure';
+  viewedFiles?: string[];
+}
+
+export interface UserPreferences {
+  diffViewMode: 'split' | 'unified';
+  fileTreeWidth: number;
+  commentsPanelWidth: number;
+  fileTreeVisible: boolean;
+  viewedFilesByPr?: Record<number, string[]>;
 }

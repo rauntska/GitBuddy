@@ -27,4 +27,5 @@ public class PullRequest
 
     public List<Review> Reviews { get; set; } = new();
     public List<ReviewThread> ReviewThreads { get; set; } = new();
+    public List<Comment> Comments { get; set; } = new();
 }

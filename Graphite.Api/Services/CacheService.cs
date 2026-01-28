@@ -8,11 +8,13 @@ public class CacheService : ICacheService
 {
     private readonly AppDbContext _context;
     private readonly IGitHubService _gitHubService;
+    private readonly ILogger<CacheService> _logger;
 
-    public CacheService(AppDbContext context, IGitHubService gitHubService)
+    public CacheService(AppDbContext context, IGitHubService gitHubService, ILogger<CacheService> logger)
     {
         _context = context;
         _gitHubService = gitHubService;
+        _logger = logger;
     }
 
     public async Task RefreshPullRequestsAsync(string organization, string token)
@@ -24,6 +26,7 @@ public class CacheService : ICacheService
             var existingPR = await _context.PullRequests
                 .Include(pr => pr.Reviews)
                 .Include(pr => pr.ReviewThreads)
+                .Include(pr => pr.Comments)
                 .FirstOrDefaultAsync(pr => pr.GitHubId == prData.Id);
 
             if (existingPR != null)
@@ -91,6 +94,38 @@ public class CacheService : ICacheService
             {
                 var review = existingPR.Reviews.First(r => r.Reviewer == reviewer);
                 _context.Reviews.Remove(review);
+            }
+
+            // Fetch and sync individual comments
+            try
+            {
+                var comments = await _gitHubService.GetCommentsAsync(organization, prData.Repository, prData.Id, token);
+                var existingCommentIds = existingPR.Comments.Select(c => c.GitHubId).ToHashSet();
+
+                foreach (var comment in comments)
+                {
+                    if (!existingCommentIds.Contains(comment.GitHubId))
+                    {
+                        _context.Comments.Add(new Comment
+                        {
+                            PullRequestId = existingPR.Id,
+                            GitHubId = comment.GitHubId,
+                            Author = comment.Author,
+                            AuthorAvatar = comment.AuthorAvatar,
+                            Body = comment.Body,
+                            Path = comment.Path,
+                            Line = comment.Line,
+                            CreatedAt = comment.CreatedAt,
+                            UpdatedAt = comment.UpdatedAt,
+                            IsOutdated = comment.IsOutdated,
+                            IsResolved = false
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching comments for PR {Organization}/{Repository}#{PullRequestNumber}", organization, prData.Repository, prData.Id);
             }
 
             var existingThreadIds = existingPR.ReviewThreads.Select(rt => rt.GitHubId).ToHashSet();

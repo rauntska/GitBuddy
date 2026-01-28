@@ -1,0 +1,117 @@
+using Graphite.Domain.Data;
+using Graphite.Domain.Models;
+using Graphite.Api.DTOs;
+using Microsoft.EntityFrameworkCore;
+
+namespace Graphite.Api.Services;
+
+public interface IUserService
+{
+    Task<UserPreferencesDto> GetPreferencesAsync(int userId);
+    Task<UserPreferencesDto> UpdatePreferencesAsync(int userId, UpdatePreferencesRequest request);
+    Task<User> GetOrCreateDefaultUserAsync();
+}
+
+public class UserService : IUserService
+{
+    private readonly AppDbContext _context;
+
+    public UserService(AppDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<UserPreferencesDto> GetPreferencesAsync(int userId)
+    {
+        var preferences = await _context.UserPreferences
+            .FirstOrDefaultAsync(p => p.UserId == userId);
+
+        if (preferences == null)
+        {
+            // Create default preferences
+            preferences = new UserPreferences
+            {
+                UserId = userId,
+                DiffViewMode = "unified",
+                FileTreeWidth = 256,
+                CommentsPanelWidth = 320,
+                FileTreeVisible = true
+            };
+            _context.UserPreferences.Add(preferences);
+            await _context.SaveChangesAsync();
+        }
+
+        return new UserPreferencesDto(
+            preferences.DiffViewMode,
+            preferences.FileTreeWidth,
+            preferences.CommentsPanelWidth,
+            preferences.FileTreeVisible
+        );
+    }
+
+    public async Task<UserPreferencesDto> UpdatePreferencesAsync(int userId, UpdatePreferencesRequest request)
+    {
+        var preferences = await _context.UserPreferences
+            .FirstOrDefaultAsync(p => p.UserId == userId);
+
+        if (preferences == null)
+        {
+            preferences = new UserPreferences { UserId = userId };
+            _context.UserPreferences.Add(preferences);
+        }
+
+        if (request.DiffViewMode != null)
+            preferences.DiffViewMode = request.DiffViewMode;
+        
+        if (request.FileTreeWidth.HasValue)
+            preferences.FileTreeWidth = request.FileTreeWidth.Value;
+        
+        if (request.CommentsPanelWidth.HasValue)
+            preferences.CommentsPanelWidth = request.CommentsPanelWidth.Value;
+        
+        if (request.FileTreeVisible.HasValue)
+            preferences.FileTreeVisible = request.FileTreeVisible.Value;
+
+        preferences.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return new UserPreferencesDto(
+            preferences.DiffViewMode,
+            preferences.FileTreeWidth,
+            preferences.CommentsPanelWidth,
+            preferences.FileTreeVisible
+        );
+    }
+
+    public async Task<User> GetOrCreateDefaultUserAsync()
+    {
+        var user = await _context.Users
+            .Include(u => u.Preferences)
+            .FirstOrDefaultAsync(u => u.Username == "default");
+
+        if (user == null)
+        {
+            user = new User
+            {
+                Username = "default",
+                Email = "default@localhost",
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.Users.Add(user);
+
+            var preferences = new UserPreferences
+            {
+                User = user,
+                DiffViewMode = "unified",
+                FileTreeWidth = 256,
+                CommentsPanelWidth = 320,
+                FileTreeVisible = true
+            };
+            _context.UserPreferences.Add(preferences);
+
+            await _context.SaveChangesAsync();
+        }
+
+        return user;
+    }
+}

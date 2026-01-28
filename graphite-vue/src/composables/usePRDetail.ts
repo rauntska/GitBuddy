@@ -1,13 +1,15 @@
 import { ref } from 'vue';
-import type { PRDetail, Comment, FileDiff } from '../types';
+import type { PRDetail, Comment } from '../types';
 import { apiService } from '../services/api';
+import { useUserPreferences } from './useUserPreferences';
 
 export function usePRDetail() {
   const prDetail = ref<PRDetail | null>(null);
   const loading = ref(false);
   const error = ref<string | null>(null);
   const commentsPanel = ref(false);
-  const fileTreeVisible = ref(true);
+  
+  const { preferences, setFileTreeVisible } = useUserPreferences();
 
   const fetchPRDetail = async (id: number) => {
     loading.value = true;
@@ -75,8 +77,8 @@ export function usePRDetail() {
     commentsPanel.value = !commentsPanel.value;
   };
 
-  const toggleFileTree = () => {
-    fileTreeVisible.value = !fileTreeVisible.value;
+  const toggleFileTree = async () => {
+    await setFileTreeVisible(!preferences.value.fileTreeVisible);
   };
 
   return {
@@ -84,7 +86,7 @@ export function usePRDetail() {
     loading,
     error,
     commentsPanel,
-    fileTreeVisible,
+    fileTreeVisible: preferences,
     fetchPRDetail,
     addComment,
     submitReview,

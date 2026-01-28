@@ -310,15 +310,74 @@ namespace Graphite.Domain.Migrations
                     b.ToTable("ReviewThreads");
                 });
 
+            modelBuilder.Entity("Graphite.Domain.Models.User", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("Username")
+                        .IsUnique();
+
+                    b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("Graphite.Domain.Models.UserPreferences", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CommentsPanelWidth")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("DiffViewMode")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("FileTreeVisible")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("FileTreeWidth")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("UserPreferences");
+                });
+
             modelBuilder.Entity("Graphite.Domain.Models.Comment", b =>
                 {
-                    b.HasOne("Graphite.Domain.Models.PullRequest", "PullRequest")
-                        .WithMany()
+                    b.HasOne("Graphite.Domain.Models.PullRequest", null)
+                        .WithMany("Comments")
                         .HasForeignKey("PullRequestId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("PullRequest");
                 });
 
             modelBuilder.Entity("Graphite.Domain.Models.FileDiff", b =>
@@ -354,11 +413,29 @@ namespace Graphite.Domain.Migrations
                     b.Navigation("PullRequest");
                 });
 
+            modelBuilder.Entity("Graphite.Domain.Models.UserPreferences", b =>
+                {
+                    b.HasOne("Graphite.Domain.Models.User", "User")
+                        .WithOne("Preferences")
+                        .HasForeignKey("Graphite.Domain.Models.UserPreferences", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Graphite.Domain.Models.PullRequest", b =>
                 {
+                    b.Navigation("Comments");
+
                     b.Navigation("ReviewThreads");
 
                     b.Navigation("Reviews");
+                });
+
+            modelBuilder.Entity("Graphite.Domain.Models.User", b =>
+                {
+                    b.Navigation("Preferences");
                 });
 #pragma warning restore 612, 618
         }
