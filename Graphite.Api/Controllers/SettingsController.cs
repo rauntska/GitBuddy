@@ -1,10 +1,12 @@
 using Graphite.Api.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Graphite.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class SettingsController : ControllerBase
 {
     private readonly ICacheService _cacheService;

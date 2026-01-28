@@ -4,11 +4,13 @@ using Graphite.Api.Services;
 using Graphite.Domain.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Graphite.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class PullRequestsController : ControllerBase
 {
     private readonly ICacheService _cacheService;
@@ -66,6 +68,7 @@ public class PullRequestsController : ControllerBase
     }
 
     [HttpPost("refresh")]
+    [Authorize]
     public async Task<IActionResult> Refresh()
     {
         var config = await _cacheService.GetConfigAsync();
@@ -112,6 +115,7 @@ public class PullRequestsController : ControllerBase
     }
 
     [HttpPost("{id}/comments")]
+    [Authorize]
     public async Task<IActionResult> AddComment(int id, [FromBody] AddCommentRequest request)
     {
         var pr = await _context.PullRequests.FindAsync(id);
@@ -142,6 +146,7 @@ public class PullRequestsController : ControllerBase
     }
 
     [HttpPost("{id}/review")]
+    [Authorize]
     public async Task<IActionResult> SubmitReview(int id, [FromBody] SubmitReviewRequest request)
     {
         var pr = await _context.PullRequests.FindAsync(id);
@@ -156,6 +161,7 @@ public class PullRequestsController : ControllerBase
     }
 
     [HttpPost("{id}/merge")]
+    [Authorize]
     public async Task<IActionResult> MergePR(int id)
     {
         var pr = await _context.PullRequests.FindAsync(id);

@@ -10,6 +10,8 @@ public interface IUserService
     Task<UserPreferencesDto> GetPreferencesAsync(int userId);
     Task<UserPreferencesDto> UpdatePreferencesAsync(int userId, UpdatePreferencesRequest request);
     Task<User> GetOrCreateDefaultUserAsync();
+    Task<User> GetOrCreateGitHubUserAsync(GitHubUserDto githubUser, string accessToken);
+    Task UpdateUserLastLoginAsync(int userId);
 }
 
 public class UserService : IUserService
@@ -113,5 +115,61 @@ public class UserService : IUserService
         }
 
         return user;
+    }
+
+    public async Task<User> GetOrCreateGitHubUserAsync(GitHubUserDto githubUser, string accessToken)
+    {
+        var user = await _context.Users
+            .Include(u => u.Preferences)
+            .FirstOrDefaultAsync(u => u.Provider == "GitHub" && u.ProviderUserId == githubUser.Id.ToString());
+
+        if (user == null)
+        {
+            user = new User
+            {
+                Username = githubUser.Login,
+                Email = githubUser.Email ?? $"{githubUser.Login}@github.local",
+                Provider = "GitHub",
+                ProviderUserId = githubUser.Id.ToString(),
+                AvatarUrl = githubUser.AvatarUrl,
+                AccessToken = accessToken,
+                CreatedAt = DateTime.UtcNow,
+                LastLoginAt = DateTime.UtcNow
+            };
+            _context.Users.Add(user);
+
+            var preferences = new UserPreferences
+            {
+                User = user,
+                DiffViewMode = "unified",
+                FileTreeWidth = 256,
+                CommentsPanelWidth = 320,
+                FileTreeVisible = true
+            };
+            _context.UserPreferences.Add(preferences);
+
+            await _context.SaveChangesAsync();
+        }
+        else
+        {
+            user.Username = githubUser.Login;
+            user.Email = githubUser.Email ?? $"{githubUser.Login}@github.local";
+            user.AvatarUrl = githubUser.AvatarUrl;
+            user.AccessToken = accessToken;
+            user.LastLoginAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
+
+        return user;
+    }
+
+    public async Task UpdateUserLastLoginAsync(int userId)
+    {
+        var user = await _context.Users.FindAsync(userId);
+        if (user != null)
+        {
+            user.LastLoginAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
     }
 }

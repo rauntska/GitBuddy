@@ -357,6 +357,9 @@ import CommentsPanel from '../components/CommentsPanel.vue';
 import StatusBadge from '../components/StatusBadge.vue';
 import type { Comment } from '../types';
 import { CheckIcon, ChatBubbleLeftIcon, ArrowPathIcon } from '@heroicons/vue/24/outline';
+import { useAuthStore } from '../stores/auth';
+
+const authStore = useAuthStore();
 
 const props = defineProps<{
   id: number;
@@ -390,6 +393,10 @@ const isResizingFileTree = ref(false);
 const isResizingComments = ref(false);
 
 onMounted(async () => {
+  if (!authStore.isAuthenticated) {
+    return;
+  }
+
   await loadPreferences();
   fileTreeWidth.value = preferences.value.fileTreeWidth;
   commentsPanelWidth.value = preferences.value.commentsPanelWidth;

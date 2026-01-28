@@ -1,11 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
 using Graphite.Api.Services;
 using Graphite.Api.DTOs;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Graphite.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class UserPreferencesController : ControllerBase
 {
     private readonly IUserService _userService;
@@ -18,20 +20,26 @@ public class UserPreferencesController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<UserPreferencesDto>> GetPreferences()
     {
-        // For now, use default user (userId = 1)
-        // In a real app, get userId from auth context
-        var user = await _userService.GetOrCreateDefaultUserAsync();
-        var preferences = await _userService.GetPreferencesAsync(user.Id);
+        var userIdClaim = User.FindFirst("UserId");
+        if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+        {
+            return Unauthorized();
+        }
+
+        var preferences = await _userService.GetPreferencesAsync(userId);
         return Ok(preferences);
     }
 
     [HttpPatch]
     public async Task<ActionResult<UserPreferencesDto>> UpdatePreferences([FromBody] UpdatePreferencesRequest request)
     {
-        // For now, use default user (userId = 1)
-        // In a real app, get userId from auth context
-        var user = await _userService.GetOrCreateDefaultUserAsync();
-        var preferences = await _userService.UpdatePreferencesAsync(user.Id, request);
+        var userIdClaim = User.FindFirst("UserId");
+        if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+        {
+            return Unauthorized();
+        }
+
+        var preferences = await _userService.UpdatePreferencesAsync(userId, request);
         return Ok(preferences);
     }
 }

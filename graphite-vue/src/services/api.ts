@@ -1,14 +1,7 @@
-import axios from 'axios';
+import apiClient from '../utils/api';
 import type { GroupedPRs, PRStats, Settings, PRDetail, FileDiff, Comment, UserPreferences } from '../types';
 
-const API_BASE_URL = 'http://localhost:5247/api';
-
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+const api = apiClient;
 
 export const apiService = {
   getPullRequests: async (): Promise<GroupedPRs> => {
