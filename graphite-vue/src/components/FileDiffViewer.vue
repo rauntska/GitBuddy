@@ -27,8 +27,8 @@
 
       <!-- File Stats -->
       <div class="flex items-center gap-3 text-xs flex-shrink-0">
-        <span class="text-green-400 font-medium">+{{ file.Additions }}</span>
-        <span class="text-red-400 font-medium">-{{ file.Deletions }}</span>
+        <span class="text-green-400 font-medium">+{{ file.additions }}</span>
+        <span class="text-red-400 font-medium">-{{ file.deletions }}</span>
         <span v-if="expanded" class="text-slate-500">|</span>
         <button
           v-if="expanded"
@@ -49,6 +49,10 @@
 
     <!-- File Diff Content -->
     <div v-if="expanded && !loading" class="relative bg-slate-950/50">
+      <div v-if="hunks.length === 0" class="p-6 text-center text-slate-400">
+        No diff content available
+      </div>
+
       <!-- Minimap -->
       <div
         v-if="hunks.length > 0"
@@ -233,7 +237,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue';
+import { ref, computed, nextTick, onMounted } from 'vue';
 import type { FileDiff, Comment } from '../types';
 import { parsePatch } from '../utils/diffHelpers';
 import { highlightCode, detectLanguageFromPath } from '../utils/syntaxHighlight';
@@ -257,6 +261,28 @@ const { preferences, setDiffViewMode } = useUserPreferences();
 const expanded = ref(props.initialExpanded || false);
 const loading = ref(false);
 const hunks = ref<any[]>([]);
+
+const loadHunks = async () => {
+  if (hunks.value.length === 0) {
+    const patchData = (props.file as any).patch || (props.file as any).Patch;
+    console.log('FileDiffViewer: Loading hunks for file:', props.file.path, 'patchData exists:', !!patchData);
+    if (patchData) {
+      loading.value = true;
+      await new Promise(resolve => setTimeout(resolve, 100));
+      hunks.value = parsePatch(patchData);
+      console.log('FileDiffViewer: Parsed hunks:', hunks.value.length);
+      loading.value = false;
+    } else {
+      loading.value = false;
+    }
+  }
+};
+
+onMounted(() => {
+  if (expanded.value) {
+    loadHunks();
+  }
+});
 const showUnchangedLines = ref(false);
 const commentingLine = ref<number | null>(null);
 const commentText = ref('');
@@ -272,12 +298,9 @@ const fileComments = computed(() =>
 
 const toggleExpanded = async () => {
   expanded.value = !expanded.value;
-  
-  if (expanded.value && hunks.value.length === 0 && props.file.patch) {
-    loading.value = true;
-    await new Promise(resolve => setTimeout(resolve, 100));
-    hunks.value = parsePatch(props.file.patch);
-    loading.value = false;
+
+  if (expanded.value) {
+    loadHunks();
   }
 };
 

@@ -79,12 +79,12 @@ export interface FileDiff {
   path?: string;
   oldPath?: string;
   status?: 'added' | 'modified' | 'deleted' | 'renamed';
-  Additions?: number;
-  Deletions?: number;
-  Changes?: number;
-  Patch?: string;
-  Language?: string;
-  Viewed?: boolean;
+  additions?: number;
+  deletions?: number;
+  changes?: number;
+  patch?: string;
+  language?: string;
+  viewed?: boolean;
 }
 
 export interface DiffHunk {
