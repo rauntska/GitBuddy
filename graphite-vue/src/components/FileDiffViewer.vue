@@ -1,9 +1,10 @@
 <template>
   <div class="border border-slate-700/50 rounded-lg overflow-hidden bg-slate-900/50">
     <!-- File Header -->
-    <div
-      class="flex items-center justify-between px-3 py-2 bg-slate-800/80 border-b border-slate-700/50 cursor-pointer hover:bg-slate-800"
-      @click="handleHeaderClick"
+    <button
+      class="flex items-center justify-between px-3 py-2 bg-slate-800/80 border-b border-slate-700/50 cursor-pointer hover:bg-slate-800 select-none w-full text-left"
+      type="button"
+      @click="onHeaderClick"
     >
       <div class="flex items-center gap-2 min-w-0">
         <!-- Expand/Collapse Icon -->
@@ -45,7 +46,7 @@
           {{ showUnchangedLines ? 'Hide' : 'Show' }} context
         </button>
       </div>
-    </div>
+    </button>
 
     <!-- File Diff Content -->
     <div v-if="expanded && !loading" class="relative bg-slate-950/50">
@@ -69,7 +70,7 @@
       </div>
 
       <!-- Split View -->
-      <div v-if="viewMode === 'split'" class="overflow-x-hidden text-xs font-mono" ref="diffContainer">
+      <div class="overflow-x-hidden text-xs font-mono" ref="diffContainer">
         <table class="w-full border-collapse table-fixed">
           <colgroup>
             <col style="width: 50px;">
@@ -237,7 +238,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted } from 'vue';
+import { ref, computed, nextTick, onMounted, watch } from 'vue';
 import type { FileDiff, Comment } from '../types';
 import { parsePatch } from '../utils/diffHelpers';
 import { highlightCode, detectLanguageFromPath } from '../utils/syntaxHighlight';
@@ -258,7 +259,7 @@ defineEmits<{
 
 const { preferences, setDiffViewMode } = useUserPreferences();
 
-const expanded = ref(props.initialExpanded || false);
+const expanded = ref(false);
 const loading = ref(false);
 const hunks = ref<any[]>([]);
 const showUnchangedLines = ref(false);
@@ -270,13 +271,11 @@ const language = ref(props.file.path ? detectLanguageFromPath(props.file.path) :
 
 const loadHunks = async () => {
   if (hunks.value.length === 0) {
-    const patchData = (props.file as any).patch || (props.file as any).Patch;
-    console.log('FileDiffViewer: Loading hunks for file:', props.file.path, 'patchData exists:', !!patchData);
+    const patchData = (props.file as any).patch || (props.file as any).Patch || (props.file as any).diff;
     if (patchData) {
       loading.value = true;
       await new Promise(resolve => setTimeout(resolve, 100));
       hunks.value = parsePatch(patchData);
-      console.log('FileDiffViewer: Parsed hunks:', hunks.value.length);
       loading.value = false;
     } else {
       loading.value = false;
@@ -290,25 +289,20 @@ onMounted(() => {
   }
 });
 
+watch(expanded, (newValue) => {
+  if (newValue) {
+    loadHunks();
+  }
+});
+
 const viewMode = computed(() => preferences.value.diffViewMode);
 
 const fileComments = computed(() => 
   props.comments.filter(c => c.path === props.file.path && c.line)
 );
 
-const toggleExpanded = async () => {
+const onHeaderClick = () => {
   expanded.value = !expanded.value;
-
-  if (expanded.value) {
-    loadHunks();
-  }
-};
-
-const handleHeaderClick = (e: MouseEvent) => {
-  const target = e.target as HTMLElement;
-  if (target.tagName !== 'INPUT' && target.closest('input') === null) {
-    toggleExpanded();
-  }
 };
 
 const toggleViewMode = async () => {

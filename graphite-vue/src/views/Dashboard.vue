@@ -139,7 +139,6 @@ import StatsSummary from '../components/StatsSummary.vue';
 import PRGroup from '../components/PRGroup.vue';
 import SkeletonPRRow from '../components/SkeletonPRRow.vue';
 import EmptyState from '../components/EmptyState.vue';
-import LoginButton from '../components/LoginButton.vue';
 
 const authStore = useAuthStore();
 
