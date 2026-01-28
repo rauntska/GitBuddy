@@ -132,8 +132,7 @@ public class PullRequestsController : ControllerBase
             CreatedAt = DateTime.UtcNow,
             Path = request.Path,
             Line = request.Line,
-            IsOutdated = false,
-            IsResolved = false
+            IsOutdated = false
         };
 
         _context.Comments.Add(comment);

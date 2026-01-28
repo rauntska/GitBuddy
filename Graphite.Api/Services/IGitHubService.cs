@@ -66,12 +66,13 @@ public record GitHubFileDiffData(
 
 public record GitHubCommentData(
     long GitHubId,
+    string ReviewThreadId,
     string Author,
     string? AuthorAvatar,
     string Body,
     string? Path,
     int? Line,
+    bool IsOutdated,
     DateTime CreatedAt,
-    DateTime? UpdatedAt,
-    bool IsOutdated
+    DateTime? UpdatedAt
 );

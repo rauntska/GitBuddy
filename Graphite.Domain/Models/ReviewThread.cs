@@ -17,4 +17,5 @@ public class ReviewThread
     public int CommentCount { get; set; }
 
     public PullRequest PullRequest { get; set; } = null!;
+    public List<Comment> Comments { get; set; } = new();
 }

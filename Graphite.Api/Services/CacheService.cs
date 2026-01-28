@@ -101,26 +101,48 @@ public class CacheService : ICacheService
             {
                 var comments = await _gitHubService.GetCommentsAsync(organization, prData.Repository, prData.Id, token);
                 var existingCommentIds = existingPR.Comments.Select(c => c.GitHubId).ToHashSet();
+                var reviewThreadMap = existingPR.ReviewThreads.ToDictionary(rt => rt.GitHubId, rt => rt.Id);
 
                 foreach (var comment in comments)
                 {
+                    var reviewThread = existingPR.ReviewThreads.FirstOrDefault(rt => rt.GitHubId == comment.ReviewThreadId);
+                    
                     if (!existingCommentIds.Contains(comment.GitHubId))
                     {
                         _context.Comments.Add(new Comment
                         {
                             PullRequestId = existingPR.Id,
+                            ReviewThreadId = reviewThread?.Id,
                             GitHubId = comment.GitHubId,
                             Author = comment.Author,
                             AuthorAvatar = comment.AuthorAvatar,
                             Body = comment.Body,
                             Path = comment.Path,
                             Line = comment.Line,
-                            CreatedAt = comment.CreatedAt,
-                            UpdatedAt = comment.UpdatedAt,
                             IsOutdated = comment.IsOutdated,
-                            IsResolved = false
+                            CreatedAt = comment.CreatedAt,
+                            UpdatedAt = comment.UpdatedAt
                         });
                     }
+                    else
+                    {
+                        var existingComment = existingPR.Comments.First(c => c.GitHubId == comment.GitHubId);
+                        existingComment.ReviewThreadId = reviewThread?.Id;
+                        existingComment.Author = comment.Author;
+                        existingComment.AuthorAvatar = comment.AuthorAvatar;
+                        existingComment.Body = comment.Body;
+                        existingComment.Path = comment.Path;
+                        existingComment.Line = comment.Line;
+                        existingComment.IsOutdated = comment.IsOutdated;
+                        existingComment.UpdatedAt = comment.UpdatedAt;
+                    }
+                }
+
+                // Remove comments that are no longer in the response
+                var incomingCommentIds = comments.Select(c => c.GitHubId).ToHashSet();
+                foreach (var comment in existingPR.Comments.Where(c => !incomingCommentIds.Contains(c.GitHubId)))
+                {
+                    _context.Comments.Remove(comment);
                 }
             }
             catch (Exception ex)

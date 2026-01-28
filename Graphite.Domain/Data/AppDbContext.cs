@@ -55,6 +55,11 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => e.PullRequestId);
             entity.HasIndex(e => e.GitHubId).IsUnique();
             entity.HasIndex(e => e.State);
+
+            entity.HasMany(e => e.Comments)
+                .WithOne(c => c.ReviewThread)
+                .HasForeignKey(c => c.ReviewThreadId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<GitHubConfig>(entity =>
@@ -69,6 +74,7 @@ public class AppDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.PullRequestId);
             entity.HasIndex(e => e.GitHubId).IsUnique();
+            entity.HasIndex(e => e.ReviewThreadId);
         });
 
         modelBuilder.Entity<FileDiff>(entity =>

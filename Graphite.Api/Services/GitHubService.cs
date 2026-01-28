@@ -238,14 +238,15 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
                 {
                     comments.Add(new GitHubCommentData(
                         comment.DatabaseId ?? 0,
+                        thread.Id,
                         comment.Author,
                         comment.AuthorAvatar,
                         comment.Body,
                         thread.Path,
                         thread.Line,
+                        thread.IsOutdated,
                         comment.CreatedAt.UtcDateTime,
-                        comment.UpdatedAt.UtcDateTime,
-                        thread.IsOutdated
+                        comment.UpdatedAt.UtcDateTime
                     ));
                 }
             }

@@ -139,7 +139,6 @@ public class SampleDataSeeder
                     Author = "Reviewer1",
                     Body = "Great work! This looks good to me.",
                     CreatedAt = DateTime.UtcNow.AddHours(-2),
-                    IsResolved = true,
                     IsOutdated = false
                 },
                 new Comment
@@ -151,7 +150,6 @@ public class SampleDataSeeder
                     CreatedAt = DateTime.UtcNow.AddHours(-1),
                     Path = "src/components/Button.vue",
                     Line = 10,
-                    IsResolved = false,
                     IsOutdated = false
                 }
             };
