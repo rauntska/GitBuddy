@@ -33,6 +33,7 @@
 import { ref, computed } from 'vue';
 import { buildFileTree, type FileTreeNode as TreeNode } from '../utils/diffHelpers';
 import FileTreeNode from './FileTreeNode.vue';
+import type { FileDiff } from '../types';
 
 const props = defineProps<{
   files: FileDiff[];
@@ -47,7 +48,7 @@ const expandedFolders = ref<Set<string>>(new Set());
 const allExpanded = ref(false);
 
 const treeNodes = computed(() => {
-  return buildFileTree(props.files.map(f => ({ path: f.path, status: f.status })));
+  return buildFileTree(props.files.filter(f => f.path).map(f => ({ path: f.path!, status: f.status || 'modified' })));
 });
 
 const totalFiles = computed(() => props.files.length);

@@ -17,8 +17,8 @@
         </svg>
 
         <!-- File Status Icon -->
-        <span :class="['text-xs font-semibold flex-shrink-0', getStatusColor(file.status)]">
-          {{ getStatusIcon(file.status) }}
+        <span :class="['text-xs font-semibold flex-shrink-0', getStatusColor(file.status || 'modified')]">
+          {{ getStatusIcon(file.status || 'modified') }}
         </span>
 
         <!-- File Path -->
@@ -261,6 +261,12 @@ const { preferences, setDiffViewMode } = useUserPreferences();
 const expanded = ref(props.initialExpanded || false);
 const loading = ref(false);
 const hunks = ref<any[]>([]);
+const showUnchangedLines = ref(false);
+const commentingLine = ref<number | null>(null);
+const commentText = ref('');
+const commentTextarea = ref<HTMLTextAreaElement | null>(null);
+const lineRefs = ref<Map<number, HTMLElement>>(new Map());
+const language = ref(props.file.path ? detectLanguageFromPath(props.file.path) : 'text');
 
 const loadHunks = async () => {
   if (hunks.value.length === 0) {
@@ -283,12 +289,6 @@ onMounted(() => {
     loadHunks();
   }
 });
-const showUnchangedLines = ref(false);
-const commentingLine = ref<number | null>(null);
-const commentText = ref('');
-const commentTextarea = ref<HTMLTextAreaElement | null>(null);
-const lineRefs = ref<Map<number, HTMLElement>>(new Map());
-const language = ref(detectLanguageFromPath(props.file.path));
 
 const viewMode = computed(() => preferences.value.diffViewMode);
 
@@ -309,15 +309,6 @@ const handleHeaderClick = (e: MouseEvent) => {
   if (target.tagName !== 'INPUT' && target.closest('input') === null) {
     toggleExpanded();
   }
-};
-
-const toggleViewed = (e: Event) => {
-  const checked = (e.target as HTMLInputElement).checked;
-  if (props.onToggleViewed) {
-    props.onToggleViewed(props.file.path!, checked);
-  }
-  emit('toggleViewed', props.file.path!, checked);
-  emit('changeViewed', props.file.path!, checked);
 };
 
 const toggleViewMode = async () => {

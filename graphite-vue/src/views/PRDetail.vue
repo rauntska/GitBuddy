@@ -42,7 +42,7 @@
               <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd" />
             </svg>
             <span
-              v-if="prDetail?.allComments.length > 0"
+              v-if="prDetail?.allComments && prDetail.allComments.length > 0"
               class="absolute -top-1 -right-1 bg-blue-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-0.5"
             >
               {{ prDetail.allComments.length }}
@@ -218,7 +218,7 @@
                 <FileDiffViewer
                   v-for="file in prDetail.files"
                   :key="file.path"
-                  :ref="el => setFileRef(file.path, el)"
+                  :ref="el => setFileRef(file.path!, el)"
                   :file="file"
                   :viewed="isFileViewed(file.path!)"
                   :comments="prDetail.allComments"
@@ -247,8 +247,10 @@
         >
           <CommentsPanel
             :comments="prDetail.allComments"
+            :review-threads="prDetail.reviewThreads"
             @close="toggleCommentsPanel"
             @scroll-to-comment="scrollToComment"
+            @scroll-to-thread="scrollToThread"
           />
           <!-- Resize Handle -->
           <div
@@ -499,6 +501,13 @@ const scrollToComment = (comment: Comment) => {
   }
 };
 
+const scrollToThread = (threadId: string) => {
+  const thread = prDetail.value?.reviewThreads.find(rt => rt.gitHubId === threadId);
+  if (thread?.path) {
+    scrollToFile(thread.path);
+  }
+};
+
 const setFileRef = (path: string, el: any) => {
   if (el) {
     fileRefs.value.set(path, el);
@@ -517,7 +526,7 @@ const navigateFile = (direction: 'next' | 'prev') => {
     : (currentIndex - 1 + prDetail.value.files.length) % prDetail.value.files.length;
   
   const nextFile = prDetail.value.files[nextIndex];
-  if (nextFile) {
+  if (nextFile?.path) {
     scrollToFile(nextFile.path);
   }
 };
@@ -526,13 +535,13 @@ const saveViewedFiles = async () => {
   if (!prDetail.value) return;
 
   const viewedFilesByPr = preferences.value.viewedFilesByPr || {};
-  viewedFilesByPr[props.id] = prDetail.value.viewedFiles || [];
+  viewedFilesByPr[props.id] = prDetail.value.viewedFiles?.filter(f => f !== undefined) || [];
 
   await updatePreferences({ viewedFilesByPr });
 
   // Sync with GitHub using GraphQL
   try {
-    await syncViewedFilesToGitHub(props.id, prDetail.value.viewedFiles || []);
+    await syncViewedFilesToGitHub(props.id, prDetail.value.viewedFiles?.filter(f => f !== undefined) || []);
   } catch (error) {
     console.error('Failed to sync viewed files to GitHub:', error);
   }

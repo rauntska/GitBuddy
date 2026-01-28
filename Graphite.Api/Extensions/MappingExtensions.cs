@@ -58,6 +58,7 @@ public static class MappingExtensions
         return new CommentDto(
             comment.Id,
             comment.GitHubId,
+            comment.ReviewThreadId,
             comment.Author,
             comment.AuthorAvatar,
             comment.Body,

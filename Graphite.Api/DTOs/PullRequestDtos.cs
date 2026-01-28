@@ -46,6 +46,7 @@ public record PullRequestDto(
 public record CommentDto(
     int Id,
     long GitHubId,
+    int? ReviewThreadId,
     string Author,
     string? AuthorAvatar,
     string Body,

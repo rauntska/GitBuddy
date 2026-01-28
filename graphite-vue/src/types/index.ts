@@ -65,6 +65,7 @@ export interface Settings {
 export interface Comment {
   id: number;
   gitHubId: string;
+  reviewThreadId?: number;
   author: string;
   authorAvatar?: string;
   body: string;
