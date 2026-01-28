@@ -1,7 +1,7 @@
 <template>
-  <div class="flex flex-col h-screen bg-slate-950 text-slate-200">
+  <div class="flex flex-col bg-slate-950 text-slate-200">
     <!-- Compact Header -->
-    <div class="sticky top-0 z-20 bg-slate-900/95 backdrop-blur-sm border-b border-slate-700/50">
+    <div class="bg-slate-900/95 border-b border-slate-700/50">
       <div class="px-4 py-2 flex items-center gap-3">
         <router-link
           to="/"
@@ -12,7 +12,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
           </svg>
         </router-link>
-        
+
         <div class="flex-1 min-w-0 flex items-center gap-2">
           <StatusBadge v-if="prDetail" :status="prDetail.status" />
           <h1 class="text-base font-semibold text-slate-100 truncate">
@@ -20,8 +20,43 @@
           </h1>
         </div>
 
-        <div class="flex items-center gap-2 text-xs text-slate-400">
-          <span>{{ prDetail?.repository }} #{{ prDetail?.gitHubId }}</span>
+        <div class="flex items-center gap-3 text-xs">
+          <span class="text-slate-400">{{ prDetail?.repository }} #{{ prDetail?.gitHubId }}</span>
+
+          <button
+            @click="showReviewModal = true"
+            class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded text-xs text-white transition-colors font-medium"
+          >
+            Review
+          </button>
+
+          <button
+            @click="toggleCommentsPanel"
+            :class="[
+              'p-1.5 rounded relative transition-colors',
+              commentsPanel ? 'bg-blue-600 text-white' : 'bg-slate-700/50 hover:bg-slate-700 text-slate-300'
+            ]"
+            title="Comments"
+          >
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd" />
+            </svg>
+            <span
+              v-if="prDetail?.allComments.length > 0"
+              class="absolute -top-1 -right-1 bg-blue-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-0.5"
+            >
+              {{ prDetail.allComments.length }}
+            </span>
+          </button>
+
+          <a
+            :href="prDetail?.url"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="px-3 py-1.5 bg-slate-700/50 hover:bg-slate-700 border border-slate-600 rounded text-xs text-slate-200 transition-colors"
+          >
+            GitHub
+          </a>
         </div>
       </div>
     </div>
@@ -56,12 +91,12 @@
     </div>
 
     <!-- Main Content - Full Page Layout -->
-    <div v-else-if="prDetail" class="flex flex-1 overflow-hidden">
+    <div v-else-if="prDetail" class="flex flex-1">
       <!-- File Tree Sidebar (Resizable) -->
       <div
         v-if="preferences.fileTreeVisible"
-        :style="{ width: `${fileTreeWidth}px` }"
-        class="flex-shrink-0 overflow-auto bg-slate-900/50 border-r border-slate-700/50 relative"
+        :style="{ width: `${fileTreeWidth}px`, height: '100vh' }"
+        class="flex-shrink-0 overflow-auto bg-slate-900/50 border-r border-slate-700/50 relative sticky top-0"
       >
         <FileTree
           :files="prDetail.files"
@@ -76,12 +111,25 @@
       </div>
 
       <!-- Main Content Area -->
-      <div class="flex-1 flex flex-col overflow-hidden">
+      <div class="flex-1 flex flex-col">
         <!-- Top Section: PR Info -->
-        <div class="flex-shrink-0 border-b border-slate-700/50">
+        <div class="border-b border-slate-700/50">
           <div class="flex gap-4 p-4">
             <!-- Left: Description (Largest) -->
             <div class="flex-1 min-w-0">
+              <!-- Branch Info -->
+              <div class="p-3 bg-slate-900/50 border border-slate-700/50 rounded-lg mb-3">
+                <div class="text-xs text-slate-400 mb-1">Branches</div>
+                <div class="flex items-center gap-1 text-sm">
+                  <span class="text-green-400">{{ prDetail.sourceBranch }}</span>
+                  <svg class="w-3 h-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                  <span class="text-blue-400">{{ prDetail.targetBranch }}</span>
+                </div>
+              </div>
+
+              <!-- Description -->
               <div class="p-3 bg-slate-900/50 border border-slate-700/50 rounded-lg">
                 <div class="text-xs font-semibold text-slate-200 mb-2">Description</div>
                 <div v-if="prDetail.description" class="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
@@ -93,18 +141,6 @@
 
             <!-- Right: Info & Stats -->
             <div class="w-80 flex-shrink-0 space-y-3">
-              <!-- Branch Info -->
-              <div class="p-3 bg-slate-900/50 border border-slate-700/50 rounded-lg">
-                <div class="text-xs text-slate-400 mb-1">Branches</div>
-                <div class="flex items-center gap-1 text-sm">
-                  <span class="text-green-400">{{ prDetail.sourceBranch }}</span>
-                  <svg class="w-3 h-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                  </svg>
-                  <span class="text-blue-400">{{ prDetail.targetBranch }}</span>
-                </div>
-              </div>
-
               <!-- Stats - Compact Table -->
               <div class="p-3 bg-slate-900/50 border border-slate-700/50 rounded-lg">
                 <div class="text-xs text-slate-400 mb-2">Stats</div>
@@ -167,58 +203,12 @@
                   </div>
                 </div>
               </div>
-
-              <!-- Actions -->
-              <div class="p-3 bg-slate-900/50 border border-slate-700/50 rounded-lg space-y-2">
-                <div class="text-xs text-slate-400 mb-1">Actions</div>
-                <div class="grid grid-cols-3 gap-1.5">
-                  <button
-                    @click="showReviewModal = true; reviewAction = 'COMMENT'"
-                    class="px-2 py-1.5 bg-slate-700/50 hover:bg-slate-700 border border-slate-600/50 rounded text-xs text-slate-200 transition-colors"
-                  >
-                    Comment
-                  </button>
-                  <button
-                    @click="showReviewModal = true; reviewAction = 'APPROVED'"
-                    class="px-2 py-1.5 bg-green-600/90 hover:bg-green-600 border border-green-500/50 rounded text-xs text-white transition-colors"
-                  >
-                    Approve
-                  </button>
-                  <button
-                    @click="showReviewModal = true; reviewAction = 'CHANGES_REQUESTED'"
-                    class="px-2 py-1.5 bg-red-600/90 hover:bg-red-600 border border-red-500/50 rounded text-xs text-white transition-colors"
-                  >
-                    Changes
-                  </button>
-                </div>
-                <div class="grid grid-cols-2 gap-1.5">
-                  <button
-                    @click="toggleCommentsPanel"
-                    :class="[
-                      'px-2 py-1.5 rounded text-xs border transition-colors',
-                      commentsPanel
-                        ? 'bg-blue-600 border-blue-500 text-white'
-                        : 'bg-slate-700/50 border-slate-600 hover:bg-slate-700 text-slate-200'
-                    ]"
-                  >
-                    Comments ({{ prDetail.allComments.length }})
-                  </button>
-                  <a
-                    :href="prDetail.url"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="px-2 py-1.5 bg-slate-700/50 border border-slate-600 rounded hover:bg-slate-700 text-slate-200 text-xs transition-colors text-center"
-                  >
-                    GitHub
-                  </a>
-                </div>
-              </div>
             </div>
           </div>
         </div>
 
         <!-- Bottom Section: File Diffs -->
-        <div class="flex-1 overflow-auto">
+        <div class="flex-1">
           <div class="px-4 py-4">
             <div class="space-y-3">
                <!-- Files Changed Header -->
@@ -298,12 +288,47 @@
         @click.self="showReviewModal = false"
       >
         <div class="bg-slate-900 border border-slate-700/50 rounded-lg p-5 max-w-lg w-full shadow-2xl">
-          <h3 class="text-base font-semibold text-slate-200 mb-3">
-            {{ reviewAction === 'APPROVED' ? 'Approve PR' : reviewAction === 'CHANGES_REQUESTED' ? 'Request Changes' : 'Add Comment' }}
-          </h3>
+          <h3 class="text-base font-semibold text-slate-200 mb-3">Review PR</h3>
+
+          <div class="grid grid-cols-3 gap-2 mb-3">
+            <button
+              @click="reviewAction = 'APPROVED'"
+              :class="[
+                'px-2 py-2 rounded text-xs font-medium transition-colors border',
+                reviewAction === 'APPROVED'
+                  ? 'bg-green-600 border-green-500 text-white'
+                  : 'bg-slate-800/50 border-slate-700 hover:bg-slate-800 text-slate-300'
+              ]"
+            >
+              Approve
+            </button>
+            <button
+              @click="reviewAction = 'CHANGES_REQUESTED'"
+              :class="[
+                'px-2 py-2 rounded text-xs font-medium transition-colors border',
+                reviewAction === 'CHANGES_REQUESTED'
+                  ? 'bg-red-600 border-red-500 text-white'
+                  : 'bg-slate-800/50 border-slate-700 hover:bg-slate-800 text-slate-300'
+              ]"
+            >
+              Changes
+            </button>
+            <button
+              @click="reviewAction = 'COMMENT'"
+              :class="[
+                'px-2 py-2 rounded text-xs font-medium transition-colors border',
+                reviewAction === 'COMMENT'
+                  ? 'bg-blue-600 border-blue-500 text-white'
+                  : 'bg-slate-800/50 border-slate-700 hover:bg-slate-800 text-slate-300'
+              ]"
+            >
+              Comment
+            </button>
+          </div>
+
           <textarea
             v-model="reviewComment"
-            placeholder="Add your review comment (optional)..."
+            :placeholder="reviewAction === 'APPROVED' ? 'Add your approval comment (optional)...' : reviewAction === 'CHANGES_REQUESTED' ? 'Describe the changes requested...' : 'Add your comment (optional)...'"
             class="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 rounded text-slate-200 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 mb-3"
             rows="4"
           />
