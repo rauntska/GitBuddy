@@ -164,45 +164,31 @@
                 </table>
               </div>
 
-              <!-- Reviewers - Compact with Icons -->
-              <div v-if="prDetail.reviews.length > 0" class="p-3 bg-slate-900/50 border border-slate-700/50 rounded-lg">
-                <div class="text-xs text-slate-400 mb-2">Reviewers</div>
-                <div class="space-y-1.5">
-                  <div
-                    v-for="review in prDetail.reviews"
-                    :key="review.id"
-                    class="flex items-center gap-2"
-                  >
-                    <img
-                      v-if="review.reviewerAvatar"
-                      :src="review.reviewerAvatar"
-                      :alt="review.reviewer"
-                      class="w-5 h-5 rounded-full"
-                    />
-                    <span class="text-xs text-slate-200 flex-1 truncate">{{ review.reviewer }}</span>
-                    <span
-                      :class="[
-                        'text-xs',
-                        review.state === 'APPROVED' ? 'text-green-400' :
-                        review.state === 'CHANGES_REQUESTED' ? 'text-red-400' :
-                        review.state === 'COMMENTED' ? 'text-blue-400' :
-                        'text-slate-500'
-                      ]"
+                <!-- Reviewers - Compact with Icons -->
+                <div v-if="prDetail.reviews.length > 0" class="p-3 bg-slate-900/50 border border-slate-700/50 rounded-lg">
+                  <div class="text-xs text-slate-400 mb-2">Reviewers</div>
+                  <div class="space-y-1.5">
+                    <div
+                      v-for="review in prDetail.reviews"
+                      :key="review.id"
+                      class="flex items-center gap-2"
                     >
-                      <svg v-if="review.state === 'APPROVED'" class="w-3 h-3 inline" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                      </svg>
-                      <svg v-else-if="review.state === 'CHANGES_REQUESTED'" class="w-3 h-3 inline" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                      </svg>
-                      <svg v-else-if="review.state === 'COMMENTED'" class="w-3 h-3 inline" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd" />
-                      </svg>
-                      <span v-else class="opacity-0">•</span>
-                    </span>
+                      <img
+                        v-if="review.reviewerAvatar"
+                        :src="review.reviewerAvatar"
+                        :alt="review.reviewer"
+                        class="w-5 h-5 rounded-full"
+                      />
+                      <span class="text-xs text-slate-200 flex-1 truncate">{{ review.reviewer }}</span>
+                      <component
+                        v-if="getReviewStatusIcon(review.state)"
+                        :is="getReviewStatusIcon(review.state)"
+                        :class="['w-5 h-5', getReviewStatusColor(review.state)]"
+                        :title="getReviewStatusLabel(review.state)"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
             </div>
           </div>
         </div>
@@ -368,6 +354,7 @@ import FileTree from '../components/FileTree.vue';
 import CommentsPanel from '../components/CommentsPanel.vue';
 import StatusBadge from '../components/StatusBadge.vue';
 import type { Comment } from '../types';
+import { CheckIcon, ChatBubbleLeftIcon, ArrowPathIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps<{
   id: number;
@@ -588,5 +575,26 @@ const handleToggleViewed = async (filePath: string, viewed: boolean) => {
 
   // Save to preferences and sync with GitHub
   await saveViewedFiles();
+};
+
+const getReviewStatusIcon = (state: string) => {
+  if (state === 'Approved') return CheckIcon;
+  if (state === 'Commented') return ChatBubbleLeftIcon;
+  if (state === 'ChangesRequested') return ArrowPathIcon;
+  return null;
+};
+
+const getReviewStatusColor = (state: string): string => {
+  if (state === 'Approved') return 'text-green-500';
+  if (state === 'Commented') return 'text-orange-500';
+  if (state === 'ChangesRequested') return 'text-orange-500';
+  return 'text-gray-500';
+};
+
+const getReviewStatusLabel = (state: string): string => {
+  if (state === 'Approved') return 'Accepted';
+  if (state === 'Commented') return 'Commented';
+  if (state === 'ChangesRequested') return 'Requested Changes';
+  return state;
 };
 </script>
