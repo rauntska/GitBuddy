@@ -130,12 +130,12 @@
                       </svg>
                     </button>
                   </td>
-                    <code
-                      :class="[
-                        'px-3 py-0.5 font-mono text-sm overflow-hidden',
-                        line.type === 'add' ? 'bg-green-500/5' : 'bg-slate-900/30'
-                      ]"
-                    >
+                  <td
+                    :class="[
+                      'px-3 py-0.5 font-mono text-sm overflow-hidden',
+                      line.type === 'add' ? 'bg-green-500/5' : 'bg-slate-900/30'
+                    ]"
+                  >
                     <span v-if="line.type === 'add'" class="text-green-400 select-none">+</span>
                     <span v-else-if="line.type === 'delete'" class="text-red-400 select-none mr-1">-</span>
                     <span v-else class="opacity-0 select-none mr-1">·</span>
@@ -215,6 +215,7 @@
                   </td>
                 </tr>
               </template>
+            </template>
             </tbody>
           </table>
         </div>
