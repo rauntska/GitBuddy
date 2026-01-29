@@ -9,8 +9,6 @@ namespace Graphite.Api.Services;
 
 public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
 {
-    private string? _cachedJwt;
-    private DateTime _jwtExpiration = DateTime.MinValue;
     private string? _cachedInstallationToken;
     private DateTime _installationTokenExpiration = DateTime.MinValue;
 
@@ -327,41 +325,154 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
         
         if (_cachedInstallationToken == null || DateTime.UtcNow >= _installationTokenExpiration)
         {
-            var jwt = GenerateJwt(config.AppId, config.PrivateKey);
-            
-            var client = new GitHubClient(new Octokit.ProductHeaderValue("Graphite-PR-Dashboard"))
+            try
             {
-                Credentials = new Credentials(jwt)
-            };
+                var jwt = GenerateJwt(config.AppId, config.PrivateKey);
+                logger.LogInformation("Generated JWT for App ID: {AppId}", config.AppId);
+                
+                var client = new GitHubClient(new Octokit.ProductHeaderValue("Graphite-PR-Dashboard"))
+                {
+                    Credentials = new Credentials(jwt, AuthenticationType.Bearer)
+                };
 
-            var installationToken = await client.GitHubApps.CreateInstallationToken(installationId);
-            _cachedInstallationToken = installationToken.Token;
-            _installationTokenExpiration = installationToken.ExpiresAt.UtcDateTime.AddMinutes(-5);
+                var installationToken = await client.GitHubApps.CreateInstallationToken(installationId);
+                _cachedInstallationToken = installationToken.Token;
+                _installationTokenExpiration = installationToken.ExpiresAt.UtcDateTime.AddMinutes(-5);
+                logger.LogInformation("Successfully obtained installation token");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error generating GitHub App JWT or obtaining installation token. AppId: {AppId}, InstallationId: {InstallationId}", config.AppId, config.InstallationId);
+                throw;
+            }
         }
 
         return _cachedInstallationToken;
     }
 
-    private string GenerateJwt(string appId, string privateKeyPem)
+private string GenerateJwt(string appId, string privateKeyPem)
+{
+    try
     {
-        var rsa = RSA.Create();
-        rsa.ImportFromPem(privateKeyPem);
-        
-        var securityKey = new Microsoft.IdentityModel.Tokens.RsaSecurityKey(rsa)
+        if (string.IsNullOrWhiteSpace(privateKeyPem))
         {
-            KeyId = appId
-        };
-
-        var credentials = new Microsoft.IdentityModel.Tokens.SigningCredentials(
-            securityKey,
-            Microsoft.IdentityModel.Tokens.SecurityAlgorithms.RsaSha256);
-
-        var token = new JwtSecurityToken(
-            issuer: appId,
-            audience: "api.github.com",
-            expires: DateTime.UtcNow.AddMinutes(10),
-            signingCredentials: credentials);
-
-        return new JwtSecurityTokenHandler().WriteToken(token);
+            throw new ArgumentException("Private key is empty or whitespace", nameof(privateKeyPem));
+        }
+        
+        // Normalize line endings - handle both actual newlines and escaped \n characters
+        // First, if the key is stored with literal \n characters, convert them to actual newlines
+        if (privateKeyPem.Contains("\\n"))
+        {
+            privateKeyPem = privateKeyPem.Replace("\\n", "\n");
+        }
+        
+        // Ensure consistent line endings (LF only)
+        privateKeyPem = privateKeyPem.Replace("\r\n", "\n").Replace("\r", "\n");
+        
+        // Trim any extra whitespace from start and end
+        privateKeyPem = privateKeyPem.Trim();
+        
+        // Ensure the key has the proper BEGIN and END markers
+        if (!privateKeyPem.StartsWith("-----BEGIN"))
+        {
+            throw new ArgumentException("Private key does not start with BEGIN marker", nameof(privateKeyPem));
+        }
+        
+        if (!privateKeyPem.Contains("-----END"))
+        {
+            throw new ArgumentException("Private key does not contain END marker", nameof(privateKeyPem));
+        }
+        
+        logger.LogInformation("Generating JWT for App ID: {AppId}", appId);
+        
+        // Import the RSA private key
+        var rsa = RSA.Create();
+        try
+        {
+            rsa.ImportFromPem(privateKeyPem);
+            logger.LogInformation("Successfully imported RSA private key. Key size: {KeySize} bits", rsa.KeySize);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to import RSA private key");
+            throw;
+        }
+        
+        // Create the JWT payload
+        var now = DateTimeOffset.UtcNow;
+        var issuedAt = now.AddSeconds(-60); // Backdate by 60 seconds to account for clock drift
+        var expiresAt = now.AddMinutes(10); // GitHub max is 10 minutes
+        
+        var iat = issuedAt.ToUnixTimeSeconds();
+        var exp = expiresAt.ToUnixTimeSeconds();
+        
+        // Create JWT header - must be minimal
+        var headerJson = "{\"alg\":\"RS256\",\"typ\":\"JWT\"}";
+        
+        // Create payload JSON manually to ensure correct format (no quotes around numbers)
+        var payloadJson = $"{{\"iat\":{iat},\"exp\":{exp},\"iss\":\"{appId}\"}}";
+        
+        logger.LogInformation("Generating JWT with iat={Iat}, exp={Exp}, iss={Iss}", iat, exp, appId);
+        
+        var headerBase64 = Base64UrlEncode(System.Text.Encoding.UTF8.GetBytes(headerJson));
+        var payloadBase64 = Base64UrlEncode(System.Text.Encoding.UTF8.GetBytes(payloadJson));
+        
+        var unsignedToken = $"{headerBase64}.{payloadBase64}";
+        
+        // Sign the token
+        var dataToSign = System.Text.Encoding.UTF8.GetBytes(unsignedToken);
+        var signature = rsa.SignData(dataToSign, System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1);
+        var signatureBase64 = Base64UrlEncode(signature);
+        
+        var jwt = $"{unsignedToken}.{signatureBase64}";
+        
+        logger.LogInformation("JWT generated successfully. Length: {Length}", jwt.Length);
+        
+        // Decode and verify the JWT structure (for debugging)
+        try
+        {
+            var parts = jwt.Split('.');
+            var headerDecoded = System.Text.Encoding.UTF8.GetString(Base64UrlDecode(parts[0]));
+            var payloadDecoded = System.Text.Encoding.UTF8.GetString(Base64UrlDecode(parts[1]));
+            logger.LogInformation("JWT Header (decoded): {Header}", headerDecoded);
+            logger.LogInformation("JWT Payload (decoded): {Payload}", payloadDecoded);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Could not decode JWT for verification");
+        }
+        
+        return jwt;
     }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error generating JWT for App ID: {AppId}", appId);
+        throw;
+    }
+}
+
+private static string Base64UrlEncode(byte[] input)
+{
+    var output = Convert.ToBase64String(input);
+    output = output.TrimEnd('='); // Remove padding
+    output = output.Replace('+', '-'); // URL-safe
+    output = output.Replace('/', '_'); // URL-safe
+    return output;
+}
+
+private static byte[] Base64UrlDecode(string input)
+{
+    var output = input;
+    output = output.Replace('-', '+'); // Reverse URL-safe
+    output = output.Replace('_', '/'); // Reverse URL-safe
+    
+    // Add padding
+    switch (output.Length % 4)
+    {
+        case 2: output += "=="; break;
+        case 3: output += "="; break;
+    }
+    
+    return Convert.FromBase64String(output);
+}
 }
