@@ -49,6 +49,23 @@
             </span>
           </button>
 
+          <button
+            @click="refreshFileViewStates"
+            :disabled="refreshingViewStates"
+            class="px-3 py-1.5 bg-slate-700/50 hover:bg-slate-700 border border-slate-600 rounded text-xs text-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+            title="Refresh file viewed states from GitHub"
+          >
+            <svg 
+              :class="['w-3.5 h-3.5', { 'animate-spin': refreshingViewStates }]" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>{{ refreshingViewStates ? 'Refreshing...' : 'Refresh' }}</span>
+          </button>
+
           <a
             :href="prDetail?.url"
             target="_blank"
@@ -351,6 +368,7 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import { usePRDetail } from '../composables/usePRDetail';
 import { useUserPreferences } from '../composables/useUserPreferences';
+import { apiService } from '../services/api';
 import FileDiffViewer from '../components/FileDiffViewer.vue';
 import FileTree from '../components/FileTree.vue';
 import CommentsPanel from '../components/CommentsPanel.vue';
@@ -385,6 +403,7 @@ const reviewAction = ref<'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENT'>('COMMENT'
 const reviewComment = ref('');
 const submittingReview = ref(false);
 const fileRefs = ref<Map<string, any>>(new Map());
+const refreshingViewStates = ref(false);
 
 // Resizable widths
 const fileTreeWidth = ref(256);
@@ -402,6 +421,9 @@ onMounted(async () => {
   commentsPanelWidth.value = preferences.value.commentsPanelWidth;
   
   await fetchPRDetail(props.id);
+
+  // Fetch user's file viewed states from GitHub
+  await refreshFileViewStates();
 
   // Load viewed files from preferences
   if (preferences.value.viewedFilesByPr && preferences.value.viewedFilesByPr[props.id]) {
@@ -560,9 +582,38 @@ const syncViewedFilesToGitHub = async (prId: number, viewedFiles: string[]) => {
   console.log('Syncing viewed files to GitHub for PR', prId, ':', viewedFiles);
 };
 
+const refreshFileViewStates = async () => {
+  if (!prDetail.value || refreshingViewStates.value) return;
+  
+  refreshingViewStates.value = true;
+  try {
+    const updatedFiles = await apiService.refreshFileViewStates(props.id);
+    
+    if (prDetail.value) {
+      // Merge the updated viewed states with existing files
+      prDetail.value.files = prDetail.value.files.map(file => {
+        const updatedFile = updatedFiles.find(f => f.path === file.path);
+        if (updatedFile) {
+          return {
+            ...file,
+            viewedState: updatedFile.viewedState,
+            viewedAt: updatedFile.viewedAt
+          };
+        }
+        return file;
+      });
+    }
+  } catch (error) {
+    console.error('Failed to refresh file viewed states:', error);
+  } finally {
+    refreshingViewStates.value = false;
+  }
+};
+
 const isFileViewed = (filePath: string): boolean => {
-  if (!prDetail.value?.viewedFiles) return false;
-  return prDetail.value.viewedFiles.includes(filePath);
+  if (!prDetail.value) return false;
+  const file = prDetail.value.files.find(f => f.path === filePath);
+  return file?.viewedState === 'VIEWED' || file?.viewed === true || (prDetail.value.viewedFiles?.includes(filePath) ?? false);
 };
 
 const handleToggleViewed = async (filePath: string, viewed: boolean) => {
@@ -580,12 +631,14 @@ const handleToggleViewed = async (filePath: string, viewed: boolean) => {
     prDetail.value.viewedFiles = prDetail.value.viewedFiles.filter(f => f !== filePath);
   }
 
-  // Update file object
+  // Update file object with viewedState
   const fileIndex = prDetail.value.files.findIndex(f => f.path === filePath);
   if (fileIndex !== -1) {
     prDetail.value.files[fileIndex] = {
       ...prDetail.value.files[fileIndex],
-      viewed
+      viewed,
+      viewedState: viewed ? 'VIEWED' : 'UNVIEWED',
+      viewedAt: viewed ? new Date().toISOString() : null
     };
   }
 

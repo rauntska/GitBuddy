@@ -8,7 +8,7 @@ public interface IGitHubService
     Task<List<GitHubReviewData>> GetReviewsAsync(string organization, string repository, int pullRequestNumber, GitHubConfig config);
     Task<List<GitHubReviewThreadData>> GetReviewThreadsAsync(string organization, string repository, int pullRequestNumber, GitHubConfig config);
     Task<List<GitHubCommentData>> GetCommentsAsync(string organization, string repository, int pullRequestNumber, GitHubConfig config);
-    Task<List<GitHubFileDiffData>> GetFileDiffsAsync(string organization, string repository, int pullRequestNumber, GitHubConfig config);
+    Task<List<GitHubFileDiffData>> GetFileDiffsAsync(string organization, string repository, int pullRequestNumber, GitHubConfig config, string? userAccessToken = null);
 }
 
 public record GitHubPRData(
@@ -61,7 +61,8 @@ public record GitHubFileDiffData(
     int Additions,
     int Deletions,
     int Changes,
-    string? Patch
+    string? Patch,
+    string ViewerViewedState
 );
 
 public record GitHubCommentData(

@@ -89,7 +89,9 @@ export interface FileDiff {
   changes?: number;
   patch?: string;
   language?: string;
-  viewed?: boolean;
+  viewed?: boolean; // Legacy, keeping for compatibility
+  viewedState?: 'VIEWED' | 'UNVIEWED' | 'DISMISSED' | null;
+  viewedAt?: string | null;
 }
 
 export interface DiffHunk {

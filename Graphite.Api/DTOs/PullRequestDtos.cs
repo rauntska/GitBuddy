@@ -66,7 +66,9 @@ public record FileDiffDto(
     int Deletions,
     int Changes,
     string? Patch,
-    string? Language
+    string? Language,
+    string? ViewedState,
+    DateTime? ViewedAt
 );
 
 public record PRDetailDto(

@@ -2,6 +2,7 @@ using Graphite.Api.DTOs;
 using Graphite.Api.Extensions;
 using Graphite.Api.Services;
 using Graphite.Domain.Data;
+using Graphite.Domain.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
@@ -15,11 +16,13 @@ public class PullRequestsController : ControllerBase
 {
     private readonly ICacheService _cacheService;
     private readonly AppDbContext _context;
+    private readonly IGitHubService _gitHubService;
 
-    public PullRequestsController(ICacheService cacheService, AppDbContext context)
+    public PullRequestsController(ICacheService cacheService, AppDbContext context, IGitHubService gitHubService)
     {
         _cacheService = cacheService;
         _context = context;
+        _gitHubService = gitHubService;
     }
 
     [HttpGet]
@@ -57,7 +60,24 @@ public class PullRequestsController : ControllerBase
             .Where(c => c.PullRequestId == id)
             .ToListAsync();
 
-        return Ok(pr.ToDetailDto(files, comments));
+        // Get user ID if authenticated
+        int? userId = null;
+        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (!string.IsNullOrEmpty(userIdClaim) && int.TryParse(userIdClaim, out var parsedUserId))
+        {
+            userId = parsedUserId;
+        }
+
+        // Fetch user's viewed states if authenticated
+        List<UserFileViewedState>? viewedStates = null;
+        if (userId.HasValue)
+        {
+            viewedStates = await _context.UserFileViewedStates
+                .Where(uvs => uvs.UserId == userId.Value && files.Select(f => f.Id).Contains(uvs.FileDiffId))
+                .ToListAsync();
+        }
+
+        return Ok(pr.ToDetailDto(files, comments, viewedStates));
     }
 
     [HttpGet("stats")]
@@ -183,5 +203,107 @@ public class PullRequestsController : ControllerBase
         // In a real implementation, this would use GitHub API
         // For now, we'll just return a success message
         return Ok(new { message = "Pull request merge initiated" });
+    }
+
+    [HttpPost("{id}/file-diffs/refresh-viewed-states")]
+    [Authorize]
+    public async Task<IActionResult> RefreshFileViewedStates(int id)
+    {
+        // Get current user from JWT
+        var userIdClaim = User.FindFirst("UserId")?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized(new { message = "User not authenticated" });
+        }
+
+        // Get PR details
+        var pr = await _context.PullRequests
+            .FirstOrDefaultAsync(p => p.Id == id);
+
+        if (pr == null)
+        {
+            return NotFound(new { message = "Pull request not found" });
+        }
+
+        // Get user's token from database
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.Id == userId);
+        
+        if (user == null || string.IsNullOrEmpty(user.AccessToken))
+        {
+            return Unauthorized(new { message = "User token not available" });
+        }
+
+        // Get config
+        var config = await _cacheService.GetConfigAsync();
+        if (config == null)
+        {
+            return BadRequest(new { message = "GitHub configuration not found" });
+        }
+
+        try
+        {
+            // Fetch file diffs with user's viewed state from GitHub
+            var fileDiffs = await _gitHubService.GetFileDiffsAsync(
+                config.Organization,
+                pr.Repository,
+                pr.GitHubId,
+                config,
+                user.AccessToken // Use user's personal token
+            );
+
+            // Get existing file diffs from database
+            var dbFileDiffs = await _context.FileDiffs
+                .Where(f => f.PullRequestId == id)
+                .ToListAsync();
+
+            // Update database with viewed states
+            foreach (var fileDiff in fileDiffs)
+            {
+                var dbFileDiff = dbFileDiffs.FirstOrDefault(f => f.Path == fileDiff.Path);
+                if (dbFileDiff != null)
+                {
+                    // Update or create viewed state
+                    var existingState = await _context.UserFileViewedStates
+                        .FirstOrDefaultAsync(uvs => uvs.UserId == userId && uvs.FileDiffId == dbFileDiff.Id);
+
+                    if (existingState != null)
+                    {
+                        existingState.ViewedState = fileDiff.ViewerViewedState;
+                        existingState.UpdatedAt = DateTime.UtcNow;
+                    }
+                    else
+                    {
+                        // Create new viewed state
+                        _context.UserFileViewedStates.Add(new UserFileViewedState
+                        {
+                            UserId = userId,
+                            FileDiffId = dbFileDiff.Id,
+                            ViewedState = fileDiff.ViewerViewedState,
+                            UpdatedAt = DateTime.UtcNow
+                        });
+                    }
+                }
+            }
+
+            await _context.SaveChangesAsync();
+
+            // Return updated file diffs with viewed state
+            var viewedStates = await _context.UserFileViewedStates
+                .Where(uvs => uvs.UserId == userId && dbFileDiffs.Select(f => f.Id).Contains(uvs.FileDiffId))
+                .ToListAsync();
+
+            var result = dbFileDiffs.Select(file =>
+            {
+                var viewedState = viewedStates.FirstOrDefault(vs => vs.FileDiffId == file.Id);
+                return file.ToDto(viewedState?.ViewedState, viewedState?.UpdatedAt);
+            }).ToList();
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to fetch file viewed states", error = ex.Message });
+        }
     }
 }

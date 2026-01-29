@@ -70,7 +70,7 @@ public static class MappingExtensions
         );
     }
 
-    public static FileDiffDto ToDto(this FileDiff fileDiff)
+    public static FileDiffDto ToDto(this FileDiff fileDiff, string? viewedState = null, DateTime? viewedAt = null)
     {
         return new FileDiffDto(
             fileDiff.Id,
@@ -81,12 +81,21 @@ public static class MappingExtensions
             fileDiff.Deletions,
             fileDiff.Changes,
             fileDiff.Patch,
-            fileDiff.Language
+            fileDiff.Language,
+            viewedState,
+            viewedAt
         );
     }
 
-    public static PRDetailDto ToDetailDto(this PullRequest pr, List<FileDiff> files, List<Comment> comments)
+    public static PRDetailDto ToDetailDto(this PullRequest pr, List<FileDiff> files, List<Comment> comments, List<UserFileViewedState>? viewedStates = null)
     {
+        // Build file diffs with viewed states
+        var fileDtos = files.Select(f =>
+        {
+            var viewedState = viewedStates?.FirstOrDefault(vs => vs.FileDiffId == f.Id);
+            return f.ToDto(viewedState?.ViewedState, viewedState?.UpdatedAt);
+        }).ToList();
+
         return new PRDetailDto(
             pr.Id,
             pr.GitHubId,
@@ -129,7 +138,7 @@ public static class MappingExtensions
                 rt.FirstCommentBody,
                 rt.CommentCount
             )).ToList(),
-            files.Select(f => f.ToDto()).ToList(),
+            fileDtos,
             comments.Select(c => c.ToDto()).ToList()
         );
     }

@@ -269,40 +269,66 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
         }
     }
 
-    public async Task<List<GitHubFileDiffData>> GetFileDiffsAsync(string organization, string repository, int pullRequestNumber, GitHubConfig config)
+    public async Task<List<GitHubFileDiffData>> GetFileDiffsAsync(string organization, string repository, int pullRequestNumber, GitHubConfig config, string? userAccessToken = null)
     {
         try
         {
-            var accessToken = await GetAccessTokenAsync(config);
-            var client = new GitHubClient(new Octokit.ProductHeaderValue("Graphite-PR-Dashboard"))
-            {
-                Credentials = new Credentials(accessToken)
-            };
+            // Use user token if provided, otherwise use app/installation token
+            var accessToken = string.IsNullOrEmpty(userAccessToken) 
+                ? await GetAccessTokenAsync(config) 
+                : userAccessToken;
 
-            var files = await client.PullRequest.Files(organization, repository, pullRequestNumber);
+            var connection = new Octokit.GraphQL.Connection(
+                new Octokit.GraphQL.ProductHeaderValue("Graphite-PR-Dashboard"), 
+                accessToken);
+
+            var filesQuery = new Octokit.GraphQL.Query()
+                .Repository(organization, repository)
+                .PullRequest(pullRequestNumber)
+                .Files(100, null, null, null)
+                .Nodes
+                .Select(f => new
+                {
+                    f.Path,
+                    f.Additions,
+                    f.Deletions,
+                    ViewerViewedState = f.ViewerViewedState.ToString()
+                })
+                .Compile();
+
+            var files = await connection.Run(filesQuery);
 
             return files.Select(file =>
             {
-                var status = file.Status.ToLowerInvariant();
-                if (status == "removed") status = "deleted";
-                if (status == "renamed") status = "renamed";
-                if (status == "added") status = "added";
-                if (status == "modified") status = "modified";
-
+                // Determine status based on additions/deletions
+                var status = "modified"; // default
+                if (file.Additions > 0 && file.Deletions == 0)
+                {
+                    status = "added";
+                }
+                else if (file.Deletions > 0 && file.Additions == 0)
+                {
+                    status = "deleted";
+                }
+                
+                var changes = file.Additions + file.Deletions;
+                
                 return new GitHubFileDiffData(
-                    file.FileName,
-                    file.PreviousFileName,
+                    file.Path,
+                    null, // previousFileName not available in GraphQL
                     status,
                     file.Additions,
                     file.Deletions,
-                    file.Changes,
-                    file.Patch
+                    changes,
+                    null, // patch not available in GraphQL
+                    file.ViewerViewedState ?? "UNVIEWED"
                 );
             }).ToList();
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error fetching file diffs for PR {Organization}/{Repository}#{PullRequestNumber}", organization, repository, pullRequestNumber);
+            logger.LogError(ex, "Error fetching file diffs for PR {Organization}/{Repository}#{PullRequestNumber}", 
+                organization, repository, pullRequestNumber);
             return new List<GitHubFileDiffData>();
         }
     }

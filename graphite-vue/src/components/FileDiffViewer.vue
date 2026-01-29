@@ -7,6 +7,15 @@
       @click="onHeaderClick"
     >
       <div class="flex items-center gap-2 min-w-0">
+        <!-- Viewed Checkbox -->
+        <input
+          type="checkbox"
+          :checked="file.viewedState === 'VIEWED'"
+          @click.stop="toggleViewed"
+          class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-green-500 focus:ring-green-500 focus:ring-offset-slate-900 cursor-pointer"
+          title="Mark as viewed"
+        />
+
         <!-- Expand/Collapse Icon -->
         <svg
           :class="['w-3.5 h-3.5 text-slate-400 transition-transform flex-shrink-0', { 'rotate-90': expanded }]"
@@ -24,6 +33,14 @@
 
         <!-- File Path -->
         <span class="text-sm font-mono text-slate-200 truncate">{{ file.path }}</span>
+        
+        <!-- Viewed State Badge -->
+        <span 
+          v-if="file.viewedState && file.viewedState !== 'UNVIEWED'"
+          :class="['text-xs px-2 py-0.5 rounded font-medium', getViewedStateClass(file.viewedState)]"
+        >
+          {{ getViewedStateLabel(file.viewedState) }}
+        </span>
       </div>
 
       <!-- File Stats -->
@@ -389,11 +406,11 @@ const props = defineProps<{
   onAddComment: (line: number, body: string) => Promise<void>;
   initialExpanded?: boolean;
   viewed?: boolean;
+  onToggleViewed?: (path: string, viewed: boolean) => void;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   toggleViewed: [path: string, viewed: boolean];
-  changeViewed: [path: string, viewed: boolean];
 }>();
 
 const { preferences, setDiffViewMode } = useUserPreferences();
@@ -442,6 +459,32 @@ const fileComments = computed(() =>
 
 const onHeaderClick = () => {
   expanded.value = !expanded.value;
+};
+
+const toggleViewed = () => {
+  const newViewedState = props.file.viewedState === 'VIEWED';
+  if (props.file.path) {
+    emit('toggleViewed', props.file.path, !newViewedState);
+    if (props.onToggleViewed) {
+      props.onToggleViewed(props.file.path, !newViewedState);
+    }
+  }
+};
+
+const getViewedStateClass = (state: string): string => {
+  switch (state) {
+    case 'VIEWED': return 'bg-green-900/30 text-green-400 border border-green-700/50';
+    case 'DISMISSED': return 'bg-orange-900/30 text-orange-400 border border-orange-700/50';
+    default: return 'bg-slate-800 text-slate-400';
+  }
+};
+
+const getViewedStateLabel = (state: string): string => {
+  switch (state) {
+    case 'VIEWED': return 'Viewed';
+    case 'DISMISSED': return 'Dismissed';
+    default: return 'Unviewed';
+  }
 };
 
 const toggleViewMode = async () => {

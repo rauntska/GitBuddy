@@ -15,6 +15,7 @@ public class AppDbContext : DbContext
     public DbSet<FileDiff> FileDiffs { get; set; }
     public DbSet<User> Users { get; set; }
     public DbSet<UserPreferences> UserPreferences { get; set; }
+    public DbSet<UserFileViewedState> UserFileViewedStates { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -105,6 +106,22 @@ public class AppDbContext : DbContext
         {
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.UserId).IsUnique();
+        });
+
+        modelBuilder.Entity<UserFileViewedState>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.UserId, e.FileDiffId }).IsUnique();
+            
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            entity.HasOne(e => e.FileDiff)
+                .WithMany(f => f.UserViewStates)
+                .HasForeignKey(e => e.FileDiffId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

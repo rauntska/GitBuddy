@@ -14,4 +14,5 @@ public class FileDiff
     public string? Language { get; set; }
     
     public PullRequest PullRequest { get; set; } = null!;
+    public List<UserFileViewedState> UserViewStates { get; set; } = new();
 }

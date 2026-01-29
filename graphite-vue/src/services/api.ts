@@ -60,6 +60,12 @@ export const apiService = {
     return response.data;
   },
 
+  // Refresh file viewed states from GitHub
+  refreshFileViewStates: async (prId: number): Promise<FileDiff[]> => {
+    const response = await api.post<FileDiff[]>(`/pullrequests/${prId}/file-diffs/refresh-viewed-states`);
+    return response.data;
+  },
+
   // User Preferences endpoints
   getUserPreferences: async (): Promise<UserPreferences> => {
     const response = await api.get<UserPreferences>('/userpreferences');
