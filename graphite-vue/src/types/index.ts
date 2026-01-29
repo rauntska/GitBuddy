@@ -60,6 +60,10 @@ export interface Settings {
   personalAccessToken: string;
   refreshIntervalMinutes: number;
   lastRefresh?: string;
+  appId: string;
+  privateKey: string;
+  installationId: string;
+  useGitHubApp: boolean;
 }
 
 export interface Comment {

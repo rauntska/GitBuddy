@@ -32,6 +32,38 @@
 
         <div>
           <label class="block text-sm font-medium text-slate-300 mb-2">
+            Authentication Method
+          </label>
+          <div class="flex gap-2">
+            <button
+              type="button"
+              @click="localSettings.useGitHubApp = false"
+              :class="[
+                'flex-1 px-4 py-2.5 rounded-lg font-medium transition-colors',
+                localSettings.useGitHubApp 
+                  ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' 
+                  : 'bg-blue-600 text-white'
+              ]"
+            >
+              Personal Access Token
+            </button>
+            <button
+              type="button"
+              @click="localSettings.useGitHubApp = true"
+              :class="[
+                'flex-1 px-4 py-2.5 rounded-lg font-medium transition-colors',
+                localSettings.useGitHubApp 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+              ]"
+            >
+              GitHub App
+            </button>
+          </div>
+        </div>
+
+        <div v-if="!localSettings.useGitHubApp">
+          <label class="block text-sm font-medium text-slate-300 mb-2">
             Personal Access Token
           </label>
           <input
@@ -52,6 +84,64 @@
               Create new token →
             </a>
           </p>
+        </div>
+
+        <div v-else class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">
+              App ID
+            </label>
+            <input
+              v-model="localSettings.appId"
+              type="text"
+              required
+              placeholder="e.g., 123456"
+              class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">
+              Private Key (PEM format)
+            </label>
+            <textarea
+              v-model="localSettings.privateKey"
+              required
+              rows="6"
+              placeholder="-----BEGIN RSA PRIVATE KEY-----
+MIIEpAIBAAKCAQEA...
+-----END RSA PRIVATE KEY-----"
+              class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-mono text-xs resize-none"
+            />
+            <p class="mt-2 text-xs text-slate-500">
+              Download from GitHub App settings page.
+              <a
+                href="https://github.com/settings/apps"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-blue-400 hover:text-blue-300"
+              >
+                Manage GitHub Apps →
+              </a>
+            </p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">
+              Installation ID
+            </label>
+            <input
+              v-model="localSettings.installationId"
+              type="text"
+              required
+              placeholder="e.g., 987654"
+              class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            />
+            <p class="mt-2 text-xs text-slate-500">
+              Found in the URL when viewing app installation: 
+              <code class="bg-slate-700 px-1 rounded">/settings/installations/[INSTALLATION_ID]</code>
+            </p>
+          </div>
         </div>
 
         <div>
@@ -140,12 +230,23 @@ const localSettings = ref({
   personalAccessToken: '',
   refreshIntervalMinutes: 5,
   lastRefresh: '',
+  appId: '',
+  privateKey: '',
+  installationId: '',
+  useGitHubApp: false,
 });
 
 watch(
   () => settings.value,
   (newSettings) => {
-    localSettings.value = { ...newSettings, lastRefresh: newSettings.lastRefresh || '' };
+    localSettings.value = { 
+      ...newSettings, 
+      lastRefresh: newSettings.lastRefresh || '',
+      useGitHubApp: newSettings.useGitHubApp || false,
+      appId: newSettings.appId || '',
+      privateKey: newSettings.privateKey || '',
+      installationId: newSettings.installationId || '',
+    };
   },
   { deep: true, immediate: true }
 );
@@ -160,6 +261,10 @@ const handleSave = async () => {
     organization: localSettings.value.organization,
     personalAccessToken: localSettings.value.personalAccessToken,
     refreshIntervalMinutes: localSettings.value.refreshIntervalMinutes,
+    appId: localSettings.value.appId,
+    privateKey: localSettings.value.privateKey,
+    installationId: localSettings.value.installationId,
+    useGitHubApp: localSettings.value.useGitHubApp,
   };
   const success = await saveSettingsAction(settingsToSave);
   if (success) {

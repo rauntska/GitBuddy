@@ -7,6 +7,10 @@ export function useSettings() {
     organization: '',
     personalAccessToken: '',
     refreshIntervalMinutes: 5,
+    appId: '',
+    privateKey: '',
+    installationId: '',
+    useGitHubApp: false,
   });
   const loading = ref(false);
   const error = ref<string | null>(null);
