@@ -28,7 +28,11 @@ public class SettingsController : ControllerBase
                 organization = string.Empty,
                 personalAccessToken = string.Empty,
                 refreshIntervalMinutes = 5,
-                lastRefresh = (DateTime?)null
+                lastRefresh = (DateTime?)null,
+                appId = string.Empty,
+                privateKey = string.Empty,
+                installationId = string.Empty,
+                useGitHubApp = false
             });
         }
 
@@ -37,7 +41,11 @@ public class SettingsController : ControllerBase
             organization = config.Organization,
             personalAccessToken = config.PersonalAccessToken,
             refreshIntervalMinutes = config.RefreshIntervalMinutes,
-            lastRefresh = config.LastRefresh
+            lastRefresh = config.LastRefresh,
+            appId = config.AppId,
+            privateKey = config.PrivateKey,
+            installationId = config.InstallationId,
+            useGitHubApp = config.UseGitHubApp
         });
     }
 
@@ -49,15 +57,29 @@ public class SettingsController : ControllerBase
             return BadRequest("Organization is required");
         }
 
-        if (string.IsNullOrWhiteSpace(request.PersonalAccessToken))
+        if (request.UseGitHubApp)
         {
-            return BadRequest("Personal Access Token is required");
+            if (string.IsNullOrWhiteSpace(request.AppId) || string.IsNullOrWhiteSpace(request.PrivateKey) || string.IsNullOrWhiteSpace(request.InstallationId))
+            {
+                return BadRequest("App ID, Private Key, and Installation ID are required when using GitHub App");
+            }
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(request.PersonalAccessToken))
+            {
+                return BadRequest("Personal Access Token is required when not using GitHub App");
+            }
         }
 
         await _cacheService.SaveConfigAsync(
             request.Organization,
             request.PersonalAccessToken,
-            request.RefreshIntervalMinutes
+            request.RefreshIntervalMinutes,
+            request.AppId,
+            request.PrivateKey,
+            request.InstallationId,
+            request.UseGitHubApp
         );
 
         return Ok(new { message = "Settings saved successfully" });
@@ -67,5 +89,9 @@ public class SettingsController : ControllerBase
 public record SaveSettingsRequest(
     string Organization,
     string PersonalAccessToken,
-    int RefreshIntervalMinutes
+    int RefreshIntervalMinutes,
+    string AppId,
+    string PrivateKey,
+    string InstallationId,
+    bool UseGitHubApp
 );

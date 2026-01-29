@@ -73,14 +73,24 @@ public class PullRequestsController : ControllerBase
     {
         var config = await _cacheService.GetConfigAsync();
 
-        if (config == null || string.IsNullOrEmpty(config.Organization) || string.IsNullOrEmpty(config.PersonalAccessToken))
+        if (config == null || string.IsNullOrEmpty(config.Organization))
         {
             return BadRequest("GitHub configuration not found. Please configure settings first.");
         }
 
+        if (!config.UseGitHubApp && string.IsNullOrEmpty(config.PersonalAccessToken))
+        {
+            return BadRequest("GitHub configuration not found. Please configure settings first.");
+        }
+
+        if (config.UseGitHubApp && (string.IsNullOrEmpty(config.AppId) || string.IsNullOrEmpty(config.PrivateKey) || string.IsNullOrEmpty(config.InstallationId)))
+        {
+            return BadRequest("GitHub App configuration is incomplete. Please configure App ID, Private Key, and Installation ID.");
+        }
+
         try
         {
-            await _cacheService.RefreshPullRequestsAsync(config.Organization, config.PersonalAccessToken);
+            await _cacheService.RefreshPullRequestsAsync(config);
             await _cacheService.UpdateLastRefreshAsync();
             return Ok(new { message = "Pull requests refreshed successfully" });
         }

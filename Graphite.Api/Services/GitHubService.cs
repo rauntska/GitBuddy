@@ -1,16 +1,25 @@
 using Octokit.GraphQL;
 using Octokit;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
+using Graphite.Domain.Models;
 
 namespace Graphite.Api.Services;
 
 public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
 {
+    private string? _cachedJwt;
+    private DateTime _jwtExpiration = DateTime.MinValue;
+    private string? _cachedInstallationToken;
+    private DateTime _installationTokenExpiration = DateTime.MinValue;
 
-    public async Task<List<GitHubPRData>> GetOpenPullRequestsAsync(string organization, string token)
+    public async Task<List<GitHubPRData>> GetOpenPullRequestsAsync(string organization, GitHubConfig config)
     {
-        var connection = new Octokit.GraphQL.Connection(new Octokit.GraphQL.ProductHeaderValue("Graphite-PR-Dashboard"), token);
+        var accessToken = await GetAccessTokenAsync(config);
 
-        // First, get all repository names
+        var connection = new Octokit.GraphQL.Connection(new Octokit.GraphQL.ProductHeaderValue("Graphite-PR-Dashboard"), accessToken);
+
         var reposQuery = new Octokit.GraphQL.Query()
             .Organization(organization)
             .Repositories(first: 100)
@@ -24,7 +33,6 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
 
         foreach (var repoName in repoNames)
         {
-            // For each repo, get PRs
             var prQuery = new Octokit.GraphQL.Query()
                 .Repository(repoName, organization)
                 .PullRequests(first: 100, states: new[] { Octokit.GraphQL.Model.PullRequestState.Open })
@@ -55,12 +63,12 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
 
             foreach (var pr in prs)
             {
-                var reviews = await GetReviewsAsync(organization, repoName, pr.Number, token);
+                var reviews = await GetReviewsAsync(organization, repoName, pr.Number, config);
                 var reviewData = reviews;
 
                 var status = DeterminePrStatus(pr.IsDraft, reviewData);
 
-                var reviewThreads = await GetReviewThreadsAsync(organization, repoName, pr.Number, token);
+                var reviewThreads = await GetReviewThreadsAsync(organization, repoName, pr.Number, config);
 
                 pullRequests.Add(new GitHubPRData(
                     pr.Number,
@@ -89,11 +97,12 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
         return pullRequests.OrderByDescending(pr => pr.UpdatedAt).ToList();
     }
 
-    public async Task<List<GitHubReviewData>> GetReviewsAsync(string organization, string repository, int pullRequestNumber, string token)
+    public async Task<List<GitHubReviewData>> GetReviewsAsync(string organization, string repository, int pullRequestNumber, GitHubConfig config)
     {
         try
         {
-            var connection = new Octokit.GraphQL.Connection(new Octokit.GraphQL.ProductHeaderValue("Graphite-PR-Dashboard"), token);
+            var accessToken = await GetAccessTokenAsync(config);
+            var connection = new Octokit.GraphQL.Connection(new Octokit.GraphQL.ProductHeaderValue("Graphite-PR-Dashboard"), accessToken);
             var query = new Octokit.GraphQL.Query()
                 .Repository(repository, organization)
                 .PullRequest(pullRequestNumber)
@@ -138,11 +147,12 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
     }
 
 
-    public async Task<List<GitHubReviewThreadData>> GetReviewThreadsAsync(string organization, string repository, int pullRequestNumber, string token)
+    public async Task<List<GitHubReviewThreadData>> GetReviewThreadsAsync(string organization, string repository, int pullRequestNumber, GitHubConfig config)
     {
         try
         {
-            var connection = new Octokit.GraphQL.Connection(new Octokit.GraphQL.ProductHeaderValue("Graphite-PR-Dashboard"), token);
+            var accessToken = await GetAccessTokenAsync(config);
+            var connection = new Octokit.GraphQL.Connection(new Octokit.GraphQL.ProductHeaderValue("Graphite-PR-Dashboard"), accessToken);
 
             var reviewThreadsQuery = new Octokit.GraphQL.Query()
                 .Repository(repository, organization)
@@ -197,11 +207,12 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
         }
     }
 
-    public async Task<List<GitHubCommentData>> GetCommentsAsync(string organization, string repository, int pullRequestNumber, string token)
+    public async Task<List<GitHubCommentData>> GetCommentsAsync(string organization, string repository, int pullRequestNumber, GitHubConfig config)
     {
         try
         {
-            var connection = new Octokit.GraphQL.Connection(new Octokit.GraphQL.ProductHeaderValue("Graphite-PR-Dashboard"), token);
+            var accessToken = await GetAccessTokenAsync(config);
+            var connection = new Octokit.GraphQL.Connection(new Octokit.GraphQL.ProductHeaderValue("Graphite-PR-Dashboard"), accessToken);
 
             var reviewThreadsQuery = new Octokit.GraphQL.Query()
                 .Repository(repository, organization)
@@ -260,13 +271,14 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
         }
     }
 
-    public async Task<List<GitHubFileDiffData>> GetFileDiffsAsync(string organization, string repository, int pullRequestNumber, string token)
+    public async Task<List<GitHubFileDiffData>> GetFileDiffsAsync(string organization, string repository, int pullRequestNumber, GitHubConfig config)
     {
         try
         {
+            var accessToken = await GetAccessTokenAsync(config);
             var client = new GitHubClient(new Octokit.ProductHeaderValue("Graphite-PR-Dashboard"))
             {
-                Credentials = new Credentials(token)
+                Credentials = new Credentials(accessToken)
             };
 
             var files = await client.PullRequest.Files(organization, repository, pullRequestNumber);
@@ -295,5 +307,61 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
             logger.LogError(ex, "Error fetching file diffs for PR {Organization}/{Repository}#{PullRequestNumber}", organization, repository, pullRequestNumber);
             return new List<GitHubFileDiffData>();
         }
+    }
+
+    private async Task<string> GetAccessTokenAsync(GitHubConfig config)
+    {
+        if (config.UseGitHubApp)
+        {
+            return await GetGitHubAppAccessTokenAsync(config);
+        }
+        else
+        {
+            return config.PersonalAccessToken;
+        }
+    }
+
+    private async Task<string> GetGitHubAppAccessTokenAsync(GitHubConfig config)
+    {
+        var installationId = long.Parse(config.InstallationId);
+        
+        if (_cachedInstallationToken == null || DateTime.UtcNow >= _installationTokenExpiration)
+        {
+            var jwt = GenerateJwt(config.AppId, config.PrivateKey);
+            
+            var client = new GitHubClient(new Octokit.ProductHeaderValue("Graphite-PR-Dashboard"))
+            {
+                Credentials = new Credentials(jwt)
+            };
+
+            var installationToken = await client.GitHubApps.CreateInstallationToken(installationId);
+            _cachedInstallationToken = installationToken.Token;
+            _installationTokenExpiration = installationToken.ExpiresAt.UtcDateTime.AddMinutes(-5);
+        }
+
+        return _cachedInstallationToken;
+    }
+
+    private string GenerateJwt(string appId, string privateKeyPem)
+    {
+        var rsa = RSA.Create();
+        rsa.ImportFromPem(privateKeyPem);
+        
+        var securityKey = new Microsoft.IdentityModel.Tokens.RsaSecurityKey(rsa)
+        {
+            KeyId = appId
+        };
+
+        var credentials = new Microsoft.IdentityModel.Tokens.SigningCredentials(
+            securityKey,
+            Microsoft.IdentityModel.Tokens.SecurityAlgorithms.RsaSha256);
+
+        var token = new JwtSecurityToken(
+            issuer: appId,
+            audience: "api.github.com",
+            expires: DateTime.UtcNow.AddMinutes(10),
+            signingCredentials: credentials);
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }

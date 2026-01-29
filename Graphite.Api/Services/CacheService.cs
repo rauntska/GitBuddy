@@ -17,9 +17,9 @@ public class CacheService : ICacheService
         _logger = logger;
     }
 
-    public async Task RefreshPullRequestsAsync(string organization, string token)
+    public async Task RefreshPullRequestsAsync(GitHubConfig config)
     {
-        var prDataList = await _gitHubService.GetOpenPullRequestsAsync(organization, token);
+        var prDataList = await _gitHubService.GetOpenPullRequestsAsync(config.Organization, config);
 
         foreach (var prData in prDataList)
         {
@@ -99,7 +99,7 @@ public class CacheService : ICacheService
             // Fetch and sync individual comments
             try
             {
-                var comments = await _gitHubService.GetCommentsAsync(organization, prData.Repository, prData.Id, token);
+                var comments = await _gitHubService.GetCommentsAsync(config.Organization, prData.Repository, prData.Id, config);
                 var existingCommentIds = existingPR.Comments.Select(c => c.GitHubId).ToHashSet();
                 var reviewThreadMap = existingPR.ReviewThreads.ToDictionary(rt => rt.GitHubId, rt => rt.Id);
 
@@ -147,7 +147,7 @@ public class CacheService : ICacheService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching comments for PR {Organization}/{Repository}#{PullRequestNumber}", organization, prData.Repository, prData.Id);
+                _logger.LogError(ex, "Error fetching comments for PR {Organization}/{Repository}#{PullRequestNumber}", config.Organization, prData.Repository, prData.Id);
             }
 
             var existingThreadIds = existingPR.ReviewThreads.Select(rt => rt.GitHubId).ToHashSet();
@@ -197,7 +197,7 @@ public class CacheService : ICacheService
             // Fetch and store file diffs
             try
             {
-                var fileDiffs = await _gitHubService.GetFileDiffsAsync(organization, prData.Repository, prData.Id, token);
+                var fileDiffs = await _gitHubService.GetFileDiffsAsync(config.Organization, prData.Repository, prData.Id, config);
                 var existingFileDiffs = await _context.FileDiffs
                     .Where(f => f.PullRequestId == existingPR.Id)
                     .ToListAsync();
@@ -327,7 +327,7 @@ public class CacheService : ICacheService
         return await _context.GitHubConfigs.FirstOrDefaultAsync();
     }
 
-    public async Task SaveConfigAsync(string organization, string token, int refreshIntervalMinutes)
+    public async Task SaveConfigAsync(string organization, string token, int refreshIntervalMinutes, string appId = "", string privateKey = "", string installationId = "", bool useGitHubApp = false)
     {
         var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
 
@@ -337,7 +337,11 @@ public class CacheService : ICacheService
             {
                 Organization = organization,
                 PersonalAccessToken = token,
-                RefreshIntervalMinutes = refreshIntervalMinutes
+                RefreshIntervalMinutes = refreshIntervalMinutes,
+                AppId = appId,
+                PrivateKey = privateKey,
+                InstallationId = installationId,
+                UseGitHubApp = useGitHubApp
             };
             _context.GitHubConfigs.Add(config);
         }
@@ -346,6 +350,10 @@ public class CacheService : ICacheService
             config.Organization = organization;
             config.PersonalAccessToken = token;
             config.RefreshIntervalMinutes = refreshIntervalMinutes;
+            config.AppId = appId;
+            config.PrivateKey = privateKey;
+            config.InstallationId = installationId;
+            config.UseGitHubApp = useGitHubApp;
         }
 
         await _context.SaveChangesAsync();

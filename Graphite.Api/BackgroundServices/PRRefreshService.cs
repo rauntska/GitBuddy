@@ -29,14 +29,31 @@ public class PRRefreshService : BackgroundService
                 var cacheService = scope.ServiceProvider.GetRequiredService<ICacheService>();
                 var config = await cacheService.GetConfigAsync();
 
-                if (config != null && !string.IsNullOrEmpty(config.Organization) && !string.IsNullOrEmpty(config.PersonalAccessToken))
+                if (config != null && !string.IsNullOrEmpty(config.Organization))
                 {
-                    _logger.LogInformation("Refreshing pull requests for {Organization}", config.Organization);
-                    await cacheService.RefreshPullRequestsAsync(config.Organization, config.PersonalAccessToken);
-                    await cacheService.UpdateLastRefreshAsync();
-                    _logger.LogInformation("Pull requests refreshed successfully");
+                    bool isValid = false;
+                    if (config.UseGitHubApp)
+                    {
+                        isValid = !string.IsNullOrEmpty(config.AppId) && !string.IsNullOrEmpty(config.PrivateKey) && !string.IsNullOrEmpty(config.InstallationId);
+                    }
+                    else
+                    {
+                        isValid = !string.IsNullOrEmpty(config.PersonalAccessToken);
+                    }
 
-                    await Task.Delay(TimeSpan.FromMinutes(config.RefreshIntervalMinutes), stoppingToken);
+                    if (isValid)
+                    {
+                        _logger.LogInformation("Refreshing pull requests for {Organization}", config.Organization);
+                        await cacheService.RefreshPullRequestsAsync(config);
+                        await cacheService.UpdateLastRefreshAsync();
+                        _logger.LogInformation("Pull requests refreshed successfully");
+
+                        await Task.Delay(TimeSpan.FromMinutes(config.RefreshIntervalMinutes), stoppingToken);
+                    }
+                    else
+                    {
+                        await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+                    }
                 }
                 else
                 {

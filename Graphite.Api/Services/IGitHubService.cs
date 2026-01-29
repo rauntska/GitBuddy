@@ -4,11 +4,11 @@ namespace Graphite.Api.Services;
 
 public interface IGitHubService
 {
-    Task<List<GitHubPRData>> GetOpenPullRequestsAsync(string organization, string token);
-    Task<List<GitHubReviewData>> GetReviewsAsync(string organization, string repository, int pullRequestNumber, string token);
-    Task<List<GitHubReviewThreadData>> GetReviewThreadsAsync(string organization, string repository, int pullRequestNumber, string token);
-    Task<List<GitHubCommentData>> GetCommentsAsync(string organization, string repository, int pullRequestNumber, string token);
-    Task<List<GitHubFileDiffData>> GetFileDiffsAsync(string organization, string repository, int pullRequestNumber, string token);
+    Task<List<GitHubPRData>> GetOpenPullRequestsAsync(string organization, GitHubConfig config);
+    Task<List<GitHubReviewData>> GetReviewsAsync(string organization, string repository, int pullRequestNumber, GitHubConfig config);
+    Task<List<GitHubReviewThreadData>> GetReviewThreadsAsync(string organization, string repository, int pullRequestNumber, GitHubConfig config);
+    Task<List<GitHubCommentData>> GetCommentsAsync(string organization, string repository, int pullRequestNumber, GitHubConfig config);
+    Task<List<GitHubFileDiffData>> GetFileDiffsAsync(string organization, string repository, int pullRequestNumber, GitHubConfig config);
 }
 
 public record GitHubPRData(
