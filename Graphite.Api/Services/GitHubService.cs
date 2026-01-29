@@ -282,50 +282,30 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
 
             logger.LogInformation("Using {TokenType} token", string.IsNullOrEmpty(userAccessToken) ? "app/installation" : "user");
 
-            var connection = new Octokit.GraphQL.Connection(
-                new Octokit.GraphQL.ProductHeaderValue("Graphite-PR-Dashboard"), 
-                accessToken);
+            // Use REST API to get file diffs with patches
+            var client = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("Graphite-PR-Dashboard"));
+            client.Credentials = new Octokit.Credentials(accessToken);
 
-            var filesQuery = new Octokit.GraphQL.Query()
-                .Repository(repository, organization)
-                .PullRequest(pullRequestNumber)
-                .Files(100, null, null, null)
-                .Nodes
-                .Select(f => new
-                {
-                    f.Path,
-                    f.Additions,
-                    f.Deletions,
-                    ViewerViewedState = f.ViewerViewedState != null ? f.ViewerViewedState.ToString() : "UNVIEWED"
-                })
-                .Compile();
+            var prFiles = await client.PullRequest.Files(organization, repository, pullRequestNumber);
 
-            var files = await connection.Run(filesQuery);
-
-            return files.Select(file =>
+            return prFiles.Select(file =>
             {
-                // Determine status based on additions/deletions
-                var status = "modified"; // default
-                if (file.Additions > 0 && file.Deletions == 0)
-                {
-                    status = "added";
-                }
-                else if (file.Deletions > 0 && file.Additions == 0)
-                {
-                    status = "deleted";
-                }
-                
-                var changes = file.Additions + file.Deletions;
+                // Determine status based on file state
+                var status = file.Status.ToString().ToLower();
+                if (status == "added") status = "added";
+                else if (status == "removed") status = "deleted";
+                else if (status == "renamed") status = "renamed";
+                else status = "modified";
                 
                 return new GitHubFileDiffData(
-                    file.Path,
-                    null, // previousFileName not available in GraphQL
+                    file.FileName,
+                    file.PreviousFileName,
                     status,
                     file.Additions,
                     file.Deletions,
-                    changes,
-                    null, // patch not available in GraphQL
-                    file.ViewerViewedState ?? "UNVIEWED"
+                    file.Changes,
+                    file.Patch,
+                    "UNVIEWED" // REST API doesn't provide viewed state
                 );
             }).ToList();
         }
