@@ -283,10 +283,30 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
             logger.LogInformation("Using {TokenType} token", string.IsNullOrEmpty(userAccessToken) ? "app/installation" : "user");
 
             // Use REST API to get file diffs with patches
-            var client = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("Graphite-PR-Dashboard"));
-            client.Credentials = new Octokit.Credentials(accessToken);
+            var restClient = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("Graphite-PR-Dashboard"));
+            restClient.Credentials = new Octokit.Credentials(accessToken);
 
-            var prFiles = await client.PullRequest.Files(organization, repository, pullRequestNumber);
+            var prFiles = await restClient.PullRequest.Files(organization, repository, pullRequestNumber);
+
+            // Use GraphQL to get viewed states
+            var connection = new Octokit.GraphQL.Connection(
+                new Octokit.GraphQL.ProductHeaderValue("Graphite-PR-Dashboard"), 
+                accessToken);
+
+            var filesQuery = new Octokit.GraphQL.Query()
+                .Repository(repository, organization)
+                .PullRequest(pullRequestNumber)
+                .Files(100, null, null, null)
+                .Nodes
+                .Select(f => new
+                {
+                    f.Path,
+                    ViewerViewedState = f.ViewerViewedState != null ? f.ViewerViewedState.ToString() : "UNVIEWED"
+                })
+                .Compile();
+
+            var viewedStates = await connection.Run(filesQuery);
+            var viewedStateDict = viewedStates.ToDictionary(v => v.Path, v => v.ViewerViewedState);
 
             return prFiles.Select(file =>
             {
@@ -297,6 +317,8 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
                 else if (status == "renamed") status = "renamed";
                 else status = "modified";
                 
+                var viewedState = viewedStateDict.TryGetValue(file.FileName, out var state) ? state : "UNVIEWED";
+                
                 return new GitHubFileDiffData(
                     file.FileName,
                     file.PreviousFileName,
@@ -305,7 +327,7 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
                     file.Deletions,
                     file.Changes,
                     file.Patch,
-                    "UNVIEWED" // REST API doesn't provide viewed state
+                    viewedState
                 );
             }).ToList();
         }
