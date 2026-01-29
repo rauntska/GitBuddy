@@ -273,17 +273,21 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
     {
         try
         {
+            logger.LogInformation("Fetching file diffs for {Organization}/{Repository}#{PullRequestNumber}", organization, repository, pullRequestNumber);
+            
             // Use user token if provided, otherwise use app/installation token
             var accessToken = string.IsNullOrEmpty(userAccessToken) 
                 ? await GetAccessTokenAsync(config) 
                 : userAccessToken;
+
+            logger.LogInformation("Using {TokenType} token", string.IsNullOrEmpty(userAccessToken) ? "app/installation" : "user");
 
             var connection = new Octokit.GraphQL.Connection(
                 new Octokit.GraphQL.ProductHeaderValue("Graphite-PR-Dashboard"), 
                 accessToken);
 
             var filesQuery = new Octokit.GraphQL.Query()
-                .Repository(organization, repository)
+                .Repository(repository, organization)
                 .PullRequest(pullRequestNumber)
                 .Files(100, null, null, null)
                 .Nodes
@@ -292,7 +296,7 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
                     f.Path,
                     f.Additions,
                     f.Deletions,
-                    ViewerViewedState = f.ViewerViewedState.ToString()
+                    ViewerViewedState = f.ViewerViewedState != null ? f.ViewerViewedState.ToString() : "UNVIEWED"
                 })
                 .Compile();
 

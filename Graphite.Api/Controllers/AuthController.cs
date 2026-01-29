@@ -34,7 +34,7 @@ public class AuthController : ControllerBase
     {
         var clientId = _configuration["GitHub:ClientId"];
         var redirectUri = _configuration["GitHub:RedirectUri"];
-        var scope = "user:email read:org";
+        var scope = "user:email read:org repo";
 
         var githubAuthUrl = $"https://github.com/login/oauth/authorize?client_id={clientId}&redirect_uri={redirectUri}&scope={scope}";
         return Redirect(githubAuthUrl);
