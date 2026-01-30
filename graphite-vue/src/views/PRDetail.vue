@@ -214,22 +214,113 @@
         <div class="flex-1">
           <div class="px-4 py-4">
             <div class="space-y-3">
-               <!-- Files Changed Header -->
-              <div class="flex items-center justify-between py-2">
-                <h2 class="text-sm font-semibold text-slate-200">
-                  Files Changed ({{ prDetail.files.length }})
-                </h2>
-                <button
-                  @click="toggleFileTree"
-                  class="flex items-center gap-1.5 px-2 py-1 bg-slate-800/50 border border-slate-700/50 rounded hover:bg-slate-800 text-slate-300 text-xs transition-colors"
-                >
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                          d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                  <span>{{ preferences.fileTreeVisible ? 'Hide' : 'Show' }} Tree</span>
-                </button>
-              </div>
+                <!-- Files Changed Header -->
+               <div class="flex items-center justify-between py-2">
+                 <h2 class="text-sm font-semibold text-slate-200">
+                   Files Changed ({{ prDetail.files.length }})
+                 </h2>
+                 <div class="flex items-center gap-2">
+                   <button
+                     @click="toggleFileTree"
+                     class="flex items-center gap-1.5 px-2 py-1 bg-slate-800/50 border border-slate-700/50 rounded hover:bg-slate-800 text-slate-300 text-xs transition-colors"
+                   >
+                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                             d="M4 6h16M4 12h16M4 18h16" />
+                     </svg>
+                     <span>{{ preferences.fileTreeVisible ? 'Hide' : 'Show' }} Tree</span>
+                   </button>
+                   <div class="relative">
+                     <button
+                       @click="showSettingsDropdown = !showSettingsDropdown"
+                       class="p-1.5 bg-slate-800/50 border border-slate-700/50 rounded hover:bg-slate-800 text-slate-300 transition-colors"
+                       title="Diff settings"
+                     >
+                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                               d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                       </svg>
+                     </button>
+                     <Transition
+                       enter-active-class="transition-opacity duration-200"
+                       enter-from-class="opacity-0"
+                       enter-to-class="opacity-100"
+                       leave-active-class="transition-opacity duration-200"
+                       leave-from-class="opacity-100"
+                       leave-to-class="opacity-0"
+                     >
+                       <div
+                         v-if="showSettingsDropdown"
+                         class="absolute right-0 top-full mt-2 bg-slate-900 border border-slate-700/50 rounded-lg shadow-xl z-50 min-w-[200px] p-2"
+                       >
+                         <div class="space-y-2">
+                           <div class="text-xs font-semibold text-slate-400 px-2 py-1">Diff View</div>
+                           <button
+                             @click="setDiffViewMode('unified'); showSettingsDropdown = false"
+                             :class="[
+                               'w-full flex items-center gap-2 px-3 py-2 rounded text-xs text-left transition-colors',
+                               preferences.diffViewMode === 'unified'
+                                 ? 'bg-blue-600/20 text-blue-300 border border-blue-600/50'
+                                 : 'text-slate-300 hover:bg-slate-800'
+                             ]"
+                           >
+                             <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                             </svg>
+                             Unified
+                           </button>
+                           <button
+                             @click="setDiffViewMode('split'); showSettingsDropdown = false"
+                             :class="[
+                               'w-full flex items-center gap-2 px-3 py-2 rounded text-xs text-left transition-colors',
+                               preferences.diffViewMode === 'split'
+                                 ? 'bg-blue-600/20 text-blue-300 border border-blue-600/50'
+                                 : 'text-slate-300 hover:bg-slate-800'
+                             ]"
+                           >
+                             <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 4v16M4 4h16" />
+                             </svg>
+                             Split
+                           </button>
+                           <div class="border-t border-slate-700/50 my-1"></div>
+                           <div class="text-xs font-semibold text-slate-400 px-2 py-1">Context</div>
+                           <button
+                             @click="setShowContext(true); showSettingsDropdown = false"
+                             :class="[
+                               'w-full flex items-center gap-2 px-3 py-2 rounded text-xs text-left transition-colors',
+                               preferences.showContext
+                                 ? 'bg-blue-600/20 text-blue-300 border border-blue-600/50'
+                                 : 'text-slate-300 hover:bg-slate-800'
+                             ]"
+                           >
+                             <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                             </svg>
+                             Show Context
+                           </button>
+                           <button
+                             @click="setShowContext(false); showSettingsDropdown = false"
+                             :class="[
+                               'w-full flex items-center gap-2 px-3 py-2 rounded text-xs text-left transition-colors',
+                               !preferences.showContext
+                                 ? 'bg-blue-600/20 text-blue-300 border border-blue-600/50'
+                                 : 'text-slate-300 hover:bg-slate-800'
+                             ]"
+                           >
+                             <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                             </svg>
+                             Hide Context
+                           </button>
+                         </div>
+                       </div>
+                     </Transition>
+                   </div>
+                 </div>
+               </div>
 
                 <!-- File Diffs -->
                 <FileDiffViewer
@@ -395,10 +486,11 @@ const {
   toggleFileTree,
 } = usePRDetail();
 
-const { preferences, loadPreferences, setFileTreeWidth, setCommentsPanelWidth, updatePreferences } = useUserPreferences();
+const { preferences, loadPreferences, setFileTreeWidth, setCommentsPanelWidth, updatePreferences, setDiffViewMode, setShowContext } = useUserPreferences();
 
 const selectedFile = ref<string | null>(null);
 const showReviewModal = ref(false);
+const showSettingsDropdown = ref(false);
 const reviewAction = ref<'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENT'>('COMMENT');
 const reviewComment = ref('');
 const submittingReview = ref(false);
@@ -435,12 +527,14 @@ onMounted(async () => {
   document.addEventListener('keydown', handleKeyPress);
   document.addEventListener('mousemove', handleMouseMove);
   document.addEventListener('mouseup', handleMouseUp);
+  document.addEventListener('click', handleClickOutside);
 });
 
 onUnmounted(() => {
   document.removeEventListener('keydown', handleKeyPress);
   document.removeEventListener('mousemove', handleMouseMove);
   document.removeEventListener('mouseup', handleMouseUp);
+  document.removeEventListener('click', handleClickOutside);
 });
 
 // Resize handlers
@@ -492,6 +586,13 @@ const handleKeyPress = (e: KeyboardEvent) => {
     case 'k':
       navigateFile('prev');
       break;
+  }
+};
+
+const handleClickOutside = (e: MouseEvent) => {
+  const target = e.target as HTMLElement;
+  if (showSettingsDropdown.value && !target.closest('.relative')) {
+    showSettingsDropdown.value = false;
   }
 };
 

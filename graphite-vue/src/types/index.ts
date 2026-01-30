@@ -123,6 +123,7 @@ export interface PRDetail extends PullRequest {
 
 export interface UserPreferences {
   diffViewMode: 'split' | 'unified';
+  showContext: boolean;
   fileTreeWidth: number;
   commentsPanelWidth: number;
   fileTreeVisible: boolean;

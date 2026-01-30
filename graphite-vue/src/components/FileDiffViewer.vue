@@ -38,21 +38,6 @@
           title="Mark as viewed"
         />
         <span class="text-xs text-slate-400">Viewed</span>
-        <span v-if="expanded" class="text-slate-500">|</span>
-        <button
-          v-if="expanded"
-          @click.stop="toggleViewMode"
-          class="px-2 py-1 rounded bg-slate-700/50 hover:bg-slate-700 text-slate-300 transition-colors"
-        >
-          {{ viewMode === 'split' ? 'Unified' : 'Split' }}
-        </button>
-        <button
-          v-if="expanded"
-          @click.stop="toggleUnchangedLines"
-          class="px-2 py-1 rounded bg-slate-700/50 hover:bg-slate-700 text-slate-300 transition-colors"
-        >
-          {{ showUnchangedLines ? 'Hide' : 'Show' }} context
-        </button>
       </div>
     </button>
 
@@ -404,16 +389,15 @@ const emit = defineEmits<{
   toggleViewed: [path: string, viewed: boolean];
 }>();
 
-const { preferences, setDiffViewMode } = useUserPreferences();
+const { preferences } = useUserPreferences();
 
-const expanded = ref(props.file.viewedState !== 'VIEWED');
+const expanded = ref(props.file.viewedState !== 'VIEWED' && !props.file.viewed);
 
-watch(() => props.file.viewedState, (newState) => {
-  expanded.value = newState !== 'VIEWED';
-});
+watch(() => [props.file.viewedState, props.file.viewed] as const, ([newViewedState, newViewed]) => {
+  expanded.value = newViewedState !== 'VIEWED' && newViewed !== true;
+}, { deep: true, immediate: true });
 const loading = ref(false);
 const hunks = ref<any[]>([]);
-const showUnchangedLines = ref(false);
 const commentingLine = ref<number | null>(null);
 const commentText = ref('');
 const commentTextarea = ref<HTMLTextAreaElement | null>(null);
@@ -482,17 +466,8 @@ const getViewedStateLabel = (state: string): string => {
   }
 };
 
-const toggleViewMode = async () => {
-  const newMode = viewMode.value === 'split' ? 'unified' : 'split';
-  await setDiffViewMode(newMode);
-};
-
-const toggleUnchangedLines = () => {
-  showUnchangedLines.value = !showUnchangedLines.value;
-};
-
 const getVisibleLines = (lines: any[]) => {
-  if (showUnchangedLines.value) return lines;
+  if (preferences.value.showContext) return lines;
 
   const result: any[] = [];
   const contextLines = 1;

@@ -4,6 +4,7 @@ import { apiService } from '../services/api';
 
 const preferences = ref<UserPreferences>({
   diffViewMode: 'unified',
+  showContext: false,
   fileTreeWidth: 256,
   commentsPanelWidth: 320,
   fileTreeVisible: true,
@@ -48,6 +49,10 @@ export function useUserPreferences() {
     await updatePreference('diffViewMode', mode);
   };
 
+  const setShowContext = async (show: boolean) => {
+    await updatePreference('showContext', show);
+  };
+
   const setFileTreeWidth = async (width: number) => {
     await updatePreference('fileTreeWidth', width);
   };
@@ -86,6 +91,7 @@ export function useUserPreferences() {
     loading,
     loadPreferences,
     setDiffViewMode,
+    setShowContext,
     setFileTreeWidth,
     setCommentsPanelWidth,
     setFileTreeVisible,
