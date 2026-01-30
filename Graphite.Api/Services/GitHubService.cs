@@ -282,16 +282,15 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
 
             logger.LogInformation("Using {TokenType} token", string.IsNullOrEmpty(userAccessToken) ? "app/installation" : "user");
 
-            // Use REST API to get file diffs with patches
+            // Run both APIs in parallel for efficiency
             var restClient = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("Graphite-PR-Dashboard"));
             restClient.Credentials = new Octokit.Credentials(accessToken);
 
-            var prFiles = await restClient.PullRequest.Files(organization, repository, pullRequestNumber);
-
-            // Use GraphQL to get viewed states
             var connection = new Octokit.GraphQL.Connection(
                 new Octokit.GraphQL.ProductHeaderValue("Graphite-PR-Dashboard"), 
                 accessToken);
+
+            var restTask = restClient.PullRequest.Files(organization, repository, pullRequestNumber);
 
             var filesQuery = new Octokit.GraphQL.Query()
                 .Repository(repository, organization)
@@ -301,11 +300,16 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
                 .Select(f => new
                 {
                     f.Path,
-                    ViewerViewedState = f.ViewerViewedState != null ? f.ViewerViewedState.ToString() : "UNVIEWED"
+                    ViewerViewedState = f.ViewerViewedState.ToString()
                 })
                 .Compile();
 
-            var viewedStates = await connection.Run(filesQuery);
+            var graphqlTask = connection.Run(filesQuery);
+
+            await Task.WhenAll(restTask, graphqlTask);
+
+            var prFiles = await restTask;
+            var viewedStates = await graphqlTask;
             var viewedStateDict = viewedStates.ToDictionary(v => v.Path, v => v.ViewerViewedState);
 
             return prFiles.Select(file =>

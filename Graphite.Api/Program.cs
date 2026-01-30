@@ -35,6 +35,7 @@ builder.Services.AddScoped<IGitHubService, GitHubService>();
 builder.Services.AddScoped<ICacheService, CacheService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<IWebhookService, WebhookService>();
 builder.Services.AddHostedService<PRRefreshService>();
 
 builder.Services.AddControllers();
