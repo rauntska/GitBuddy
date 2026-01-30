@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col bg-slate-950 text-slate-200">
     <!-- Compact Header -->
-    <div class="bg-slate-900/95 border-b border-slate-700/50">
+    <div class="sticky top-20 z-20 bg-slate-900/95 border-b border-slate-700/50 backdrop-blur-sm">
       <div class="px-4 py-2 flex items-center gap-3">
         <router-link
           to="/"
