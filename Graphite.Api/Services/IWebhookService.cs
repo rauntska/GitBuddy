@@ -1,12 +1,12 @@
-using System.Text.Json;
+using Octokit.Webhooks.Events;
 
 namespace Graphite.Api.Services;
 
 public interface IWebhookService
 {
-    Task ProcessWebhookAsync(string eventType, JsonElement payload);
-    Task HandlePullRequestEventAsync(JsonElement payload);
-    Task HandlePushEventAsync(JsonElement payload);
-    Task HandleCommentEventAsync(JsonElement payload);
-    Task HandleReviewThreadEventAsync(JsonElement payload);
+    Task HandlePullRequestEventAsync(PullRequestEvent pullRequestEvent);
+    Task HandlePushEventAsync(PushEvent pushEvent);
+    Task HandleCommentEventAsync(IssueCommentEvent issueCommentEvent);
+    Task HandleReviewCommentEventAsync(PullRequestReviewCommentEvent pullRequestReviewCommentEvent);
+    Task HandleReviewThreadEventAsync(PullRequestReviewThreadEvent pullRequestReviewThreadEvent);
 }

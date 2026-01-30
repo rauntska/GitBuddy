@@ -25,7 +25,7 @@ public record ReviewThreadDto(
 
 public record PullRequestDto(
     int Id,
-    int GitHubId,
+    long GitHubId,
     string Title,
     string Repository,
     string Author,
@@ -33,9 +33,9 @@ public record PullRequestDto(
     string Status,
     bool Draft,
     string Url,
-    int Additions,
-    int Deletions,
-    int ChangedFiles,
+    long Additions,
+    long Deletions,
+    long ChangedFiles,
     DateTime CreatedAt,
     DateTime UpdatedAt,
     DateTime LastSyncedAt,
@@ -73,7 +73,7 @@ public record FileDiffDto(
 
 public record PRDetailDto(
     int Id,
-    int GitHubId,
+    long GitHubId,
     string Title,
     string Repository,
     string Author,
@@ -81,9 +81,9 @@ public record PRDetailDto(
     string Status,
     bool Draft,
     string Url,
-    int Additions,
-    int Deletions,
-    int ChangedFiles,
+    long Additions,
+    long Deletions,
+    long ChangedFiles,
     DateTime CreatedAt,
     DateTime UpdatedAt,
     DateTime LastSyncedAt,

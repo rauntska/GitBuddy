@@ -67,7 +67,7 @@ namespace Graphite.Domain.Migrations
 
                     b.HasIndex("ReviewThreadId");
 
-                    b.ToTable("Comments");
+                    b.ToTable("Comments", (string)null);
                 });
 
             modelBuilder.Entity("Graphite.Domain.Models.FileDiff", b =>
@@ -112,7 +112,7 @@ namespace Graphite.Domain.Migrations
                     b.HasIndex("PullRequestId", "Path")
                         .IsUnique();
 
-                    b.ToTable("FileDiffs");
+                    b.ToTable("FileDiffs", (string)null);
                 });
 
             modelBuilder.Entity("Graphite.Domain.Models.GitHubConfig", b =>
@@ -152,7 +152,7 @@ namespace Graphite.Domain.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("GitHubConfigs");
+                    b.ToTable("GitHubConfigs", (string)null);
                 });
 
             modelBuilder.Entity("Graphite.Domain.Models.PullRequest", b =>
@@ -235,7 +235,7 @@ namespace Graphite.Domain.Migrations
 
                     b.HasIndex("UpdatedAt");
 
-                    b.ToTable("PullRequests");
+                    b.ToTable("PullRequests", (string)null);
                 });
 
             modelBuilder.Entity("Graphite.Domain.Models.Review", b =>
@@ -265,7 +265,7 @@ namespace Graphite.Domain.Migrations
 
                     b.HasIndex("PullRequestId");
 
-                    b.ToTable("Reviews");
+                    b.ToTable("Reviews", (string)null);
                 });
 
             modelBuilder.Entity("Graphite.Domain.Models.ReviewThread", b =>
@@ -324,7 +324,7 @@ namespace Graphite.Domain.Migrations
 
                     b.HasIndex("State");
 
-                    b.ToTable("ReviewThreads");
+                    b.ToTable("ReviewThreads", (string)null);
                 });
 
             modelBuilder.Entity("Graphite.Domain.Models.User", b =>
@@ -367,7 +367,7 @@ namespace Graphite.Domain.Migrations
                     b.HasIndex("Username")
                         .IsUnique();
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("Graphite.Domain.Models.UserFileViewedState", b =>
@@ -396,7 +396,7 @@ namespace Graphite.Domain.Migrations
                     b.HasIndex("UserId", "FileDiffId")
                         .IsUnique();
 
-                    b.ToTable("UserFileViewedStates");
+                    b.ToTable("UserFileViewedStates", (string)null);
                 });
 
             modelBuilder.Entity("Graphite.Domain.Models.UserPreferences", b =>
@@ -429,7 +429,7 @@ namespace Graphite.Domain.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("UserPreferences");
+                    b.ToTable("UserPreferences", (string)null);
                 });
 
             modelBuilder.Entity("Graphite.Domain.Models.Comment", b =>

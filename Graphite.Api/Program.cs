@@ -1,10 +1,14 @@
 using Graphite.Api.BackgroundServices;
+
+using Graphite.Api.Processors;
 using Graphite.Api.Services;
 using Graphite.Domain.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Octokit.Webhooks.AspNetCore;
 using System.Text;
+using Octokit.Webhooks;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -36,6 +40,7 @@ builder.Services.AddScoped<ICacheService, CacheService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IWebhookService, WebhookService>();
+builder.Services.AddScoped<WebhookEventProcessor, GitHubWebhookProcessor>();
 builder.Services.AddHostedService<PRRefreshService>();
 
 builder.Services.AddControllers();
@@ -64,5 +69,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+var webhookSecret = builder.Configuration["GitHub:WebhookSecret"];
+app.MapGitHubWebhooks(path: "/api/webhooks/github", secret: webhookSecret);
 
 app.Run();

@@ -4,6 +4,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Graphite.Domain.Models;
+using Octokit.GraphQL.Core;
 
 namespace Graphite.Api.Services;
 
@@ -95,7 +96,8 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
         return pullRequests.OrderByDescending(pr => pr.UpdatedAt).ToList();
     }
 
-    public async Task<List<GitHubReviewData>> GetReviewsAsync(string organization, string repository, int pullRequestNumber, GitHubConfig config)
+    public async Task<List<GitHubReviewData>> GetReviewsAsync(string organization, string repository,
+        long pullRequestNumber, GitHubConfig config)
     {
         try
         {
@@ -103,7 +105,7 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
             var connection = new Octokit.GraphQL.Connection(new Octokit.GraphQL.ProductHeaderValue("Graphite-PR-Dashboard"), accessToken);
             var query = new Octokit.GraphQL.Query()
                 .Repository(repository, organization)
-                .PullRequest(pullRequestNumber)
+                .PullRequest((Arg<int>)pullRequestNumber)
                 .Reviews(100, null, null, null, null, null)
                 .Nodes
                 .Select(r => new
@@ -145,7 +147,8 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
     }
 
 
-    public async Task<List<GitHubReviewThreadData>> GetReviewThreadsAsync(string organization, string repository, int pullRequestNumber, GitHubConfig config)
+    public async Task<List<GitHubReviewThreadData>> GetReviewThreadsAsync(string organization, string repository,
+        long pullRequestNumber, GitHubConfig config)
     {
         try
         {
@@ -154,7 +157,7 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
 
             var reviewThreadsQuery = new Octokit.GraphQL.Query()
                 .Repository(repository, organization)
-                .PullRequest(pullRequestNumber)
+                .PullRequest((Arg<int>)pullRequestNumber)
                 .ReviewThreads(100, null, null, null)
                 .Nodes
                 .Select(rt => new
@@ -205,7 +208,8 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
         }
     }
 
-    public async Task<List<GitHubCommentData>> GetCommentsAsync(string organization, string repository, int pullRequestNumber, GitHubConfig config)
+    public async Task<List<GitHubCommentData>> GetCommentsAsync(string organization, string repository,
+        long pullRequestNumber, GitHubConfig config)
     {
         try
         {
@@ -214,7 +218,7 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
 
             var reviewThreadsQuery = new Octokit.GraphQL.Query()
                 .Repository(repository, organization)
-                .PullRequest(pullRequestNumber)
+                .PullRequest((Arg<int>)pullRequestNumber)
                 .ReviewThreads(100, null, null, null)
                 .Nodes
                 .Select(rt => new
@@ -269,7 +273,8 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
         }
     }
 
-    public async Task<List<GitHubFileDiffData>> GetFileDiffsAsync(string organization, string repository, int pullRequestNumber, GitHubConfig config, string? userAccessToken = null)
+    public async Task<List<GitHubFileDiffData>> GetFileDiffsAsync(string organization, string repository,
+        long pullRequestNumber, GitHubConfig config, string? userAccessToken = null)
     {
         try
         {
@@ -290,11 +295,11 @@ public class GitHubService(ILogger<GitHubService> logger) : IGitHubService
                 new Octokit.GraphQL.ProductHeaderValue("Graphite-PR-Dashboard"), 
                 accessToken);
 
-            var restTask = restClient.PullRequest.Files(organization, repository, pullRequestNumber);
+            var restTask = restClient.PullRequest.Files(organization, repository, (int)pullRequestNumber);
 
             var filesQuery = new Octokit.GraphQL.Query()
                 .Repository(repository, organization)
-                .PullRequest(pullRequestNumber)
+                .PullRequest((Arg<int>)pullRequestNumber)
                 .Files(100, null, null, null)
                 .Nodes
                 .Select(f => new
