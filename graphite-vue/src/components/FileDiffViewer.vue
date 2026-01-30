@@ -406,7 +406,11 @@ const emit = defineEmits<{
 
 const { preferences, setDiffViewMode } = useUserPreferences();
 
-const expanded = ref(false);
+const expanded = ref(props.file.viewedState !== 'VIEWED');
+
+watch(() => props.file.viewedState, (newState) => {
+  expanded.value = newState !== 'VIEWED';
+});
 const loading = ref(false);
 const hunks = ref<any[]>([]);
 const showUnchangedLines = ref(false);
@@ -491,7 +495,7 @@ const getVisibleLines = (lines: any[]) => {
   if (showUnchangedLines.value) return lines;
 
   const result: any[] = [];
-  const contextLines = 3;
+  const contextLines = 1;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
