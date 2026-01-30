@@ -474,8 +474,12 @@ const getVisibleLines = (lines: any[]) => {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    const isEmptyLine = !line.content || line.content.trim() === '';
+
     if (line.type !== 'context') {
-      result.push(line);
+      if (!isEmptyLine) {
+        result.push(line);
+      }
       continue;
     }
 
@@ -487,7 +491,9 @@ const getVisibleLines = (lines: any[]) => {
       }
     }
 
-    if (hasNearbyChange) result.push(line);
+    if (hasNearbyChange && !isEmptyLine) {
+      result.push(line);
+    }
   }
 
   return result;
