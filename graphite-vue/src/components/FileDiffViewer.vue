@@ -7,15 +7,6 @@
       @click="onHeaderClick"
     >
       <div class="flex items-center gap-2 min-w-0">
-        <!-- Viewed Checkbox -->
-        <input
-          type="checkbox"
-          :checked="file.viewedState === 'VIEWED'"
-          @click.stop="toggleViewed"
-          class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-green-500 focus:ring-green-500 focus:ring-offset-slate-900 cursor-pointer"
-          title="Mark as viewed"
-        />
-
         <!-- Expand/Collapse Icon -->
         <svg
           :class="['w-3.5 h-3.5 text-slate-400 transition-transform flex-shrink-0', { 'rotate-90': expanded }]"
@@ -33,20 +24,20 @@
 
         <!-- File Path -->
         <span class="text-sm font-mono text-slate-200 truncate">{{ file.path }}</span>
-        
-        <!-- Viewed State Badge -->
-        <span 
-          v-if="file.viewedState && file.viewedState !== 'UNVIEWED'"
-          :class="['text-xs px-2 py-0.5 rounded font-medium', getViewedStateClass(file.viewedState)]"
-        >
-          {{ getViewedStateLabel(file.viewedState) }}
-        </span>
       </div>
 
       <!-- File Stats -->
       <div class="flex items-center gap-3 text-xs flex-shrink-0">
         <span class="text-green-400 font-medium">+{{ file.additions }}</span>
         <span class="text-red-400 font-medium">-{{ file.deletions }}</span>
+        <input
+          type="checkbox"
+          :checked="file.viewedState === 'VIEWED'"
+          @click.stop="toggleViewed"
+          class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-green-500 focus:ring-green-500 focus:ring-offset-slate-900 cursor-pointer"
+          title="Mark as viewed"
+        />
+        <span class="text-xs text-slate-400">Viewed</span>
         <span v-if="expanded" class="text-slate-500">|</span>
         <button
           v-if="expanded"
