@@ -4,26 +4,20 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Graphite.Api.Services;
 
-public class CacheService : ICacheService
+public class CacheService(
+    AppDbContext context,
+    IGitHubService gitHubService,
+    ILanguageDetectionService languageDetectionService,
+    ILogger<CacheService> logger)
+    : ICacheService
 {
-    private readonly AppDbContext _context;
-    private readonly IGitHubService _gitHubService;
-    private readonly ILogger<CacheService> _logger;
-
-    public CacheService(AppDbContext context, IGitHubService gitHubService, ILogger<CacheService> logger)
-    {
-        _context = context;
-        _gitHubService = gitHubService;
-        _logger = logger;
-    }
-
     public async Task RefreshPullRequestsAsync(GitHubConfig config)
     {
-        var prDataList = await _gitHubService.GetOpenPullRequestsAsync(config.Organization, config);
+        var prDataList = await gitHubService.GetOpenPullRequestsAsync(config.Organization, config);
 
         foreach (var prData in prDataList)
         {
-            var existingPR = await _context.PullRequests
+            var existingPR = await context.PullRequests
                 .Include(pr => pr.Reviews)
                 .Include(pr => pr.ReviewThreads)
                 .Include(pr => pr.Comments)
@@ -70,8 +64,8 @@ public class CacheService : ICacheService
                     TargetBranch = prData.TargetBranch,
                     MergeableState = prData.MergeableState
                 };
-                _context.PullRequests.Add(existingPR);
-                await _context.SaveChangesAsync();
+                context.PullRequests.Add(existingPR);
+                await context.SaveChangesAsync();
             }
 
             var existingReviewers = existingPR.Reviews.Select(r => r.Reviewer).ToHashSet();
@@ -80,7 +74,7 @@ public class CacheService : ICacheService
             foreach (var reviewer in incomingReviewers.Except(existingReviewers))
             {
                 var reviewData = prData.Reviews!.First(r => r.Reviewer == reviewer);
-                _context.Reviews.Add(new Review
+                context.Reviews.Add(new Review
                 {
                     PullRequestId = existingPR.Id,
                     Reviewer = reviewData.Reviewer,
@@ -93,13 +87,13 @@ public class CacheService : ICacheService
             foreach (var reviewer in existingReviewers.Except(incomingReviewers))
             {
                 var review = existingPR.Reviews.First(r => r.Reviewer == reviewer);
-                _context.Reviews.Remove(review);
+                context.Reviews.Remove(review);
             }
 
             // Fetch and sync individual comments
             try
             {
-                var comments = await _gitHubService.GetCommentsAsync(config.Organization, prData.Repository, prData.Id, config);
+                var comments = await gitHubService.GetCommentsAsync(config.Organization, prData.Repository, prData.Id, config);
                 var existingCommentIds = existingPR.Comments.Select(c => c.GitHubId).ToHashSet();
                 var reviewThreadMap = existingPR.ReviewThreads.ToDictionary(rt => rt.GitHubId, rt => rt.Id);
 
@@ -109,7 +103,7 @@ public class CacheService : ICacheService
                     
                     if (!existingCommentIds.Contains(comment.GitHubId))
                     {
-                        _context.Comments.Add(new Comment
+                        context.Comments.Add(new Comment
                         {
                             PullRequestId = existingPR.Id,
                             ReviewThreadId = reviewThread?.Id,
@@ -142,12 +136,12 @@ public class CacheService : ICacheService
                 var incomingCommentIds = comments.Select(c => c.GitHubId).ToHashSet();
                 foreach (var comment in existingPR.Comments.Where(c => !incomingCommentIds.Contains(c.GitHubId)))
                 {
-                    _context.Comments.Remove(comment);
+                    context.Comments.Remove(comment);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching comments for PR {Organization}/{Repository}#{PullRequestNumber}", config.Organization, prData.Repository, prData.Id);
+                logger.LogError(ex, "Error fetching comments for PR {Organization}/{Repository}#{PullRequestNumber}", config.Organization, prData.Repository, prData.Id);
             }
 
             var existingThreadIds = existingPR.ReviewThreads.Select(rt => rt.GitHubId).ToHashSet();
@@ -157,7 +151,7 @@ public class CacheService : ICacheService
             {
                 if (!existingThreadIds.Contains(thread.GitHubId))
                 {
-                    _context.ReviewThreads.Add(new ReviewThread
+                    context.ReviewThreads.Add(new ReviewThread
                     {
                         PullRequestId = existingPR.Id,
                         GitHubId = thread.GitHubId,
@@ -191,25 +185,25 @@ public class CacheService : ICacheService
             foreach (var threadId in existingThreadIds.Except(incomingThreadIds))
             {
                 var thread = existingPR.ReviewThreads.First(rt => rt.GitHubId == threadId);
-                _context.ReviewThreads.Remove(thread);
+                context.ReviewThreads.Remove(thread);
             }
 
             // Fetch and store file diffs
             try
             {
-                var fileDiffs = await _gitHubService.GetFileDiffsAsync(config.Organization, prData.Repository, prData.Id, config);
-                var existingFileDiffs = await _context.FileDiffs
+                var fileDiffs = await gitHubService.GetFileDiffsAsync(config.Organization, prData.Repository, prData.Id, config);
+                var existingFileDiffs = await context.FileDiffs
                     .Where(f => f.PullRequestId == existingPR.Id)
                     .ToListAsync();
 
                 // Remove old file diffs
-                _context.FileDiffs.RemoveRange(existingFileDiffs);
+                context.FileDiffs.RemoveRange(existingFileDiffs);
 
                 // Add new file diffs with language detection
                 foreach (var fileDiff in fileDiffs)
                 {
-                    var language = DetectLanguage(fileDiff.Path);
-                    _context.FileDiffs.Add(new FileDiff
+                    var language = languageDetectionService.DetectLanguage(fileDiff.Path);
+                    context.FileDiffs.Add(new FileDiff
                     {
                         PullRequestId = existingPR.Id,
                         Path = fileDiff.Path,
@@ -225,67 +219,28 @@ public class CacheService : ICacheService
             }
             catch (Exception ex)
             {
-                // Log error but continue with other PRs
-                Console.WriteLine($"Error fetching file diffs for PR {prData.Id}: {ex.Message}");
+                logger.LogError(ex, "Error fetching file diffs for PR {PrId}", prData.Id);
             }
         }
 
-        await _context.SaveChangesAsync(); 
+        await context.SaveChangesAsync();
         await CleanupOldPRsAsync(prDataList);
-    }
-
-    private string DetectLanguage(string path)
-    {
-        var ext = Path.GetExtension(path).ToLower();
-        return ext switch
-        {
-            ".cs" => "csharp",
-            ".vue" => "vue",
-            ".ts" => "typescript",
-            ".js" => "javascript",
-            ".tsx" => "typescript",
-            ".jsx" => "javascript",
-            ".css" => "css",
-            ".scss" => "scss",
-            ".sass" => "sass",
-            ".less" => "less",
-            ".html" => "markup",
-            ".xml" => "markup",
-            ".json" => "json",
-            ".yml" => "yaml",
-            ".yaml" => "yaml",
-            ".md" => "markdown",
-            ".sql" => "sql",
-            ".py" => "python",
-            ".rb" => "ruby",
-            ".java" => "java",
-            ".go" => "go",
-            ".rs" => "rust",
-            ".cpp" => "cpp",
-            ".c" => "c",
-            ".h" => "c",
-            ".hpp" => "cpp",
-            ".sh" => "bash",
-            ".ps1" => "powershell",
-            ".dockerfile" => "docker",
-            _ => path.EndsWith("Dockerfile") ? "docker" : "text"
-        };
     }
 
     private async Task CleanupOldPRsAsync(List<GitHubPRData> currentPRs)
     {
         var currentIds = currentPRs.Select(pr => pr.Id).ToList();
-        var oldPRs = await _context.PullRequests
+        var oldPRs = await context.PullRequests
             .Where(pr => !currentIds.Contains(pr.GitHubId))
             .ToListAsync();
 
-        _context.PullRequests.RemoveRange(oldPRs);
-        await _context.SaveChangesAsync();
+        context.PullRequests.RemoveRange(oldPRs);
+        await context.SaveChangesAsync();
     }
 
     public async Task<Dictionary<string, List<PullRequest>>> GetCachedPullRequestsAsync()
     {
-        var pullRequests = await _context.PullRequests
+        var pullRequests = await context.PullRequests
             .Include(pr => pr.Reviews)
             .Include(pr => pr.ReviewThreads)
             .OrderByDescending(pr => pr.UpdatedAt)
@@ -303,7 +258,7 @@ public class CacheService : ICacheService
 
     public async Task<PRStats> GetPullRequestStatsAsync()
     {
-        var pullRequests = await _context.PullRequests
+        var pullRequests = await context.PullRequests
             .Include(pullRequest => pullRequest.ReviewThreads)
             .ToListAsync();
 
@@ -324,12 +279,12 @@ public class CacheService : ICacheService
 
     public async Task<GitHubConfig?> GetConfigAsync()
     {
-        return await _context.GitHubConfigs.FirstOrDefaultAsync();
+        return await context.GitHubConfigs.FirstOrDefaultAsync();
     }
 
     public async Task SaveConfigAsync(string organization, string token, int refreshIntervalMinutes, string appId = "", string privateKey = "", string installationId = "", bool useGitHubApp = false)
     {
-        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
+        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
 
         if (config == null)
         {
@@ -343,7 +298,7 @@ public class CacheService : ICacheService
                 InstallationId = installationId,
                 UseGitHubApp = useGitHubApp
             };
-            _context.GitHubConfigs.Add(config);
+            context.GitHubConfigs.Add(config);
         }
         else
         {
@@ -356,16 +311,16 @@ public class CacheService : ICacheService
             config.UseGitHubApp = useGitHubApp;
         }
 
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
     }
 
     public async Task UpdateLastRefreshAsync()
     {
-        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
+        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
         if (config != null)
         {
             config.LastRefresh = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
         }
     }
 }

@@ -35,12 +35,27 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 builder.Services.AddHttpClient();
+
+// Core services
 builder.Services.AddScoped<IGitHubService, GitHubService>();
 builder.Services.AddScoped<ICacheService, CacheService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IWebhookService, WebhookService>();
+
+// GitHub-related services
+builder.Services.AddSingleton<IGitHubTokenService, GitHubTokenService>();
+builder.Services.AddScoped<IGitHubGraphQLService, GitHubGraphQLService>();
+builder.Services.AddScoped<IPullRequestStatusService, PullRequestStatusService>();
+
+// Utility services
+builder.Services.AddScoped<ILanguageDetectionService, LanguageDetectionService>();
+builder.Services.AddScoped<IGitHubConfigValidationService, GitHubConfigValidationService>();
+
+// Webhook processing
 builder.Services.AddScoped<WebhookEventProcessor, GitHubWebhookProcessor>();
+
+// Background services
 builder.Services.AddHostedService<PRRefreshService>();
 
 builder.Services.AddControllers();
