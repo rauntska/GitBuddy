@@ -108,3 +108,8 @@ public record SubmitReviewRequest(
     string State,
     string? Body
 );
+
+public record UpdateViewedStateRequest(
+    string Path,
+    bool Viewed
+);

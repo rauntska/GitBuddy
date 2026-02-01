@@ -661,7 +661,7 @@ const navigateFile = (direction: 'next' | 'prev') => {
   }
 };
 
-const saveViewedFiles = async () => {
+const saveViewedFiles = async (filePath?: string, viewed?: boolean) => {
   if (!prDetail.value) return;
 
   const viewedFilesByPr = preferences.value.viewedFilesByPr || {};
@@ -670,16 +670,17 @@ const saveViewedFiles = async () => {
   await updatePreferences({ viewedFilesByPr });
 
   // Sync with GitHub using GraphQL
-  try {
-    await syncViewedFilesToGitHub(props.id, prDetail.value.viewedFiles?.filter(f => f !== undefined) || []);
-  } catch (error) {
-    console.error('Failed to sync viewed files to GitHub:', error);
+  if (filePath !== undefined && viewed !== undefined) {
+    try {
+      await apiService.updateFileViewedState(props.id, filePath, viewed);
+    } catch (error) {
+      console.error('Failed to sync viewed file to GitHub:', error);
+    }
   }
 };
 
 const syncViewedFilesToGitHub = async (prId: number, viewedFiles: string[]) => {
-  // TODO: Implement GitHub GraphQL mutation to mark files as viewed
-  // This would use a GitHub API endpoint or GraphQL mutation to store viewed state
+  // This is now handled by handleToggleViewed calling updateFileViewedState individually
   console.log('Syncing viewed files to GitHub for PR', prId, ':', viewedFiles);
 };
 
@@ -744,7 +745,7 @@ const handleToggleViewed = async (filePath: string, viewed: boolean) => {
   }
 
   // Save to preferences and sync with GitHub
-  await saveViewedFiles();
+  await saveViewedFiles(filePath, viewed);
 };
 
 const getReviewStatusIcon = (state: string) => {

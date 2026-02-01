@@ -440,12 +440,13 @@ const onHeaderClick = () => {
   expanded.value = !expanded.value;
 };
 
-const toggleViewed = () => {
-  const newViewedState = props.file.viewedState === 'VIEWED';
+const toggleViewed = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  const newViewed = target.checked;
   if (props.file.path) {
-    emit('toggleViewed', props.file.path, !newViewedState);
+    emit('toggleViewed', props.file.path, newViewed);
     if (props.onToggleViewed) {
-      props.onToggleViewed(props.file.path, !newViewedState);
+      props.onToggleViewed(props.file.path, newViewed);
     }
   }
 };

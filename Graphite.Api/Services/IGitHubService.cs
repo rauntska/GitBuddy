@@ -13,6 +13,8 @@ public interface IGitHubService
         GitHubConfig config);
     Task<List<GitHubFileDiffData>> GetFileDiffsAsync(string organization, string repository, long pullRequestNumber,
         GitHubConfig config, string? userAccessToken = null);
+    Task MarkFileAsViewedAsync(string organization, string repository, int pullRequestNumber, string path, GitHubConfig config, string? userAccessToken = null);
+    Task UnmarkFileAsViewedAsync(string organization, string repository, int pullRequestNumber, string path, GitHubConfig config, string? userAccessToken = null);
 }
 
 public record GitHubPRData(

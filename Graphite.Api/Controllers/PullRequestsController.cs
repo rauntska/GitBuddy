@@ -205,6 +205,79 @@ public class PullRequestsController : ControllerBase
         return Ok(new { message = "Pull request merge initiated" });
     }
 
+    [HttpPost("{id}/files/viewed")]
+    [Authorize]
+    public async Task<IActionResult> UpdateFileViewedState(int id, [FromBody] UpdateViewedStateRequest request)
+    {
+        var userIdClaim = User.FindFirst("UserId")?.Value;
+        //get user accesTOken from db
+        // Get user's token from database
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userIdFromClaim))
+        {
+            return Unauthorized(new { message = "User not authenticated" });
+        }
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.Id == userIdFromClaim);
+        
+        
+        var pr = await _context.PullRequests.FindAsync(id);
+        if (pr == null) return NotFound();
+
+        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
+        if (config == null) return BadRequest(new { message = "GitHub configuration not found" });
+
+        var userAccessToken = user.AccessToken;
+
+        try
+        {
+            if (request.Viewed)
+            {
+                await _gitHubService.MarkFileAsViewedAsync(config.Organization, pr.Repository, (int)pr.GitHubId, request.Path, config, userAccessToken);
+            }
+            else
+            {
+                await _gitHubService.UnmarkFileAsViewedAsync(config.Organization, pr.Repository, (int)pr.GitHubId, request.Path, config, userAccessToken);
+            }
+
+            // Also update local DB state
+            var fileDiff = await _context.FileDiffs.FirstOrDefaultAsync(f => f.PullRequestId == id && f.Path == request.Path);
+            if (fileDiff != null)
+            {
+                // Get current user from JWT
+                var userIdStr = User.FindFirst("UserId")?.Value;
+                if (int.TryParse(userIdStr, out var userId))
+                {
+                    var viewedState = await _context.UserFileViewedStates
+                        .FirstOrDefaultAsync(vs => vs.FileDiffId == fileDiff.Id && vs.UserId == userId);
+
+                    if (viewedState == null)
+                    {
+                        _context.UserFileViewedStates.Add(new UserFileViewedState
+                        {
+                            FileDiffId = fileDiff.Id,
+                            UserId = userId,
+                            ViewedState = request.Viewed ? "VIEWED" : "UNVIEWED",
+                            UpdatedAt = DateTime.UtcNow
+                        });
+                    }
+                    else
+                    {
+                        viewedState.ViewedState = request.Viewed ? "VIEWED" : "UNVIEWED";
+                        viewedState.UpdatedAt = DateTime.UtcNow;
+                    }
+
+                    await _context.SaveChangesAsync();
+                }
+            }
+
+            return Ok();
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to update viewed state on GitHub", error = ex.Message });
+        }
+    }
+
     [HttpPost("{id}/file-diffs/refresh-viewed-states")]
     [Authorize]
     public async Task<IActionResult> RefreshFileViewedStates(int id)

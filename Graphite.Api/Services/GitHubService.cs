@@ -224,6 +224,58 @@ public class GitHubService(
         }).ToList();
     }
 
+    public async Task MarkFileAsViewedAsync(string organization, string repository, int pullRequestNumber, string path, GitHubConfig config, string? userAccessToken = null)
+    {
+        var accessToken = await GetTokenForFileDiffsAsync(config, userAccessToken);
+        var connection = new GraphQLConnection(new GraphQLProductHeaderValue("Graphite-PR-Dashboard"), accessToken);
+
+        var pullRequestId = await GetPullRequestIdAsync(organization, repository, pullRequestNumber, accessToken);
+
+        var mutation = new Mutation()
+            .MarkFileAsViewed(new Octokit.GraphQL.Model.MarkFileAsViewedInput
+            {
+                PullRequestId = new ID(pullRequestId),
+                Path = path
+            })
+            .Select(m => m.PullRequest.Id)
+            .Compile();
+
+        var result = await connection.Run(mutation);
+    }
+
+    public async Task UnmarkFileAsViewedAsync(string organization, string repository, int pullRequestNumber, string path, GitHubConfig config, string? userAccessToken = null)
+    {
+        var accessToken = await GetTokenForFileDiffsAsync(config, userAccessToken);
+        var connection = new GraphQLConnection(new GraphQLProductHeaderValue("Graphite-PR-Dashboard"), accessToken);
+
+        var pullRequestId = await GetPullRequestIdAsync(organization, repository, pullRequestNumber, accessToken);
+
+        var mutation = new Mutation()
+            .UnmarkFileAsViewed(new Octokit.GraphQL.Model.UnmarkFileAsViewedInput
+            {
+                PullRequestId = new ID(pullRequestId),
+                Path = path
+            })
+            .Select(m => m.PullRequest.Id)
+            .Compile();
+
+        await connection.Run(mutation);
+    }
+
+    private async Task<string> GetPullRequestIdAsync(string organization, string repository, int pullRequestNumber, string accessToken)
+    {
+        var connection = new GraphQLConnection(new GraphQLProductHeaderValue("Graphite-PR-Dashboard"), accessToken);
+
+        var query = new GraphQLQuery()
+            .Repository(repository, organization)
+            .PullRequest(pullRequestNumber)
+            .Select(pr => pr.Id)
+            .Compile();
+
+        var id = await connection.Run(query);
+        return id.Value;
+    }
+
     private static string DetermineFileStatus(string status)
     {
         return status.ToLower() switch

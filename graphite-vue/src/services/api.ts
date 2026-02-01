@@ -66,6 +66,10 @@ export const apiService = {
     return response.data;
   },
 
+  updateFileViewedState: async (prId: number, path: string, viewed: boolean): Promise<void> => {
+    await api.post(`/pullrequests/${prId}/files/viewed`, { path, viewed });
+  },
+
   // User Preferences endpoints
   getUserPreferences: async (): Promise<UserPreferences> => {
     const response = await api.get<UserPreferences>('/userpreferences');
