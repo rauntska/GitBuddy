@@ -8,6 +8,14 @@ const preferences = ref<UserPreferences>({
   fileTreeWidth: 256,
   commentsPanelWidth: 320,
   fileTreeVisible: true,
+  keyboardShortcuts: {
+    toggleComments: 'c',
+    toggleFileTree: 'f',
+    nextFile: 'j',
+    previousFile: 'k',
+    nextComment: 'n',
+    previousComment: 'p',
+  },
 });
 
 const loaded = ref(false);
@@ -65,6 +73,20 @@ export function useUserPreferences() {
     await updatePreference('fileTreeVisible', visible);
   };
 
+  const setKeyboardShortcut = async (key: keyof UserPreferences['keyboardShortcuts'], value: string) => {
+    const oldShortcuts = preferences.value.keyboardShortcuts;
+    preferences.value.keyboardShortcuts = { ...preferences.value.keyboardShortcuts, [key]: value };
+
+    try {
+      await apiService.updateUserPreferences({ keyboardShortcuts: preferences.value.keyboardShortcuts });
+    } catch (error) {
+      // Revert on error
+      preferences.value.keyboardShortcuts = oldShortcuts;
+      console.error('Failed to update keyboard shortcut:', error);
+      throw error;
+    }
+  };
+
   const updatePreferences = async (updates: Partial<UserPreferences>) => {
     // Optimistic update
     const oldValues: Partial<UserPreferences> = {};
@@ -95,6 +117,7 @@ export function useUserPreferences() {
     setFileTreeWidth,
     setCommentsPanelWidth,
     setFileTreeVisible,
+    setKeyboardShortcut,
     updatePreferences,
   };
 }

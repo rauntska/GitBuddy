@@ -43,7 +43,7 @@
         <!-- Thread Header -->
         <div
           class="p-3 bg-slate-800 cursor-pointer hover:bg-slate-750 transition-colors"
-          @click="$emit('scrollToThread', thread.threadInfo.gitHubId)"
+          @click="$emit('scrollToThread', thread.threadInfo.gitHubId, thread.threadInfo.line)"
         >
           <div class="flex items-start gap-3 mb-2">
             <svg class="w-4 h-4 text-slate-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -120,7 +120,7 @@
         v-for="comment in filteredStandaloneComments"
         :key="comment.id"
         class="p-3 bg-slate-800 rounded-lg border border-slate-700 hover:border-slate-600 transition-colors cursor-pointer"
-        @click="$emit('scrollToComment', comment)"
+        @click="$emit('scrollToComment', comment, comment.line!)"
       >
         <!-- Comment Header -->
         <div class="flex items-start gap-3 mb-2">
@@ -183,8 +183,8 @@ const props = defineProps<{
 
 defineEmits<{
   close: [];
-  scrollToComment: [comment: Comment];
-  scrollToThread: [threadId: string];
+  scrollToComment: [comment: Comment, line: number];
+  scrollToThread: [threadId: string, line?: number];
 }>();
 
 const activeFilter = ref<'all' | 'file' | 'outdated' | 'thread'>('all');

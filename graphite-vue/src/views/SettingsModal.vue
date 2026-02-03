@@ -162,6 +162,77 @@ MIIEpAIBAAKCAQEA...
           </div>
         </div>
 
+        <!-- Keyboard Shortcuts -->
+        <div class="space-y-3">
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">
+              Keyboard Shortcuts
+            </label>
+            <div class="space-y-2">
+              <div class="flex items-center gap-2">
+                <span class="w-32 text-xs text-slate-400">Toggle Comments</span>
+                <input
+                  :value="localSettings.keyboardShortcuts?.toggleComments || 'c'"
+                  @input="(e: any) => updateShortcut('toggleComments', e.target.value)"
+                  type="text"
+                  maxlength="1"
+                  class="w-16 px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-white text-sm text-center uppercase focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="w-32 text-xs text-slate-400">Toggle File Tree</span>
+                <input
+                  :value="localSettings.keyboardShortcuts?.toggleFileTree || 'f'"
+                  @input="(e: any) => updateShortcut('toggleFileTree', e.target.value)"
+                  type="text"
+                  maxlength="1"
+                  class="w-16 px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-white text-sm text-center uppercase focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="w-32 text-xs text-slate-400">Next File</span>
+                <input
+                  :value="localSettings.keyboardShortcuts?.nextFile || 'j'"
+                  @input="(e: any) => updateShortcut('nextFile', e.target.value)"
+                  type="text"
+                  maxlength="1"
+                  class="w-16 px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-white text-sm text-center uppercase focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="w-32 text-xs text-slate-400">Previous File</span>
+                <input
+                  :value="localSettings.keyboardShortcuts?.previousFile || 'k'"
+                  @input="(e: any) => updateShortcut('previousFile', e.target.value)"
+                  type="text"
+                  maxlength="1"
+                  class="w-16 px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-white text-sm text-center uppercase focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="w-32 text-xs text-slate-400">Next Comment</span>
+                <input
+                  :value="localSettings.keyboardShortcuts?.nextComment || 'n'"
+                  @input="(e: any) => updateShortcut('nextComment', e.target.value)"
+                  type="text"
+                  maxlength="1"
+                  class="w-16 px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-white text-sm text-center uppercase focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="w-32 text-xs text-slate-400">Previous Comment</span>
+                <input
+                  :value="localSettings.keyboardShortcuts?.previousComment || 'p'"
+                  @input="(e: any) => updateShortcut('previousComment', e.target.value)"
+                  type="text"
+                  maxlength="1"
+                  class="w-16 px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-white text-sm text-center uppercase focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div
           v-if="localSettings.lastRefresh"
           class="p-3 bg-slate-800/50 rounded-lg border border-slate-700/50"
@@ -217,6 +288,8 @@ MIIEpAIBAAKCAQEA...
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue';
 import { useSettings } from '../composables/useSettings';
+import { useUserPreferences } from '../composables/useUserPreferences';
+import type { KeyboardShortcuts } from '../types';
 
 const emit = defineEmits<{
   close: [];
@@ -224,6 +297,7 @@ const emit = defineEmits<{
 }>();
 
 const { settings, loading, error, fetchSettings, saveSettings: saveSettingsAction } = useSettings();
+const { setKeyboardShortcut } = useUserPreferences();
 
 const localSettings = ref({
   organization: '',
@@ -234,6 +308,14 @@ const localSettings = ref({
   privateKey: '',
   installationId: '',
   useGitHubApp: false,
+  keyboardShortcuts: {
+    toggleComments: 'c',
+    toggleFileTree: 'f',
+    nextFile: 'j',
+    previousFile: 'k',
+    nextComment: 'n',
+    previousComment: 'p',
+  } as KeyboardShortcuts,
 });
 
 watch(
@@ -246,6 +328,7 @@ watch(
       appId: newSettings.appId || '',
       privateKey: newSettings.privateKey || '',
       installationId: newSettings.installationId || '',
+      keyboardShortcuts: newSettings.keyboardShortcuts || localSettings.value.keyboardShortcuts,
     };
   },
   { deep: true, immediate: true }
@@ -254,6 +337,18 @@ watch(
 const formatDate = (dateString: string): string => {
   const date = new Date(dateString);
   return date.toLocaleString();
+};
+
+const updateShortcut = async (key: keyof KeyboardShortcuts, value: string) => {
+  const lowerValue = value.toLowerCase();
+  if (lowerValue && lowerValue.length === 1) {
+    localSettings.value.keyboardShortcuts[key] = lowerValue;
+    try {
+      await setKeyboardShortcut(key, lowerValue);
+    } catch (error) {
+      console.error('Failed to update keyboard shortcut:', error);
+    }
+  }
 };
 
 const handleSave = async () => {
@@ -265,6 +360,7 @@ const handleSave = async () => {
     privateKey: localSettings.value.privateKey,
     installationId: localSettings.value.installationId,
     useGitHubApp: localSettings.value.useGitHubApp,
+    keyboardShortcuts: localSettings.value.keyboardShortcuts,
   };
   const success = await saveSettingsAction(settingsToSave);
   if (success) {

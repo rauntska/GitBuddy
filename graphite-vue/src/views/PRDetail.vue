@@ -3,15 +3,15 @@
     <!-- Compact Header -->
     <div class="sticky top-20 z-20 bg-slate-900/95 border-b border-slate-700/50 backdrop-blur-sm">
       <div class="px-4 py-2 flex items-center gap-3">
-        <router-link
-          to="/"
-          class="p-1 hover:bg-slate-800 rounded transition-colors"
-          title="Back to Dashboard"
-        >
-          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-          </svg>
-        </router-link>
+        <Breadcrumb
+          v-if="prDetail"
+          :items="[
+            { label: 'Dashboard', to: '/' },
+            { label: prDetail.repository },
+            { label: `#${prDetail.gitHubId}` },
+          ]"
+        />
+        <div v-else class="text-slate-500 text-sm">Loading...</div>
 
         <div class="flex-1 min-w-0 flex items-center gap-2">
           <StatusBadge v-if="prDetail" :status="prDetail.status" />
@@ -464,6 +464,7 @@ import FileDiffViewer from '../components/FileDiffViewer.vue';
 import FileTree from '../components/FileTree.vue';
 import CommentsPanel from '../components/CommentsPanel.vue';
 import StatusBadge from '../components/StatusBadge.vue';
+import Breadcrumb from '../components/Breadcrumb.vue';
 import type { Comment } from '../types';
 import { CheckIcon, ChatBubbleLeftIcon, ArrowPathIcon } from '@heroicons/vue/24/outline';
 import { useAuthStore } from '../stores/auth';
@@ -573,19 +574,21 @@ const handleKeyPress = (e: KeyboardEvent) => {
     return;
   }
 
-  switch (e.key.toLowerCase()) {
-    case 'c':
-      toggleCommentsPanel();
-      break;
-    case 'f':
-      toggleFileTree();
-      break;
-    case 'j':
-      navigateFile('next');
-      break;
-    case 'k':
-      navigateFile('prev');
-      break;
+  const key = e.key.toLowerCase();
+  const shortcuts = preferences.value.keyboardShortcuts;
+
+  if (key === shortcuts.toggleComments) {
+    toggleCommentsPanel();
+  } else if (key === shortcuts.toggleFileTree) {
+    toggleFileTree();
+  } else if (key === shortcuts.nextFile) {
+    navigateFile('next');
+  } else if (key === shortcuts.previousFile) {
+    navigateFile('prev');
+  } else if (key === shortcuts.nextComment) {
+    navigateComment('next');
+  } else if (key === shortcuts.previousComment) {
+    navigateComment('prev');
   }
 };
 
@@ -617,24 +620,39 @@ const handleSubmitReview = async () => {
   }
 };
 
-const scrollToFile = (path: string) => {
+const scrollToFile = (path: string, line?: number) => {
   selectedFile.value = path;
   const fileRef = fileRefs.value.get(path);
   if (fileRef && fileRef.$el) {
-    fileRef.$el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Ensure file is expanded
+    if (line && fileRef.expanded !== undefined && !fileRef.expanded) {
+      fileRef.expanded = true;
+      // Wait for expansion before scrolling
+      setTimeout(() => {
+        fileRef.$el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (fileRef.highlightLine) {
+          fileRef.highlightLine(line);
+        }
+      }, 100);
+    } else {
+      fileRef.$el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (line && fileRef.highlightLine) {
+        fileRef.highlightLine(line);
+      }
+    }
   }
 };
 
-const scrollToComment = (comment: Comment) => {
+const scrollToComment = (comment: Comment, line?: number) => {
   if (comment.path) {
-    scrollToFile(comment.path);
+    scrollToFile(comment.path, line ?? undefined);
   }
 };
 
-const scrollToThread = (threadId: string) => {
+const scrollToThread = (threadId: string, line?: number) => {
   const thread = prDetail.value?.reviewThreads.find(rt => rt.gitHubId === threadId);
   if (thread?.path) {
-    scrollToFile(thread.path);
+    scrollToFile(thread.path, line ?? undefined);
   }
 };
 
@@ -661,6 +679,33 @@ const navigateFile = (direction: 'next' | 'prev') => {
   }
 };
 
+const navigateComment = (direction: 'next' | 'prev') => {
+  if (!prDetail.value) return;
+
+  const comments = prDetail.value.allComments.filter(c => c.line && c.path);
+  if (comments.length === 0) return;
+
+  const currentHash = window.location.hash.match(/#L(\d+)/);
+  const currentLine = currentHash ? parseInt(currentHash[1] || '0') : 0;
+
+  const currentIndex = comments.findIndex(c => c.line === currentLine);
+  let nextComment: Comment | undefined;
+
+  if (direction === 'next') {
+    nextComment = currentIndex >= 0 && currentIndex < comments.length - 1
+      ? comments[currentIndex + 1]
+      : comments[0];
+  } else {
+    nextComment = currentIndex > 0
+      ? comments[currentIndex - 1]
+      : comments[comments.length - 1];
+  }
+
+  if (nextComment && nextComment.line && nextComment.path) {
+    scrollToFile(nextComment.path, nextComment.line);
+  }
+};
+
 const saveViewedFiles = async (filePath?: string, viewed?: boolean) => {
   if (!prDetail.value) return;
 
@@ -677,11 +722,6 @@ const saveViewedFiles = async (filePath?: string, viewed?: boolean) => {
       console.error('Failed to sync viewed file to GitHub:', error);
     }
   }
-};
-
-const syncViewedFilesToGitHub = async (prId: number, viewedFiles: string[]) => {
-  // This is now handled by handleToggleViewed calling updateFileViewedState individually
-  console.log('Syncing viewed files to GitHub for PR', prId, ':', viewedFiles);
 };
 
 const refreshFileViewStates = async () => {

@@ -89,6 +89,7 @@
                       {
                         'bg-green-500/10': line.type === 'add',
                         'bg-red-500/10': line.type === 'delete',
+                        'bg-yellow-500/20': highlightedLine === line.newLineNumber || highlightedLine === line.oldLineNumber,
                       }
                     ]"
                   >
@@ -244,6 +245,7 @@
                       {
                         'bg-green-500/10': line.type === 'add',
                         'bg-red-500/10': line.type === 'delete',
+                        'bg-yellow-500/20': highlightedLine === line.newLineNumber || highlightedLine === line.oldLineNumber,
                       }
                     ]"
                   >
@@ -403,6 +405,7 @@ const commentText = ref('');
 const commentTextarea = ref<HTMLTextAreaElement | null>(null);
 const lineRefs = ref<Map<number, HTMLElement>>(new Map());
 const language = ref(props.file.path ? detectLanguageFromPath(props.file.path) : 'text');
+const highlightedLine = ref<number | null>(null);
 
 const loadHunks = async () => {
   if (hunks.value.length === 0) {
@@ -448,22 +451,6 @@ const toggleViewed = (event: Event) => {
     if (props.onToggleViewed) {
       props.onToggleViewed(props.file.path, newViewed);
     }
-  }
-};
-
-const getViewedStateClass = (state: string): string => {
-  switch (state) {
-    case 'VIEWED': return 'bg-green-900/30 text-green-400 border border-green-700/50';
-    case 'DISMISSED': return 'bg-orange-900/30 text-orange-400 border border-orange-700/50';
-    default: return 'bg-slate-800 text-slate-400';
-  }
-};
-
-const getViewedStateLabel = (state: string): string => {
-  switch (state) {
-    case 'VIEWED': return 'Viewed';
-    case 'DISMISSED': return 'Dismissed';
-    default: return 'Unviewed';
   }
 };
 
@@ -563,7 +550,15 @@ const scrollToLine = (line: number | undefined) => {
   const el = lineRefs.value.get(line);
   if (el) {
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    highlightLine(line);
   }
+};
+
+const highlightLine = (lineNumber: number) => {
+  highlightedLine.value = lineNumber;
+  setTimeout(() => {
+    highlightedLine.value = null;
+  }, 2000);
 };
 
 const setLineRef = (lineNumber: number | undefined, el: any) => {
@@ -571,6 +566,11 @@ const setLineRef = (lineNumber: number | undefined, el: any) => {
     lineRefs.value.set(lineNumber, el);
   }
 };
+
+defineExpose({
+  highlightLine,
+  expanded,
+});
 
 const formatRelativeTime = (dateString: string): string => {
   const date = new Date(dateString);

@@ -64,6 +64,7 @@ export interface Settings {
   privateKey: string;
   installationId: string;
   useGitHubApp: boolean;
+  keyboardShortcuts?: KeyboardShortcuts;
 }
 
 export interface Comment {
@@ -128,4 +129,14 @@ export interface UserPreferences {
   commentsPanelWidth: number;
   fileTreeVisible: boolean;
   viewedFilesByPr?: Record<number, string[]>;
+  keyboardShortcuts: KeyboardShortcuts;
+}
+
+export interface KeyboardShortcuts {
+  toggleComments: string;
+  toggleFileTree: string;
+  nextFile: string;
+  previousFile: string;
+  nextComment: string;
+  previousComment: string;
 }
