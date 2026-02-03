@@ -33,6 +33,7 @@ public class GitHubGraphQLService : IGitHubGraphQLService
                 .Nodes
                 .Select(r => new
                 {
+                    r.Id,
                     AuthorLogin = r.Author.Login,
                     AuthorAvatar = r.Author.AvatarUrl(40),
                     r.State,

@@ -262,6 +262,26 @@ public class GitHubService(
         await connection.Run(mutation);
     }
 
+    public async Task SubmitPullRequestReviewAsync(string organization, string repository, long pullRequestNumber, string state, string? body, GitHubConfig config, string userAccessToken)
+    {
+        var restClient = new GitHubClient(new Octokit.ProductHeaderValue("Graphite-PR-Dashboard"))
+        {
+            Credentials = new Octokit.Credentials(userAccessToken)
+        };
+
+        var reviewEvent = MapReviewStateToRestEvent(state);
+
+        var reviewBody = body?.Trim() ?? string.Empty;
+
+        await restClient.PullRequest.Review.Create(organization, repository, (int)pullRequestNumber, new PullRequestReviewCreate
+        {
+            Body = reviewBody,
+            Event = reviewEvent
+        });
+
+        logger.LogInformation("Successfully submitted review {State} for PR {Organization}/{Repository}#{PullRequestNumber}", state, organization, repository, pullRequestNumber);
+    }
+
     private async Task<string> GetPullRequestIdAsync(string organization, string repository, int pullRequestNumber, string accessToken)
     {
         var connection = new GraphQLConnection(new GraphQLProductHeaderValue("Graphite-PR-Dashboard"), accessToken);
@@ -284,6 +304,17 @@ public class GitHubService(
             "removed" => "deleted",
             "renamed" => "renamed",
             _ => "modified"
+        };
+    }
+
+    private static PullRequestReviewEvent MapReviewStateToRestEvent(string state)
+    {
+        return state.ToUpper() switch
+        {
+            "APPROVED" => PullRequestReviewEvent.Approve,
+            "CHANGES_REQUESTED" => PullRequestReviewEvent.RequestChanges,
+            "COMMENT" => PullRequestReviewEvent.Comment,
+            _ => PullRequestReviewEvent.Comment
         };
     }
 }

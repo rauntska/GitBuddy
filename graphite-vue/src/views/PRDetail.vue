@@ -424,10 +424,18 @@
 
           <textarea
             v-model="reviewComment"
-            :placeholder="reviewAction === 'APPROVED' ? 'Add your approval comment (optional)...' : reviewAction === 'CHANGES_REQUESTED' ? 'Describe the changes requested...' : 'Add your comment (optional)...'"
-            class="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 rounded text-slate-200 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 mb-3"
+            :placeholder="reviewAction === 'APPROVED' ? 'Add your approval comment (optional)...' : reviewAction === 'CHANGES_REQUESTED' ? 'Describe changes requested... (required)' : 'Add your comment (optional)...'"
+            :class="[
+              'w-full px-3 py-2 border rounded text-slate-200 text-sm resize-none focus:outline-none focus:ring-1 mb-3',
+              reviewAction === 'CHANGES_REQUESTED' && !reviewComment.trim()
+                ? 'bg-slate-800/50 border-red-500 focus:ring-red-500 focus:border-red-500'
+                : 'bg-slate-800/50 border-slate-700 focus:ring-blue-500 focus:border-blue-500'
+            ]"
             rows="4"
           />
+          <div v-if="reviewAction === 'CHANGES_REQUESTED' && !reviewComment.trim()" class="text-red-400 text-xs mb-3">
+            Please provide details about the changes you're requesting.
+          </div>
           <div class="flex gap-2 justify-end">
             <button
               @click="showReviewModal = false"
@@ -437,13 +445,13 @@
             </button>
             <button
               @click="handleSubmitReview"
-              :disabled="submittingReview"
+              :disabled="submittingReview || (reviewAction === 'CHANGES_REQUESTED' && !reviewComment.trim())"
               :class="[
                 'px-3 py-1.5 rounded text-sm text-white transition-colors',
                 reviewAction === 'APPROVED' ? 'bg-green-600/90 hover:bg-green-600' :
                 reviewAction === 'CHANGES_REQUESTED' ? 'bg-red-600/90 hover:bg-red-600' :
                 'bg-blue-600/90 hover:bg-blue-600',
-                { 'opacity-50 cursor-not-allowed': submittingReview }
+                { 'opacity-50 cursor-not-allowed': submittingReview || (reviewAction === 'CHANGES_REQUESTED' && !reviewComment.trim()) }
               ]"
             >
               {{ submittingReview ? 'Submitting...' : 'Submit' }}
@@ -614,6 +622,11 @@ const handleAddComment = async (path: string, line: number, body: string) => {
 };
 
 const handleSubmitReview = async () => {
+  if (reviewAction.value === 'CHANGES_REQUESTED' && !reviewComment.value.trim()) {
+    alert('Please provide details about the changes you are requesting.');
+    return;
+  }
+
   submittingReview.value = true;
   const success = await submitReview(props.id, {
     state: reviewAction.value,

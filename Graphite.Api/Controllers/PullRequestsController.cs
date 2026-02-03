@@ -179,15 +179,50 @@ public class PullRequestsController : ControllerBase
     [Authorize]
     public async Task<IActionResult> SubmitReview(int id, [FromBody] SubmitReviewRequest request)
     {
+        var userIdClaim = User.FindFirst("UserId")?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized(new { message = "User not authenticated" });
+        }
+
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.Id == userId);
+
+        if (user == null || string.IsNullOrEmpty(user.AccessToken))
+        {
+            return Unauthorized(new { message = "User token not available" });
+        }
+
         var pr = await _context.PullRequests.FindAsync(id);
         if (pr == null)
         {
             return NotFound(new { message = "Pull request not found" });
         }
 
-        // In a real implementation, this would use GitHub API
-        // For now, we'll just return a success message
-        return Ok(new { message = $"Review submitted: {request.State}" });
+        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
+        if (config == null)
+        {
+            return BadRequest(new { message = "GitHub configuration not found" });
+        }
+
+        try
+        {
+            await _gitHubService.SubmitPullRequestReviewAsync(
+                config.Organization,
+                pr.Repository,
+                pr.GitHubId,
+                request.State,
+                request.Body,
+                config,
+                user.AccessToken
+            );
+
+            return Ok(new { message = "Review submitted successfully" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to submit review to GitHub", error = ex.Message });
+        }
     }
 
     [HttpPost("{id}/merge")]
