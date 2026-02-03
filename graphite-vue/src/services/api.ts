@@ -1,5 +1,5 @@
 import apiClient from '../utils/api';
-import type { GroupedPRs, PRStats, Settings, PRDetail, FileDiff, Comment, UserPreferences } from '../types';
+import type { GroupedPRs, PRStats, Settings, PRDetail, FileDiff, Comment, UserPreferences, PullRequest } from '../types';
 
 const api = apiClient;
 
@@ -12,6 +12,20 @@ export const apiService = {
   getStats: async (): Promise<PRStats> => {
     const response = await api.get<PRStats>('/pullrequests/stats');
     return response.data;
+  },
+
+  getMergedPRs: async (skip = 0, take = 10): Promise<{ pullRequests: PullRequest[]; total: number; hasMore: boolean }> => {
+    const response = await api.get<PullRequest[]>('/pullrequests/merged', {
+      params: { skip, take }
+    });
+    const totalCount = parseInt(response.headers['x-total-count'] || '0', 10);
+    const hasMore = response.headers['x-has-more'] === 'true';
+
+    return {
+      pullRequests: response.data,
+      total: totalCount,
+      hasMore
+    };
   },
 
   refreshPullRequests: async (): Promise<{ message: string }> => {

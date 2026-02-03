@@ -1,6 +1,6 @@
 import { ref } from 'vue';
 import { apiService } from '../services/api';
-import type { GroupedPRs, PRStats } from '../types';
+import type { GroupedPRs, PRStats, PullRequest } from '../types';
 
 export function usePullRequests() {
   const pullRequests = ref<GroupedPRs>({});
@@ -16,6 +16,11 @@ export function usePullRequests() {
   const loading = ref(false);
   const error = ref<string | null>(null);
   const lastRefresh = ref<string | null>(null);
+  const mergedPRs = ref<PullRequest[]>([]);
+  const mergedPRsLoading = ref(false);
+  const mergedPRsSkip = ref(0);
+  const mergedPRsTotal = ref(0);
+  const mergedPRsHasMore = ref(true);
 
   const fetchPullRequests = async () => {
     loading.value = true;
@@ -43,6 +48,35 @@ export function usePullRequests() {
     } finally {
       loading.value = false;
     }
+  };
+
+  const loadMergedPRs = async (reset = false) => {
+    if (reset) {
+      mergedPRs.value = [];
+      mergedPRsSkip.value = 0;
+    }
+
+    mergedPRsLoading.value = true;
+    try {
+      const result = await apiService.getMergedPRs(mergedPRsSkip.value, 10);
+      if (reset) {
+        mergedPRs.value = result.pullRequests;
+      } else {
+        mergedPRs.value = [...mergedPRs.value, ...result.pullRequests];
+      }
+      mergedPRsTotal.value = result.total;
+      mergedPRsHasMore.value = result.hasMore;
+    } catch (err) {
+      console.error('Failed to load merged PRs', err);
+    } finally {
+      mergedPRsLoading.value = false;
+    }
+  };
+
+  const loadMoreMergedPRs = async () => {
+    if (mergedPRsLoading.value || !mergedPRsHasMore.value) return;
+    mergedPRsSkip.value += 10;
+    await loadMergedPRs(false);
   };
 
   const formatRelativeTime = (dateString: string): string => {
@@ -104,5 +138,11 @@ export function usePullRequests() {
     getStatusColor,
     getStatusLabel,
     getStatusIcon,
+    mergedPRs,
+    mergedPRsLoading,
+    mergedPRsTotal,
+    mergedPRsHasMore,
+    loadMergedPRs,
+    loadMoreMergedPRs,
   };
 }

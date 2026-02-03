@@ -16,6 +16,7 @@ public interface IGitHubService
     Task MarkFileAsViewedAsync(string organization, string repository, int pullRequestNumber, string path, GitHubConfig config, string? userAccessToken = null);
     Task UnmarkFileAsViewedAsync(string organization, string repository, int pullRequestNumber, string path, GitHubConfig config, string? userAccessToken = null);
     Task SubmitPullRequestReviewAsync(string organization, string repository, long pullRequestNumber, string state, string? body, GitHubConfig config, string userAccessToken);
+    Task<GitHubPRStatusData?> GetPullRequestStatusAsync(string organization, string repository, long pullRequestNumber, GitHubConfig config);
 }
 
 public record GitHubPRData(
@@ -84,4 +85,12 @@ public record GitHubCommentData(
     bool IsOutdated,
     DateTime CreatedAt,
     DateTime? UpdatedAt
+);
+
+public record GitHubPRStatusData(
+    bool IsMerged,
+    bool IsClosed,
+    bool IsOpen,
+    DateTime? MergedAt,
+    DateTime? ClosedAt
 );

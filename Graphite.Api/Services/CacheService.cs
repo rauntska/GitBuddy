@@ -230,13 +230,67 @@ public class CacheService(
 
     private async Task CleanupOldPRsAsync(List<GitHubPRData> currentPRs)
     {
+        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
+        if (config == null) return;
+
         var currentIds = currentPRs.Select(pr => pr.Id).ToList();
         var oldPRs = await context.PullRequests
             .Where(pr => !currentIds.Contains(pr.GitHubId))
             .ToListAsync();
 
-        context.PullRequests.RemoveRange(oldPRs);
-        await context.SaveChangesAsync();
+        if (!oldPRs.Any()) return;
+
+        const int batchSize = 15;
+        for (int i = 0; i < oldPRs.Count; i += batchSize)
+        {
+            var batch = oldPRs.Skip(i).Take(batchSize).ToList();
+
+            foreach (var pr in batch)
+            {
+                var statusData = await gitHubService.GetPullRequestStatusAsync(
+                    config.Organization,
+                    pr.Repository,
+                    pr.GitHubId,
+                    config
+                );
+
+                if (statusData == null)
+                {
+                    logger.LogWarning("Could not fetch status for PR {Repository}#{Number} - skipping", pr.Repository, pr.GitHubId);
+                    continue;
+                }
+
+                if (config.DeleteOldPRs)
+                {
+                    context.PullRequests.Remove(pr);
+                    logger.LogInformation("Deleted PR {Repository}#{Number}", pr.Repository, pr.GitHubId);
+                }
+                else
+                {
+                    if (statusData.IsMerged)
+                    {
+                        pr.IsMerged = true;
+                        pr.MergedAt = statusData.MergedAt;
+                        logger.LogInformation("Marked PR {Repository}#{Number} as merged at {MergedAt}",
+                            pr.Repository, pr.GitHubId, statusData.MergedAt);
+                    }
+                    else if (statusData.IsClosed)
+                    {
+                        pr.IsMerged = false;
+                        pr.MergedAt = null;
+                        logger.LogInformation("Marked PR {Repository}#{Number} as closed (not merged)",
+                            pr.Repository, pr.GitHubId);
+                    }
+                }
+            }
+
+            await context.SaveChangesAsync();
+
+            if (i + batchSize < oldPRs.Count)
+            {
+                await Task.Delay(100);
+            }
+        }
     }
 
     public async Task<Dictionary<string, List<PullRequest>>> GetCachedPullRequestsAsync()
@@ -283,7 +337,7 @@ public class CacheService(
         return await context.GitHubConfigs.FirstOrDefaultAsync();
     }
 
-    public async Task SaveConfigAsync(string organization, string token, int refreshIntervalMinutes, string appId = "", string privateKey = "", string installationId = "", bool useGitHubApp = false)
+    public async Task SaveConfigAsync(string organization, string token, int refreshIntervalMinutes, string appId = "", string privateKey = "", string installationId = "", bool useGitHubApp = false, bool deleteOldPRs = false)
     {
         var config = await context.GitHubConfigs.FirstOrDefaultAsync();
 
@@ -297,7 +351,8 @@ public class CacheService(
                 AppId = appId,
                 PrivateKey = privateKey,
                 InstallationId = installationId,
-                UseGitHubApp = useGitHubApp
+                UseGitHubApp = useGitHubApp,
+                DeleteOldPRs = deleteOldPRs
             };
             context.GitHubConfigs.Add(config);
         }
@@ -310,6 +365,7 @@ public class CacheService(
             config.PrivateKey = privateKey;
             config.InstallationId = installationId;
             config.UseGitHubApp = useGitHubApp;
+            config.DeleteOldPRs = deleteOldPRs;
         }
 
         await context.SaveChangesAsync();

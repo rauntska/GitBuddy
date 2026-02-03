@@ -317,4 +317,41 @@ public class GitHubService(
             _ => PullRequestReviewEvent.Comment
         };
     }
+
+    public async Task<GitHubPRStatusData?> GetPullRequestStatusAsync(string organization, string repository, long pullRequestNumber, GitHubConfig config)
+    {
+        var accessToken = await tokenService.GetAccessTokenAsync(config);
+        var connection = new GraphQLConnection(new GraphQLProductHeaderValue("Graphite-PR-Dashboard"), accessToken);
+
+        var prQuery = new GraphQLQuery()
+            .Repository(repository, organization)
+            .PullRequest((Arg<int>)pullRequestNumber)
+            .Select(pr => new
+            {
+                pr.Number,
+                pr.State,
+                pr.MergedAt,
+                pr.ClosedAt
+            })
+            .Compile();
+
+        try
+        {
+            var pr = await connection.Run(prQuery);
+
+            return new GitHubPRStatusData(
+                IsMerged: pr.MergedAt.HasValue,
+                IsClosed: pr.State == Octokit.GraphQL.Model.PullRequestState.Closed || pr.MergedAt.HasValue,
+                IsOpen: pr.State == Octokit.GraphQL.Model.PullRequestState.Open,
+                MergedAt: pr.MergedAt?.UtcDateTime,
+                ClosedAt: pr.ClosedAt?.UtcDateTime
+            );
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error fetching PR status for {Organization}/{Repository}#{PullRequestNumber}",
+                organization, repository, pullRequestNumber);
+            return null;
+        }
+    }
 }

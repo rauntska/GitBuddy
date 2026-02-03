@@ -40,6 +40,8 @@ export interface PullRequest {
   lastSyncedAt: string;
   reviews: Review[];
   reviewThreads: ReviewThread[];
+  isMerged?: boolean;
+  mergedAt?: string;
 }
 
 export interface PRStats {
@@ -65,6 +67,7 @@ export interface Settings {
   privateKey: string;
   installationId: string;
   useGitHubApp: boolean;
+  deleteOldPRs: boolean;
   keyboardShortcuts?: KeyboardShortcuts;
 }
 

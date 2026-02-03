@@ -127,6 +127,27 @@
           @toggle="toggleGroup(status)"
         />
       </div>
+
+      <!-- Merged / Closed PRs -->
+      <div v-if="authStore.isAuthenticated && mergedPRs.length > 0" class="mt-8">
+        <PRGroup
+          title="Merged / Closed"
+          :pull-requests="mergedPRs"
+          status="Merged"
+          :expanded="expandedGroups.Merged ?? true"
+          @toggle="toggleGroup('Merged')"
+        />
+
+        <div v-if="mergedPRsHasMore" class="text-center mt-4">
+          <button
+            @click="loadMoreMergedPRs"
+            :disabled="mergedPRsLoading"
+            class="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-300 text-sm rounded transition-colors"
+          >
+            {{ mergedPRsLoading ? 'Loading...' : 'Load More Merged / Closed PRs' }}
+          </button>
+        </div>
+      </div>
     </main>
   </div>
 </template>
@@ -149,6 +170,11 @@ const authStore = useAuthStore();
     error,
     fetchPullRequests,
     refreshPullRequests,
+    mergedPRs,
+    mergedPRsLoading,
+    mergedPRsHasMore,
+    loadMergedPRs,
+    loadMoreMergedPRs,
   } = usePullRequests();
 
 const expandedGroups = ref<Record<string, boolean>>({});
@@ -170,6 +196,7 @@ const groupTitle = (status: string): string => {
     Reviewed: 'Reviewed',
     ChangesRequested: 'Changes Requested',
     Draft: 'Drafts',
+    Merged: 'Merged / Closed',
   };
   return titles[status] || status;
 };
@@ -186,6 +213,7 @@ onMounted(() => {
   if (authStore.isAuthenticated) {
     hasAttemptedLoad.value = true;
     fetchPullRequests();
+    loadMergedPRs(true);
   }
 });
 </script>

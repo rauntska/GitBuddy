@@ -74,6 +74,7 @@ const statusColor = computed(() => {
     Reviewed: 'bg-purple-500',
     ChangesRequested: 'bg-orange-500',
     Draft: 'bg-gray-500',
+    Merged: 'bg-slate-600',
   };
   return colors[props.status] || 'bg-gray-500';
 });

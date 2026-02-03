@@ -8,7 +8,7 @@ public interface ICacheService
     Task<Dictionary<string, List<PullRequest>>> GetCachedPullRequestsAsync();
     Task<PRStats> GetPullRequestStatsAsync();
     Task<GitHubConfig?> GetConfigAsync();
-    Task SaveConfigAsync(string organization, string token, int refreshIntervalMinutes, string appId = "", string privateKey = "", string installationId = "", bool useGitHubApp = false);
+    Task SaveConfigAsync(string organization, string token, int refreshIntervalMinutes, string appId = "", string privateKey = "", string installationId = "", bool useGitHubApp = false, bool deleteOldPRs = false);
     Task UpdateLastRefreshAsync();
 }
 

@@ -32,21 +32,23 @@ public class SettingsController : ControllerBase
                 appId = string.Empty,
                 privateKey = string.Empty,
                 installationId = string.Empty,
-                useGitHubApp = false
+                useGitHubApp = false,
+                deleteOldPRs = false
             });
         }
 
-        return Ok(new
-        {
-            organization = config.Organization,
-            personalAccessToken = config.PersonalAccessToken,
-            refreshIntervalMinutes = config.RefreshIntervalMinutes,
-            lastRefresh = config.LastRefresh,
-            appId = config.AppId,
-            privateKey = config.PrivateKey,
-            installationId = config.InstallationId,
-            useGitHubApp = config.UseGitHubApp
-        });
+            return Ok(new
+            {
+                organization = config.Organization,
+                personalAccessToken = config.PersonalAccessToken,
+                refreshIntervalMinutes = config.RefreshIntervalMinutes,
+                lastRefresh = config.LastRefresh,
+                appId = config.AppId,
+                privateKey = config.PrivateKey,
+                installationId = config.InstallationId,
+                useGitHubApp = config.UseGitHubApp,
+                deleteOldPRs = config.DeleteOldPRs
+            });
     }
 
     [HttpPost]
@@ -79,7 +81,8 @@ public class SettingsController : ControllerBase
             request.AppId,
             request.PrivateKey,
             request.InstallationId,
-            request.UseGitHubApp
+            request.UseGitHubApp,
+            request.DeleteOldPRs
         );
 
         return Ok(new { message = "Settings saved successfully" });
@@ -93,5 +96,6 @@ public record SaveSettingsRequest(
     string AppId,
     string PrivateKey,
     string InstallationId,
-    bool UseGitHubApp
+    bool UseGitHubApp,
+    bool DeleteOldPRs
 );

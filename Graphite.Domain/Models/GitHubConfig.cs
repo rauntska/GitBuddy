@@ -11,4 +11,5 @@ public class GitHubConfig
     public string PrivateKey { get; set; } = string.Empty;
     public string InstallationId { get; set; } = string.Empty;
     public bool UseGitHubApp { get; set; } = false;
+    public bool DeleteOldPRs { get; set; } = false;
 }

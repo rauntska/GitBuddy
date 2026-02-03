@@ -87,6 +87,26 @@ public class PullRequestsController : ControllerBase
         return Ok(stats);
     }
 
+    [HttpGet("merged")]
+    public async Task<IActionResult> GetMergedPRs([FromQuery] int skip = 0, [FromQuery] int take = 10)
+    {
+        var mergedPRs = await _context.PullRequests
+            .Include(pr => pr.Reviews)
+            .Include(pr => pr.ReviewThreads)
+            .Where(pr => pr.IsMerged)
+            .OrderByDescending(pr => pr.MergedAt)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync();
+
+        var totalCount = await _context.PullRequests.CountAsync(pr => pr.IsMerged);
+
+        Response.Headers.Append("X-Total-Count", totalCount.ToString());
+        Response.Headers.Append("X-Has-More", ((skip + take) < totalCount).ToString().ToLower());
+
+        return Ok(mergedPRs.ToDto());
+    }
+
     [HttpPost("refresh")]
     [Authorize]
     public async Task<IActionResult> Refresh()

@@ -183,6 +183,18 @@ MIIEpAIBAAKCAQEA...
               <span>60 min</span>
             </div>
           </div>
+
+          <div class="flex items-center gap-3">
+            <input
+              type="checkbox"
+              v-model="localSettings.deleteOldPRs"
+              id="deleteOldPRs"
+              class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-0"
+            />
+            <label for="deleteOldPRs" class="text-slate-300 text-sm cursor-pointer">
+              Delete closed/merged PRs (disable to keep history)
+            </label>
+          </div>
         </div>
         </div>
 
@@ -338,6 +350,7 @@ const localSettings = ref({
   privateKey: '',
   installationId: '',
   useGitHubApp: false,
+  deleteOldPRs: false,
   keyboardShortcuts: {
     toggleComments: 'c',
     toggleFileTree: 'f',
@@ -390,6 +403,7 @@ const handleSave = async () => {
     privateKey: localSettings.value.privateKey,
     installationId: localSettings.value.installationId,
     useGitHubApp: localSettings.value.useGitHubApp,
+    deleteOldPRs: localSettings.value.deleteOldPRs,
     keyboardShortcuts: localSettings.value.keyboardShortcuts,
   };
   const success = await saveSettingsAction(settingsToSave);

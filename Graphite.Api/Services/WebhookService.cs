@@ -95,9 +95,23 @@ public class WebhookService : IWebhookService
             case "closed":
                 if (existingPR != null)
                 {
-                    _context.PullRequests.Remove(existingPR);
+                    bool wasMerged = prData.Merged.HasValue && prData.Merged.Value;
+                    DateTime? mergedAt = prData.MergedAt?.UtcDateTime;
+
+                    if (config.DeleteOldPRs)
+                    {
+                        _context.PullRequests.Remove(existingPR);
+                        _logger.LogInformation("Deleted closed PR {Repository}#{Number}", repo.FullName, prData.Number);
+                    }
+                    else
+                    {
+                        existingPR.IsMerged = wasMerged;
+                        existingPR.MergedAt = mergedAt;
+                        _logger.LogInformation("Marked PR {Repository}#{Number} as {Status}",
+                            repo.FullName, prData.Number, wasMerged ? "merged" : "closed");
+                    }
+
                     await _context.SaveChangesAsync();
-                    _logger.LogInformation("Deleted closed PR {Repository}#{Number}", repo.FullName, prData.Number);
                 }
                 break;
 
@@ -155,7 +169,9 @@ public class WebhookService : IWebhookService
             Description = prData.Body ?? string.Empty,
             SourceBranch = prData.Head.Ref,
             TargetBranch = prData.Base.Ref,
-            MergeableState = null
+            MergeableState = null,
+            IsMerged = false,
+            MergedAt = null
         };
     }
 
@@ -244,6 +260,8 @@ public class WebhookService : IWebhookService
         if (reopened)
         {
             existingPr.Status = "AwaitingReview";
+            existingPr.IsMerged = false;
+            existingPr.MergedAt = null;
         }
     }
 

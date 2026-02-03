@@ -24,6 +24,8 @@ public class PullRequest
     public string TargetBranch { get; set; } = string.Empty;
     public string? MergeableState { get; set; }
     public string? ChecksStatus { get; set; }
+    public bool IsMerged { get; set; }
+    public DateTime? MergedAt { get; set; }
 
     public List<Review> Reviews { get; set; } = new();
     public List<ReviewThread> ReviewThreads { get; set; } = new();

@@ -11,6 +11,7 @@ export function useSettings() {
     privateKey: '',
     installationId: '',
     useGitHubApp: false,
+    deleteOldPRs: false,
   });
   const loading = ref(false);
   const error = ref<string | null>(null);
