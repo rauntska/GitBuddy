@@ -61,6 +61,10 @@ const treeNodes = computed(() => {
 
 const totalFiles = computed(() => props.files.length);
 
+const viewedCount = computed(() =>
+  props.files.filter(f => f.viewedState === 'VIEWED' || f.viewed === true).length
+);
+
 const toggleFolder = (path: string) => {
   if (expandedFolders.value.has(path)) {
     expandedFolders.value.delete(path);
