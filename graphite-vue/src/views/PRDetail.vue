@@ -575,7 +575,14 @@ const handleKeyPress = (e: KeyboardEvent) => {
   }
 
   const key = e.key.toLowerCase();
-  const shortcuts = preferences.value.keyboardShortcuts;
+  const shortcuts = preferences.value.keyboardShortcuts || {
+    toggleComments: 'c',
+    toggleFileTree: 'f',
+    nextFile: 'j',
+    previousFile: 'k',
+    nextComment: 'n',
+    previousComment: 'p',
+  };
 
   if (key === shortcuts.toggleComments) {
     toggleCommentsPanel();
