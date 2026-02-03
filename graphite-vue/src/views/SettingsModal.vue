@@ -5,7 +5,28 @@
   >
     <div class="w-full max-w-md bg-slate-900 border border-slate-700 rounded-xl shadow-2xl">
       <div class="flex items-center justify-between p-5 border-b border-slate-800">
-        <h2 class="text-lg font-semibold text-white">GitHub Settings</h2>
+        <div class="flex items-center gap-4">
+          <button
+            type="button"
+            @click="activeTab = 'github'"
+            :class="[
+              'text-base font-semibold transition-colors',
+              activeTab === 'github' ? 'text-white' : 'text-slate-400 hover:text-slate-300'
+            ]"
+          >
+            GitHub Settings
+          </button>
+          <button
+            type="button"
+            @click="activeTab = 'preferences'"
+            :class="[
+              'text-base font-semibold transition-colors',
+              activeTab === 'preferences' ? 'text-white' : 'text-slate-400 hover:text-slate-300'
+            ]"
+          >
+            Preferences
+          </button>
+        </div>
         <button
           @click="$emit('close')"
           class="text-slate-500 hover:text-slate-300 transition-colors p-1"
@@ -17,24 +38,26 @@
       </div>
 
       <form @submit.prevent="handleSave" class="p-5 space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-slate-300 mb-2">
-            GitHub Organization
-          </label>
-          <input
-            v-model="localSettings.organization"
-            type="text"
-            required
-            placeholder="e.g., myorganization"
-            class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-          />
-        </div>
+        <!-- GitHub Settings Tab -->
+        <div v-if="isGitHubTab" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">
+              GitHub Organization
+            </label>
+            <input
+              v-model="localSettings.organization"
+              type="text"
+              required
+              placeholder="e.g., myorganization"
+              class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            />
+          </div>
 
-        <div>
-          <label class="block text-sm font-medium text-slate-300 mb-2">
-            Authentication Method
-          </label>
-          <div class="flex gap-2">
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">
+              Authentication Method
+            </label>
+            <div class="flex gap-2">
             <button
               type="button"
               @click="localSettings.useGitHubApp = false"
@@ -138,32 +161,34 @@ MIIEpAIBAAKCAQEA...
               class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             />
             <p class="mt-2 text-xs text-slate-500">
-              Found in the URL when viewing app installation: 
+              Found in URL when viewing app installation: 
               <code class="bg-slate-700 px-1 rounded">/settings/installations/[INSTALLATION_ID]</code>
             </p>
           </div>
-        </div>
 
-        <div>
-          <label class="block text-sm font-medium text-slate-300 mb-2">
-            Auto-refresh Interval: {{ localSettings.refreshIntervalMinutes }} minutes
-          </label>
-          <input
-            v-model.number="localSettings.refreshIntervalMinutes"
-            type="range"
-            min="5"
-            max="60"
-            step="5"
-            class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
-          />
-          <div class="flex justify-between text-xs text-slate-500 mt-1">
-            <span>5 min</span>
-            <span>60 min</span>
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">
+              Auto-refresh Interval: {{ localSettings.refreshIntervalMinutes }} minutes
+            </label>
+            <input
+              v-model.number="localSettings.refreshIntervalMinutes"
+              type="range"
+              min="5"
+              max="60"
+              step="5"
+              class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+            />
+            <div class="flex justify-between text-xs text-slate-500 mt-1">
+              <span>5 min</span>
+              <span>60 min</span>
+            </div>
           </div>
         </div>
+        </div>
 
-        <!-- Keyboard Shortcuts -->
-        <div class="space-y-3">
+        <!-- Preferences Tab -->
+        <div v-if="isPreferencesTab" class="space-y-4">
+          <!-- Keyboard Shortcuts -->
           <div>
             <label class="block text-sm font-medium text-slate-300 mb-2">
               Keyboard Shortcuts
@@ -234,7 +259,7 @@ MIIEpAIBAAKCAQEA...
         </div>
 
         <div
-          v-if="localSettings.lastRefresh"
+          v-if="isGitHubTab && localSettings.lastRefresh"
           class="p-3 bg-slate-800/50 rounded-lg border border-slate-700/50"
         >
           <div class="text-xs text-slate-500">Last Refresh</div>
@@ -286,7 +311,7 @@ MIIEpAIBAAKCAQEA...
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue';
+import { ref, watch, onMounted, computed } from 'vue';
 import { useSettings } from '../composables/useSettings';
 import { useUserPreferences } from '../composables/useUserPreferences';
 import type { KeyboardShortcuts } from '../types';
@@ -298,6 +323,11 @@ const emit = defineEmits<{
 
 const { settings, loading, error, fetchSettings, saveSettings: saveSettingsAction } = useSettings();
 const { setKeyboardShortcut } = useUserPreferences();
+
+const activeTab = ref<'github' | 'preferences'>('github');
+
+const isGitHubTab = computed(() => activeTab.value === 'github');
+const isPreferencesTab = computed(() => activeTab.value === 'preferences');
 
 const localSettings = ref({
   organization: '',
