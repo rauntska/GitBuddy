@@ -41,6 +41,7 @@ public record GitHubPRData(
 );
 
 public record GitHubReviewData(
+    string GitHubId,
     string Reviewer,
     string? ReviewerAvatar,
     string State,

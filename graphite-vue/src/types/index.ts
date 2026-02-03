@@ -1,5 +1,6 @@
 export interface Review {
   id: number;
+  gitHubId: string;
   reviewer: string;
   reviewerAvatar?: string;
   state: string;

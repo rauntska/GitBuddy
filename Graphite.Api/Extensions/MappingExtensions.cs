@@ -5,6 +5,22 @@ namespace Graphite.Api.Extensions;
 
 public static class MappingExtensions
 {
+    private static List<ReviewDto> GetLatestReviewsPerReviewer(IEnumerable<Review> reviews)
+    {
+        return reviews
+            .GroupBy(r => r.Reviewer)
+            .Select(g => g.OrderByDescending(r => r.SubmittedAt).First())
+            .Select(r => new ReviewDto(
+                r.Id,
+                r.GitHubId,
+                r.Reviewer,
+                r.ReviewerAvatar,
+                r.State,
+                r.SubmittedAt
+            ))
+            .ToList();
+    }
+
     public static PullRequestDto ToDto(this PullRequest pr)
     {
         return new PullRequestDto(
@@ -23,13 +39,7 @@ public static class MappingExtensions
             pr.CreatedAt,
             pr.UpdatedAt,
             pr.LastSyncedAt,
-            pr.Reviews.Select(r => new ReviewDto(
-                r.Id,
-                r.Reviewer,
-                r.ReviewerAvatar,
-                r.State,
-                r.SubmittedAt
-            )).ToList(),
+            GetLatestReviewsPerReviewer(pr.Reviews),
             pr.ReviewThreads.Select(rt => new ReviewThreadDto(
                 rt.Id,
                 rt.GitHubId,
@@ -117,13 +127,7 @@ public static class MappingExtensions
             pr.TargetBranch,
             pr.MergeableState,
             pr.ChecksStatus,
-            pr.Reviews.Select(r => new ReviewDto(
-                r.Id,
-                r.Reviewer,
-                r.ReviewerAvatar,
-                r.State,
-                r.SubmittedAt
-            )).ToList(),
+            GetLatestReviewsPerReviewer(pr.Reviews),
             pr.ReviewThreads.Select(rt => new ReviewThreadDto(
                 rt.Id,
                 rt.GitHubId,

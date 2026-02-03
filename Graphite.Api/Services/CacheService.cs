@@ -68,15 +68,16 @@ public class CacheService(
                 await context.SaveChangesAsync();
             }
 
-            var existingReviewers = existingPR.Reviews.Select(r => r.Reviewer).ToHashSet();
-            var incomingReviewers = (prData.Reviews ?? []).Select(r => r.Reviewer).ToHashSet();
+            var existingReviewIds = existingPR.Reviews.Select(r => r.GitHubId).ToHashSet();
+            var incomingReviewIds = (prData.Reviews ?? []).Select(r => r.GitHubId).ToHashSet();
 
-            foreach (var reviewer in incomingReviewers.Except(existingReviewers))
+            foreach (var reviewId in incomingReviewIds.Except(existingReviewIds))
             {
-                var reviewData = prData.Reviews!.First(r => r.Reviewer == reviewer);
+                var reviewData = prData.Reviews!.First(r => r.GitHubId == reviewId);
                 context.Reviews.Add(new Review
                 {
                     PullRequestId = existingPR.Id,
+                    GitHubId = reviewData.GitHubId,
                     Reviewer = reviewData.Reviewer,
                     ReviewerAvatar = reviewData.ReviewerAvatar,
                     State = reviewData.State,
@@ -84,9 +85,9 @@ public class CacheService(
                 });
             }
 
-            foreach (var reviewer in existingReviewers.Except(incomingReviewers))
+            foreach (var reviewId in existingReviewIds.Except(incomingReviewIds))
             {
-                var review = existingPR.Reviews.First(r => r.Reviewer == reviewer);
+                var review = existingPR.Reviews.First(r => r.GitHubId == reviewId);
                 context.Reviews.Remove(review);
             }
 

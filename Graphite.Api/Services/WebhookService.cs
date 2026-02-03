@@ -166,6 +166,7 @@ public class WebhookService : IWebhookService
             _context.Reviews.Add(new Review
             {
                 PullRequestId = pullRequestId,
+                GitHubId = review.GitHubId,
                 Reviewer = review.Reviewer,
                 ReviewerAvatar = review.ReviewerAvatar,
                 State = review.State,

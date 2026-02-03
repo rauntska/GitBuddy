@@ -2,6 +2,7 @@ namespace Graphite.Api.DTOs;
 
 public record ReviewDto(
     int Id,
+    string GitHubId,
     string Reviewer,
     string? ReviewerAvatar,
     string State,

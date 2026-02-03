@@ -4,6 +4,7 @@ public class Review
 {
     public int Id { get; set; }
     public int PullRequestId { get; set; }
+    public string GitHubId { get; set; } = string.Empty;
     public string Reviewer { get; set; } = string.Empty;
     public string? ReviewerAvatar { get; set; }
     public string State { get; set; } = string.Empty;

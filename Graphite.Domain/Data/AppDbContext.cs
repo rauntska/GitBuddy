@@ -48,6 +48,7 @@ public class AppDbContext : DbContext
         {
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.PullRequestId);
+            entity.HasIndex(e => e.GitHubId).IsUnique();
         });
 
         modelBuilder.Entity<ReviewThread>(entity =>

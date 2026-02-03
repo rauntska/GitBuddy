@@ -44,6 +44,7 @@ public class GitHubGraphQLService : IGitHubGraphQLService
             var result = await connection.Run(query);
 
             return result.Select(r => new GitHubReviewData(
+                r.Id.Value,
                 r.AuthorLogin,
                 r.AuthorAvatar,
                 r.State.ToString(),
