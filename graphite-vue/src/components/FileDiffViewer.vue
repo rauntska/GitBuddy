@@ -107,18 +107,18 @@
                   >
                     <!-- Old Side -->
                     <td class="px-3 py-1 text-slate-600 text-right select-none border-r border-slate-800 bg-slate-950/50">
-                      {{ line.type !== 'add' ? line.oldLineNumber : '' }}
+                      {{ line.type === 'delete' ? line.oldLineNumber : '' }}
                     </td>
                     <td
                       :class="[
                         'px-4 py-1 font-mono text-sm overflow-hidden',
-                        line.type === 'delete' ? 'bg-rose-950/10' : 'bg-slate-950/30'
+                        line.type === 'delete' ? 'bg-rose-950/10' : 'bg-slate-950/20'
                       ]"
                     >
                       <span v-if="line.type === 'delete'" class="text-rose-400 select-none mr-1">-</span>
                       <span v-else class="opacity-0 select-none mr-1">·</span>
                       <code
-                        v-if="line.type !== 'add'"
+                        v-if="line.type === 'delete'"
                         :class="line.type === 'delete' ? 'text-rose-300/90' : 'text-slate-300'"
                         style="white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;"
                         v-html="highlightSyntax(line.content)"
@@ -148,14 +148,18 @@
                       ]"
                     >
                       <span v-if="line.type === 'add'" class="text-emerald-400 select-none mr-1">+</span>
-                      <span v-else-if="line.type === 'delete'" class="text-rose-400 select-none mr-1">-</span>
                       <span v-else class="opacity-0 select-none mr-1">·</span>
-                      <code style="white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;" v-html="highlightSyntax(line.content)" />
+                      <code
+                        v-if="line.type !== 'delete'"
+                        :class="line.type === 'add' ? 'text-emerald-300/90' : 'text-slate-300'"
+                        style="white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;"
+                        v-html="highlightSyntax(line.content)"
+                      />
                     </td>
                   </tr>
 
                   <!-- Comments for Left Side (Old Code) -->
-                  <tr v-if="getCommentsForLine(line.oldLineNumber, 'left').length > 0 || (commentingLine === line.oldLineNumber && getCommentsForLine(line.oldLineNumber, 'left').length >= 0)">
+                  <tr v-if="line.type === 'delete' && (getCommentsForLine(line.oldLineNumber, 'left').length > 0 || (commentingLine === line.oldLineNumber && getCommentsForLine(line.oldLineNumber, 'left').length >= 0))">
                     <td colspan="2" class="p-0 bg-gradient-to-b from-slate-900/50 to-slate-950/30 border-t border-slate-700/20">
                       <div v-if="getCommentsForLine(line.oldLineNumber, 'left').length > 0" class="p-4 space-y-3">
                         <div
@@ -189,7 +193,7 @@
                   </tr>
 
                   <!-- Comments for Right Side (New Code) -->
-                  <tr v-if="commentingLine === line.newLineNumber || getCommentsForLine(line.newLineNumber, 'right').length > 0">
+                  <tr v-if="line.type !== 'delete' && (commentingLine === line.newLineNumber || getCommentsForLine(line.newLineNumber, 'right').length > 0)">
                     <td colspan="3" class="bg-slate-950/30"></td>
                     <td colspan="2" class="p-0 bg-gradient-to-b from-slate-900/50 to-slate-950/30 border-t border-slate-700/20">
                       <div v-if="commentingLine === line.newLineNumber" class="p-4 border-b border-slate-700/20">

@@ -12,23 +12,13 @@ namespace Graphite.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class PullRequestsController : ControllerBase
+public class PullRequestsController(ICacheService cacheService, AppDbContext context, IGitHubService gitHubService)
+    : ControllerBase
 {
-    private readonly ICacheService _cacheService;
-    private readonly AppDbContext _context;
-    private readonly IGitHubService _gitHubService;
-
-    public PullRequestsController(ICacheService cacheService, AppDbContext context, IGitHubService gitHubService)
-    {
-        _cacheService = cacheService;
-        _context = context;
-        _gitHubService = gitHubService;
-    }
-
     [HttpGet]
     public async Task<IActionResult> Get()
     {
-        var groupedPRs = await _cacheService.GetCachedPullRequestsAsync();
+        var groupedPRs = await cacheService.GetCachedPullRequestsAsync();
         
         var groupedPRsDtos = new Dictionary<string, object>();
         foreach (var group in groupedPRs)
@@ -42,7 +32,7 @@ public class PullRequestsController : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id)
     {
-        var pr = await _context.PullRequests
+        var pr = await context.PullRequests
             .Include(p => p.Reviews)
             .Include(p => p.ReviewThreads)
             .FirstOrDefaultAsync(p => p.Id == id);
@@ -52,11 +42,11 @@ public class PullRequestsController : ControllerBase
             return NotFound(new { message = "Pull request not found" });
         }
 
-        var files = await _context.FileDiffs
+        var files = await context.FileDiffs
             .Where(f => f.PullRequestId == id)
             .ToListAsync();
 
-        var comments = await _context.Comments
+        var comments = await context.Comments
             .Where(c => c.PullRequestId == id)
             .ToListAsync();
 
@@ -72,7 +62,7 @@ public class PullRequestsController : ControllerBase
         List<UserFileViewedState>? viewedStates = null;
         if (userId.HasValue)
         {
-            viewedStates = await _context.UserFileViewedStates
+            viewedStates = await context.UserFileViewedStates
                 .Where(uvs => uvs.UserId == userId.Value && files.Select(f => f.Id).Contains(uvs.FileDiffId))
                 .ToListAsync();
         }
@@ -83,14 +73,14 @@ public class PullRequestsController : ControllerBase
     [HttpGet("stats")]
     public async Task<IActionResult> GetStats()
     {
-        var stats = await _cacheService.GetPullRequestStatsAsync();
+        var stats = await cacheService.GetPullRequestStatsAsync();
         return Ok(stats);
     }
 
     [HttpGet("merged")]
     public async Task<IActionResult> GetMergedPRs([FromQuery] int skip = 0, [FromQuery] int take = 10)
     {
-        var mergedPRs = await _context.PullRequests
+        var mergedPRs = await context.PullRequests
             .Include(pr => pr.Reviews)
             .Include(pr => pr.ReviewThreads)
             .Where(pr => pr.IsMerged)
@@ -99,7 +89,7 @@ public class PullRequestsController : ControllerBase
             .Take(take)
             .ToListAsync();
 
-        var totalCount = await _context.PullRequests.CountAsync(pr => pr.IsMerged);
+        var totalCount = await context.PullRequests.CountAsync(pr => pr.IsMerged);
 
         Response.Headers.Append("X-Total-Count", totalCount.ToString());
         Response.Headers.Append("X-Has-More", ((skip + take) < totalCount).ToString().ToLower());
@@ -111,7 +101,7 @@ public class PullRequestsController : ControllerBase
     [Authorize]
     public async Task<IActionResult> Refresh()
     {
-        var config = await _cacheService.GetConfigAsync();
+        var config = await cacheService.GetConfigAsync();
 
         if (config == null || string.IsNullOrEmpty(config.Organization))
         {
@@ -130,8 +120,8 @@ public class PullRequestsController : ControllerBase
 
         try
         {
-            await _cacheService.RefreshPullRequestsAsync(config);
-            await _cacheService.UpdateLastRefreshAsync();
+            await cacheService.RefreshPullRequestsAsync(config);
+            await cacheService.UpdateLastRefreshAsync();
             return Ok(new { message = "Pull requests refreshed successfully" });
         }
         catch (Exception ex)
@@ -143,7 +133,7 @@ public class PullRequestsController : ControllerBase
     [HttpGet("{id}/files/{*filePath}")]
     public async Task<IActionResult> GetFileDiff(int id, string filePath)
     {
-        var fileDiff = await _context.FileDiffs
+        var fileDiff = await context.FileDiffs
             .FirstOrDefaultAsync(f => f.PullRequestId == id && f.Path == filePath);
 
         if (fileDiff == null)
@@ -157,7 +147,7 @@ public class PullRequestsController : ControllerBase
     [HttpGet("{id}/comments")]
     public async Task<IActionResult> GetComments(int id)
     {
-        var comments = await _context.Comments
+        var comments = await context.Comments
             .Where(c => c.PullRequestId == id)
             .ToListAsync();
 
@@ -168,7 +158,7 @@ public class PullRequestsController : ControllerBase
     [Authorize]
     public async Task<IActionResult> AddComment(int id, [FromBody] AddCommentRequest request)
     {
-        var pr = await _context.PullRequests.FindAsync(id);
+        var pr = await context.PullRequests.FindAsync(id);
         if (pr == null)
         {
             return NotFound(new { message = "Pull request not found" });
@@ -189,8 +179,8 @@ public class PullRequestsController : ControllerBase
             IsOutdated = false
         };
 
-        _context.Comments.Add(comment);
-        await _context.SaveChangesAsync();
+        context.Comments.Add(comment);
+        await context.SaveChangesAsync();
 
         return Ok(comment.ToDto());
     }
@@ -205,7 +195,7 @@ public class PullRequestsController : ControllerBase
             return Unauthorized(new { message = "User not authenticated" });
         }
 
-        var user = await _context.Users
+        var user = await context.Users
             .FirstOrDefaultAsync(u => u.Id == userId);
 
         if (user == null || string.IsNullOrEmpty(user.AccessToken))
@@ -213,13 +203,13 @@ public class PullRequestsController : ControllerBase
             return Unauthorized(new { message = "User token not available" });
         }
 
-        var pr = await _context.PullRequests.FindAsync(id);
+        var pr = await context.PullRequests.FindAsync(id);
         if (pr == null)
         {
             return NotFound(new { message = "Pull request not found" });
         }
 
-        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
+        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
         if (config == null)
         {
             return BadRequest(new { message = "GitHub configuration not found" });
@@ -227,7 +217,7 @@ public class PullRequestsController : ControllerBase
 
         try
         {
-            await _gitHubService.SubmitPullRequestReviewAsync(
+            await gitHubService.SubmitPullRequestReviewAsync(
                 config.Organization,
                 pr.Repository,
                 pr.GitHubId,
@@ -249,7 +239,7 @@ public class PullRequestsController : ControllerBase
     [Authorize]
     public async Task<IActionResult> MergePR(int id)
     {
-        var pr = await _context.PullRequests.FindAsync(id);
+        var pr = await context.PullRequests.FindAsync(id);
         if (pr == null)
         {
             return NotFound(new { message = "Pull request not found" });
@@ -271,14 +261,14 @@ public class PullRequestsController : ControllerBase
         {
             return Unauthorized(new { message = "User not authenticated" });
         }
-        var user = await _context.Users
+        var user = await context.Users
             .FirstOrDefaultAsync(u => u.Id == userIdFromClaim);
         
         
-        var pr = await _context.PullRequests.FindAsync(id);
+        var pr = await context.PullRequests.FindAsync(id);
         if (pr == null) return NotFound();
 
-        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
+        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
         if (config == null) return BadRequest(new { message = "GitHub configuration not found" });
 
         var userAccessToken = user.AccessToken;
@@ -287,27 +277,27 @@ public class PullRequestsController : ControllerBase
         {
             if (request.Viewed)
             {
-                await _gitHubService.MarkFileAsViewedAsync(config.Organization, pr.Repository, (int)pr.GitHubId, request.Path, config, userAccessToken);
+                await gitHubService.MarkFileAsViewedAsync(config.Organization, pr.Repository, (int)pr.GitHubId, request.Path, config, userAccessToken);
             }
             else
             {
-                await _gitHubService.UnmarkFileAsViewedAsync(config.Organization, pr.Repository, (int)pr.GitHubId, request.Path, config, userAccessToken);
+                await gitHubService.UnmarkFileAsViewedAsync(config.Organization, pr.Repository, (int)pr.GitHubId, request.Path, config, userAccessToken);
             }
 
             // Also update local DB state
-            var fileDiff = await _context.FileDiffs.FirstOrDefaultAsync(f => f.PullRequestId == id && f.Path == request.Path);
+            var fileDiff = await context.FileDiffs.FirstOrDefaultAsync(f => f.PullRequestId == id && f.Path == request.Path);
             if (fileDiff != null)
             {
                 // Get current user from JWT
                 var userIdStr = User.FindFirst("UserId")?.Value;
                 if (int.TryParse(userIdStr, out var userId))
                 {
-                    var viewedState = await _context.UserFileViewedStates
+                    var viewedState = await context.UserFileViewedStates
                         .FirstOrDefaultAsync(vs => vs.FileDiffId == fileDiff.Id && vs.UserId == userId);
 
                     if (viewedState == null)
                     {
-                        _context.UserFileViewedStates.Add(new UserFileViewedState
+                        context.UserFileViewedStates.Add(new UserFileViewedState
                         {
                             FileDiffId = fileDiff.Id,
                             UserId = userId,
@@ -321,7 +311,7 @@ public class PullRequestsController : ControllerBase
                         viewedState.UpdatedAt = DateTime.UtcNow;
                     }
 
-                    await _context.SaveChangesAsync();
+                    await context.SaveChangesAsync();
                 }
             }
 
@@ -345,7 +335,7 @@ public class PullRequestsController : ControllerBase
         }
 
         // Get PR details
-        var pr = await _context.PullRequests
+        var pr = await context.PullRequests
             .FirstOrDefaultAsync(p => p.Id == id);
 
         if (pr == null)
@@ -354,7 +344,7 @@ public class PullRequestsController : ControllerBase
         }
 
         // Get user's token from database
-        var user = await _context.Users
+        var user = await context.Users
             .FirstOrDefaultAsync(u => u.Id == userId);
         
         if (user == null || string.IsNullOrEmpty(user.AccessToken))
@@ -363,7 +353,7 @@ public class PullRequestsController : ControllerBase
         }
 
         // Get config
-        var config = await _cacheService.GetConfigAsync();
+        var config = await cacheService.GetConfigAsync();
         if (config == null)
         {
             return BadRequest(new { message = "GitHub configuration not found" });
@@ -372,7 +362,7 @@ public class PullRequestsController : ControllerBase
         try
         {
             // Fetch file diffs with user's viewed state from GitHub
-            var fileDiffs = await _gitHubService.GetFileDiffsAsync(
+            var fileDiffs = await gitHubService.GetFileDiffsAsync(
                 config.Organization,
                 pr.Repository,
                 pr.GitHubId,
@@ -381,7 +371,7 @@ public class PullRequestsController : ControllerBase
             );
 
             // Get existing file diffs from database
-            var dbFileDiffs = await _context.FileDiffs
+            var dbFileDiffs = await context.FileDiffs
                 .Where(f => f.PullRequestId == id)
                 .ToListAsync();
 
@@ -392,7 +382,7 @@ public class PullRequestsController : ControllerBase
                 if (dbFileDiff != null)
                 {
                     // Update or create viewed state
-                    var existingState = await _context.UserFileViewedStates
+                    var existingState = await context.UserFileViewedStates
                         .FirstOrDefaultAsync(uvs => uvs.UserId == userId && uvs.FileDiffId == dbFileDiff.Id);
 
                     if (existingState != null)
@@ -403,7 +393,7 @@ public class PullRequestsController : ControllerBase
                     else
                     {
                         // Create new viewed state
-                        _context.UserFileViewedStates.Add(new UserFileViewedState
+                        context.UserFileViewedStates.Add(new UserFileViewedState
                         {
                             UserId = userId,
                             FileDiffId = dbFileDiff.Id,
@@ -414,10 +404,10 @@ public class PullRequestsController : ControllerBase
                 }
             }
 
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
 
             // Return updated file diffs with viewed state
-            var viewedStates = await _context.UserFileViewedStates
+            var viewedStates = await context.UserFileViewedStates
                 .Where(uvs => uvs.UserId == userId && dbFileDiffs.Select(f => f.Id).Contains(uvs.FileDiffId))
                 .ToListAsync();
 

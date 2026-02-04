@@ -160,7 +160,7 @@ public class WebhookService : IWebhookService
             AuthorAvatar = prData.User.AvatarUrl,
             Status = status,
             Draft = prData.Draft,
-            Url = prData.Url,
+            Url = prData.HtmlUrl,
             Additions = prData.Additions,
             Deletions = prData.Deletions,
             ChangedFiles = prData.ChangedFiles,
