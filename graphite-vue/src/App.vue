@@ -38,7 +38,7 @@ const handleSettingsSaved = () => {
 
 <template>
   <div class="min-h-screen bg-slate-900 text-slate-100">
-    <header class="sticky top-0 z-10 bg-slate-900/95 backdrop-blur border-b border-slate-800">
+    <header class="sticky top-0 z-20 bg-slate-900/95 backdrop-blur border-b border-slate-800">
       <div class="max-w-screen-2xl mx-auto px-4 py-4">
         <div class="flex items-center justify-between">
           <router-link to="/" class="text-xl font-semibold text-white flex items-center gap-2 hover:opacity-80 transition-opacity">

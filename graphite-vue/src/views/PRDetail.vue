@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900 text-slate-200">
+  <div class="flex flex-col bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900 text-slate-200 min-h-screen">
     <!-- Compact Header -->
     <div class="sticky top-20 z-20 bg-gradient-to-r from-slate-900/95 to-slate-900/90 border-b border-slate-700/30 backdrop-blur-md">
       <div class="px-5 py-3 flex items-center gap-3">
@@ -216,7 +216,6 @@
         <!-- Bottom Section: File Diffs -->
         <div class="flex-1">
           <div class="px-6 py-5">
-            <div class="space-y-4">
                 <!-- Files Changed Header -->
                <div class="flex items-center justify-between py-2">
                   <h2 class="text-base font-semibold text-slate-100">
@@ -337,8 +336,8 @@
                   :on-add-comment="(line: number, body: string) => handleAddComment(file.path!, line, body)"
                   :on-toggle-viewed="handleToggleViewed"
                   :initial-expanded="!isFileViewed(file.path!)"
+                  class="mb-4"
                 />
-            </div>
           </div>
         </div>
       </div>

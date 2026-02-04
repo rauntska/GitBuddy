@@ -1,8 +1,8 @@
 <template>
-  <div class="border border-slate-700/30 rounded-xl overflow-hidden bg-gradient-to-b from-slate-900/80 to-slate-950/80 shadow-lg">
+  <div class="border border-slate-700/30 rounded-xl bg-gradient-to-b from-slate-900/80 to-slate-950/80 shadow-lg mb-4">
     <!-- File Header -->
     <button
-      class="flex items-center justify-between px-4 py-2 bg-gradient-to-r from-slate-800/60 to-slate-800/40 border-b border-slate-700/30 cursor-pointer hover:from-slate-800/80 hover:to-slate-800/60 select-none w-full text-left transition-all duration-200"
+      class="sticky top-[8.5rem] z-10 flex items-center justify-between px-4 py-2 bg-gradient-to-r from-slate-800/60 to-slate-800/40 border-b border-slate-700/30 cursor-pointer hover:from-slate-800/80 hover:to-slate-800/60 select-none w-full text-left transition-all duration-200 backdrop-blur-sm"
       type="button"
       @click="onHeaderClick"
     >
@@ -74,7 +74,7 @@
         </div>
 
         <!-- Split View -->
-        <div v-if="viewMode === 'split'" class="overflow-x-hidden text-xs font-mono" ref="diffContainer">
+        <div v-if="viewMode === 'split'" class="overflow-x-auto text-xs font-mono" ref="diffContainer">
           <table class="w-full border-collapse table-fixed">
             <colgroup>
               <col style="width: 56px;">
@@ -260,7 +260,7 @@
         </div>
 
         <!-- Unified View -->
-        <div v-else class="overflow-x-hidden text-xs font-mono" ref="diffContainer">
+        <div v-else class="overflow-x-auto text-xs font-mono" ref="diffContainer">
           <table class="w-full border-collapse table-fixed">
             <colgroup>
               <col style="width: 56px;">
