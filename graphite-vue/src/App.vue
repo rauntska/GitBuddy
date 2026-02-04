@@ -42,10 +42,16 @@ const handleSettingsSaved = () => {
       <div class="max-w-screen-2xl mx-auto px-4 py-4">
         <div class="flex items-center justify-between">
           <h1 class="text-xl font-semibold text-white flex items-center gap-2">
-            <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4M6 16l-4-4 4-4" />
+            <svg class="w-10 h-10" fill="none" viewBox="0 0 24 24">
+              <circle cx="12" cy="4" r="2.5" stroke="#22c55e" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />
+              <path stroke="#22c55e" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 7v3" />
+              <path stroke="#22c55e" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10h6" />
+              <path stroke="#22c55e" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 10v2.5c0 1.5 1 2.5 2 2.5s2-1 2-2.5V10" />
+              <path stroke="#22c55e" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 15l-1.5 1.5m5.5-1.5l1.5 1.5" />
+              <path stroke="#3b82f6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 13l2 2m0 0l2-2m-2 2V7" />
+              <path stroke="#3b82f6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13l-2 2m0 0l-2-2m2 2V7" />
             </svg>
-            Graphite
+            Git Buddy
           </h1>
           <div class="flex items-center gap-3">
             <span
