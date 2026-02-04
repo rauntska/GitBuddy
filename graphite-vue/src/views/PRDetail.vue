@@ -151,9 +151,10 @@
               <!-- Description -->
               <div class="p-4 bg-gradient-to-br from-slate-800/40 to-slate-800/20 border border-slate-700/30 rounded-xl shadow-sm">
                 <div class="text-xs font-semibold text-slate-200 mb-3">Description</div>
-                <div v-if="prDetail.description" class="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto">
-                  {{ prDetail.description }}
-                </div>
+                <DescriptionRenderer
+                  v-if="prDetail"
+                  :content="prDetail?.description || ''"
+                />
                 <p v-else class="text-sm text-slate-500 italic">No description provided</p>
               </div>
             </div>
@@ -356,8 +357,8 @@
           class="flex-shrink-0 relative"
         >
           <CommentsPanel
-            :comments="prDetail.allComments"
-            :review-threads="prDetail.reviewThreads"
+            :comments="prDetail?.allComments || []"
+            :review-threads="prDetail?.reviewThreads || []"
             @close="toggleCommentsPanel"
             @scroll-to-comment="scrollToComment"
             @scroll-to-thread="scrollToThread"
@@ -475,6 +476,7 @@ import FileTree from '../components/FileTree.vue';
 import CommentsPanel from '../components/CommentsPanel.vue';
 import StatusBadge from '../components/StatusBadge.vue';
 import Breadcrumb from '../components/Breadcrumb.vue';
+import DescriptionRenderer from '../components/DescriptionRenderer.vue';
 import type { Comment } from '../types';
 import { CheckIcon, ChatBubbleLeftIcon, ArrowPathIcon } from '@heroicons/vue/24/outline';
 import { useAuthStore } from '../stores/auth';

@@ -73,6 +73,7 @@ public class GitHubGraphQLService : IGitHubGraphQLService
                     Id = rt.Id.Value,
                     Path = rt.Path,
                     Line = rt.Line,
+                    DiffSide = rt.DiffSide,
                     IsResolved = rt.IsResolved,
                     IsOutdated = rt.IsOutdated,
                     Comments = rt.Comments(100, null, null, null, null).Nodes.Select(c => new
@@ -98,6 +99,7 @@ public class GitHubGraphQLService : IGitHubGraphQLService
                     rt.Id,
                     rt.Path ?? string.Empty,
                     rt.Line,
+                    rt.DiffSide,
                     state,
                     rt.IsResolved,
                     rt.IsOutdated,

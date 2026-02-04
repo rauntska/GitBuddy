@@ -54,6 +54,7 @@ public record GitHubReviewThreadData(
     string GitHubId,
     string Path,
     int? Line,
+    DiffSide diffSide,
     string State,
     bool IsResolved,
     bool IsOutdated,
@@ -61,8 +62,7 @@ public record GitHubReviewThreadData(
     DateTime? UpdatedAt,
     string FirstCommentAuthor,
     string FirstCommentBody,
-    int CommentCount
-);
+    int CommentCount);
 
 public record GitHubFileDiffData(
     string Path,
