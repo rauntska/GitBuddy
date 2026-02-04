@@ -1,4 +1,5 @@
 using Graphite.Domain.Models;
+using Mono.TextTemplating;
 using Octokit;
 using Octokit.GraphQL;
 using Octokit.GraphQL.Core;
@@ -343,6 +344,7 @@ public class GitHubService(
                 IsMerged: pr.MergedAt.HasValue,
                 IsClosed: pr.State == Octokit.GraphQL.Model.PullRequestState.Closed || pr.MergedAt.HasValue,
                 IsOpen: pr.State == Octokit.GraphQL.Model.PullRequestState.Open,
+                State: pr.State,
                 MergedAt: pr.MergedAt?.UtcDateTime,
                 ClosedAt: pr.ClosedAt?.UtcDateTime
             );

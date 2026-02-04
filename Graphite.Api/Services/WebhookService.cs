@@ -107,6 +107,7 @@ public class WebhookService : IWebhookService
                     {
                         existingPR.IsMerged = wasMerged;
                         existingPR.MergedAt = mergedAt;
+                        existingPR.Status = wasMerged ? "Merged" : "Closed";
                         _logger.LogInformation("Marked PR {Repository}#{Number} as {Status}",
                             repo.FullName, prData.Number, wasMerged ? "merged" : "closed");
                     }
@@ -152,7 +153,7 @@ public class WebhookService : IWebhookService
     {
         return new PullRequest
         {
-            GitHubId = prData.Id,
+            GitHubId = prData.Number,
             Title = prData.Title,
             Repository = repo.Name,
             Author = prData.User.Login,

@@ -1,62 +1,73 @@
 <template>
-  <div class="border border-slate-700/50 rounded-lg overflow-hidden bg-slate-900/50">
+  <div class="border border-slate-700/30 rounded-xl overflow-hidden bg-gradient-to-b from-slate-900/80 to-slate-950/80 shadow-lg">
     <!-- File Header -->
     <button
-      class="flex items-center justify-between px-3 py-2 bg-slate-800/80 border-b border-slate-700/50 cursor-pointer hover:bg-slate-800 select-none w-full text-left"
+      class="flex items-center justify-between px-4 py-2 bg-gradient-to-r from-slate-800/60 to-slate-800/40 border-b border-slate-700/30 cursor-pointer hover:from-slate-800/80 hover:to-slate-800/60 select-none w-full text-left transition-all duration-200"
       type="button"
       @click="onHeaderClick"
     >
-      <div class="flex items-center gap-2 min-w-0">
+      <div class="flex items-center gap-3 min-w-0">
         <!-- Expand/Collapse Icon -->
         <svg
-          :class="['w-3.5 h-3.5 text-slate-400 transition-transform flex-shrink-0', { 'rotate-90': expanded }]"
+          :class="['w-4 h-4 text-blue-400 transition-transform flex-shrink-0', { 'rotate-90': expanded }]"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
         >
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
         </svg>
 
-        <!-- File Status Icon -->
-        <span :class="['text-xs font-semibold flex-shrink-0', getStatusColor(file.status || 'modified')]">
+        <!-- File Status Badge -->
+        <span :class="['text-xs font-bold px-2 py-0.5 rounded flex-shrink-0', getStatusBadgeClass(file.status || 'modified')]">
           {{ getStatusIcon(file.status || 'modified') }}
         </span>
 
         <!-- File Path -->
-        <span class="text-sm font-mono text-slate-200 truncate">{{ file.path }}</span>
+        <span class="text-sm font-mono text-slate-100 truncate tracking-wide">{{ file.path }}</span>
       </div>
 
       <!-- File Stats -->
-      <div class="flex items-center gap-3 text-xs flex-shrink-0">
-        <span class="text-green-400 font-medium">+{{ file.additions }}</span>
-        <span class="text-red-400 font-medium">-{{ file.deletions }}</span>
-        <input
-          type="checkbox"
-          :checked="file.viewedState === 'VIEWED'"
-          @click.stop="toggleViewed"
-          class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-green-500 focus:ring-green-500 focus:ring-offset-slate-900 cursor-pointer"
-          title="Mark as viewed"
-        />
-        <span class="text-xs text-slate-400">Viewed</span>
+      <div class="flex items-center gap-4 text-xs flex-shrink-0">
+        <div class="flex items-center gap-2">
+          <span class="text-emerald-400 font-semibold text-xs px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">+{{ file.additions }}</span>
+          <span class="text-rose-400 font-semibold text-xs px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/20">-{{ file.deletions }}</span>
+        </div>
+        <div class="flex items-center gap-2 pl-3 border-l border-slate-600/50">
+          <label class="flex items-center gap-2 cursor-pointer group">
+            <input
+              type="checkbox"
+              :checked="file.viewedState === 'VIEWED'"
+              @click.stop="toggleViewed"
+              class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-emerald-500 focus:ring-emerald-500/50 focus:ring-offset-slate-900 cursor-pointer transition-all"
+              title="Mark as viewed"
+            />
+            <span class="text-xs text-slate-400 group-hover:text-slate-300 transition-colors">Viewed</span>
+          </label>
+        </div>
       </div>
     </button>
 
     <!-- File Diff Content -->
-    <div v-if="expanded && !loading" class="relative bg-slate-950/50">
-      <div v-if="hunks.length === 0" class="p-6 text-center text-slate-400">
-        No diff content available
+    <div v-if="expanded && !loading" class="relative bg-slate-950/50 backdrop-blur">
+      <div v-if="hunks.length === 0" class="p-8 text-center">
+        <div class="flex flex-col items-center gap-3">
+          <svg class="w-12 h-12 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <p class="text-slate-400 text-sm">No diff content available</p>
+        </div>
       </div>
 
       <template v-if="hunks.length > 0">
         <!-- Minimap -->
         <div
-          class="absolute right-0 top-0 bottom-0 w-2 bg-slate-800/50 border-l border-slate-700/50 z-10"
+          class="absolute right-0 top-0 bottom-0 w-1.5 bg-slate-800/40 border-l border-slate-700/30 z-20 rounded-l overflow-hidden"
         >
           <div
             v-for="(comment, index) in fileComments"
             :key="index"
             :style="{ top: getCommentPosition(comment.line) + '%' }"
-            class="absolute w-full h-1 bg-blue-500 cursor-pointer hover:bg-blue-400"
+            class="absolute w-full h-1.5 bg-gradient-to-b from-blue-500/80 to-blue-600/80 cursor-pointer hover:from-blue-400 hover:to-blue-500 transition-all shadow-sm"
             :title="`Comment by ${comment.author}`"
             @click="scrollToLine(comment.line)"
           />
@@ -66,18 +77,18 @@
         <div v-if="viewMode === 'split'" class="overflow-x-hidden text-xs font-mono" ref="diffContainer">
           <table class="w-full border-collapse table-fixed">
             <colgroup>
-              <col style="width: 50px;">
-              <col style="width: calc(50% - 78px);">
-              <col style="width: 50px;">
-              <col style="width: 28px;">
-              <col style="width: calc(50% - 50px);">
+              <col style="width: 56px;">
+              <col style="width: calc(50% - 85px);">
+              <col style="width: 56px;">
+              <col style="width: 32px;">
+              <col style="width: calc(50% - 59px);">
             </colgroup>
             <tbody>
               <template v-for="(hunk, hunkIndex) in hunks" :key="hunkIndex">
                 <!-- Hunk Header -->
-                <tr class="bg-slate-800/50">
-                  <td colspan="5" class="px-3 py-1.5 text-slate-400 text-xs border-y border-slate-700/50">
-                    @@ -{{ hunk.oldStart }},{{ hunk.oldLines }} +{{ hunk.newStart }},{{ hunk.newLines }} @@
+                <tr class="bg-gradient-to-r from-slate-800/40 to-slate-800/30 border-y border-slate-700/30">
+                  <td colspan="5" class="px-4 py-2 text-slate-400 text-xs font-mono">
+                    <span class="text-slate-500">@</span>@ -{{ hunk.oldStart }},{{ hunk.oldLines }} <span class="text-blue-400">+</span>{{ hunk.newStart }},{{ hunk.newLines }} <span class="text-slate-500">@</span>@
                   </td>
                 </tr>
 
@@ -85,58 +96,59 @@
                   <tr
                     :ref="el => setLineRef(line.newLineNumber || line.oldLineNumber, el)"
                     :class="[
-                      'hover:bg-slate-800/30 group',
+                      'hover:bg-slate-800/40 group transition-colors duration-150',
                       {
-                        'bg-green-500/10': line.type === 'add',
-                        'bg-red-500/10': line.type === 'delete',
-                        'bg-yellow-500/20': highlightedLine === line.newLineNumber || highlightedLine === line.oldLineNumber,
+                        'bg-emerald-500/5 border-l-2 border-emerald-500/50': line.type === 'add',
+                        'bg-rose-500/5 border-l-2 border-rose-500/50': line.type === 'delete',
+                        'bg-amber-500/10 border-l-2 border-amber-500/50': highlightedLine === line.newLineNumber || highlightedLine === line.oldLineNumber,
+                        'border-l-2 border-transparent': line.type !== 'add' && line.type !== 'delete' && highlightedLine !== line.newLineNumber && highlightedLine !== line.oldLineNumber
                       }
                     ]"
                   >
                     <!-- Old Side -->
-                    <td class="px-2 py-0.5 text-slate-500 text-right select-none border-r border-slate-700/50 bg-slate-900/50">
+                    <td class="px-3 py-1 text-slate-600 text-right select-none border-r border-slate-800 bg-slate-950/50">
                       {{ line.type !== 'add' ? line.oldLineNumber : '' }}
                     </td>
                     <td
                       :class="[
-                        'px-3 py-0.5 font-mono text-sm overflow-hidden',
-                        line.type === 'delete' ? 'bg-red-500/5' : 'bg-slate-900/30'
+                        'px-4 py-1 font-mono text-sm overflow-hidden',
+                        line.type === 'delete' ? 'bg-rose-950/10' : 'bg-slate-950/30'
                       ]"
                     >
-                      <span v-if="line.type === 'delete'" class="text-red-400 select-none">-</span>
-                      <span v-else class="opacity-0 select-none">·</span>
+                      <span v-if="line.type === 'delete'" class="text-rose-400 select-none mr-1">-</span>
+                      <span v-else class="opacity-0 select-none mr-1">·</span>
                       <code
                         v-if="line.type !== 'add'"
-                        :class="line.type === 'delete' ? 'text-red-300' : 'text-slate-300'"
+                        :class="line.type === 'delete' ? 'text-rose-300/90' : 'text-slate-300'"
                         style="white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;"
                         v-html="highlightSyntax(line.content)"
                       />
                     </td>
 
                     <!-- New Side -->
-                    <td class="px-2 py-0.5 text-slate-500 text-right select-none border-x border-slate-700/50 bg-slate-900/50">
+                    <td class="px-3 py-1 text-slate-600 text-right select-none border-x border-slate-800 bg-slate-950/50">
                       {{ line.type !== 'delete' ? line.newLineNumber : '' }}
                     </td>
-                    <td class="px-1 bg-slate-900/50">
+                    <td class="px-1.5 bg-slate-950/50">
                       <button
                         v-if="line.newLineNumber && line.type !== 'delete'"
                         @click="startComment(line.newLineNumber!)"
-                        class="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-slate-700 rounded transition-opacity"
+                        class="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-700 rounded-md transition-all duration-200"
                         title="Add comment"
                       >
-                        <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                         </svg>
                       </button>
                     </td>
                     <td
                       :class="[
-                        'px-3 py-0.5 font-mono text-sm overflow-hidden',
-                        line.type === 'add' ? 'bg-green-500/5' : 'bg-slate-900/30'
+                        'px-4 py-1 font-mono text-sm overflow-hidden',
+                        line.type === 'add' ? 'bg-emerald-950/10' : 'bg-slate-950/30'
                       ]"
                     >
-                      <span v-if="line.type === 'add'" class="text-green-400 select-none">+</span>
-                      <span v-else-if="line.type === 'delete'" class="text-red-400 select-none mr-1">-</span>
+                      <span v-if="line.type === 'add'" class="text-emerald-400 select-none mr-1">+</span>
+                      <span v-else-if="line.type === 'delete'" class="text-rose-400 select-none mr-1">-</span>
                       <span v-else class="opacity-0 select-none mr-1">·</span>
                       <code style="white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;" v-html="highlightSyntax(line.content)" />
                     </td>
@@ -144,71 +156,60 @@
 
                   <!-- Comments -->
                   <tr v-if="commentingLine === line.newLineNumber || getCommentsForLine(line.newLineNumber).length > 0">
-                    <td colspan="5" class="p-0 bg-slate-800/50">
-                      <div v-if="commentingLine === line.newLineNumber" class="p-3 border-t border-slate-700/50">
+                    <td colspan="5" class="p-0 bg-gradient-to-b from-slate-900/50 to-slate-950/30 border-t border-slate-700/20">
+                      <div v-if="commentingLine === line.newLineNumber" class="p-4 border-b border-slate-700/20">
                         <textarea
                           v-model="commentText"
                           placeholder="Add your comment..."
-                          class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-slate-200 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          class="w-full px-4 py-3 bg-slate-900/80 border border-slate-600/50 rounded-xl text-slate-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-200 placeholder:text-slate-500"
                           rows="3"
                           ref="commentTextarea"
                         />
-                        <div class="flex gap-2 justify-end mt-2">
+                        <div class="flex gap-2 justify-end mt-3">
                           <button
                             @click="cancelComment"
-                            class="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs text-slate-200 transition-colors"
+                            class="px-4 py-2 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-xs text-slate-200 transition-all duration-200 border border-slate-600/50 hover:border-slate-500/50"
                           >
                             Cancel
                           </button>
                           <button
                             @click="submitComment"
                             :disabled="!commentText.trim()"
-                            class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-xs text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30"
                           >
                             Comment
                           </button>
                         </div>
                       </div>
 
-                      <div v-if="getCommentsForLine(line.newLineNumber).length > 0" class="p-3 space-y-2 border-t border-slate-700/50">
+                      <div v-if="getCommentsForLine(line.newLineNumber).length > 0" class="p-4 space-y-3">
                         <div
                           v-for="comment in getCommentsForLine(line.newLineNumber)"
                           :key="comment.id"
-                          class="flex gap-2 p-2 bg-slate-900/80 rounded border border-slate-700/50 hover:border-slate-600 transition-colors"
+                          class="flex gap-3 p-3 bg-gradient-to-br from-slate-900/60 to-slate-950/40 rounded-xl border border-slate-700/30 hover:border-slate-600/50 transition-all duration-200 shadow-sm"
                         >
                           <img
                             v-if="comment.authorAvatar"
                             :src="comment.authorAvatar"
                             :alt="comment.author"
-                            class="w-6 h-6 rounded-full flex-shrink-0"
+                            class="w-8 h-8 rounded-full flex-shrink-0 ring-2 ring-slate-700/50"
                           />
                           <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2 mb-1">
-                              <span class="text-sm font-medium text-slate-200">{{ comment.author }}</span>
+                            <div class="flex items-center gap-2 mb-2">
+                              <span class="text-sm font-semibold text-slate-100">{{ comment.author }}</span>
                               <span class="text-xs text-slate-500">{{ formatRelativeTime(comment.createdAt) }}</span>
+                              <!-- Outdated Badge -->
+                              <span
+                                v-if="comment.isOutdated"
+                                class="px-2 py-0.5 text-xs bg-amber-900/30 text-amber-400 rounded-full border border-amber-700/50"
+                              >
+                                Outdated
+                              </span>
                             </div>
 
-                            <!-- File Path and Line -->
-                            <div v-if="comment.path" class="flex items-center gap-2 text-xs text-slate-400">
-                              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M7 21h10a2 2 0 002-2V9.414a1 1 0 01-1.414 0l-4-4a1 1 0 01-1.414 1.414L8 12.586l7.293-7.293a1 1 0 01-1.414 1.414 0z" clip-rule="evenodd" />
-                              </svg>
-                              <span class="truncate font-mono">{{ comment.path }}</span>
-                              <span v-if="comment.line">:{{ comment.line }}</span>
-                            </div>
-
-                            <!-- Outdated Badge -->
-                            <span
-                              v-if="comment.isOutdated"
-                              class="px-2 py-0.5 text-xs bg-orange-900/30 text-orange-400 rounded border border-orange-700/50"
-                            >
-                              Outdated
-                            </span>
+                            <!-- Comment Body -->
+                            <p class="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{{ comment.body }}</p>
                           </div>
-
-                          <!-- Comment Body -->
-                          <p class="text-sm text-slate-300 whitespace-pre-wrap">{{ comment.body }}</p>
                         </div>
                       </div>
                     </td>
@@ -223,17 +224,17 @@
         <div v-else class="overflow-x-hidden text-xs font-mono" ref="diffContainer">
           <table class="w-full border-collapse table-fixed">
             <colgroup>
-              <col style="width: 50px;">
-              <col style="width: 50px;">
-              <col style="width: 28px;">
-              <col style="width: calc(100% - 128px);">
+              <col style="width: 56px;">
+              <col style="width: 56px;">
+              <col style="width: 32px;">
+              <col style="width: calc(100% - 144px);">
             </colgroup>
             <tbody>
               <template v-for="(hunk, hunkIndex) in hunks" :key="hunkIndex">
                 <!-- Hunk Header -->
-                <tr class="bg-slate-800/50">
-                  <td colspan="4" class="px-3 py-1.5 text-slate-400 text-xs border-y border-slate-700/50">
-                    @@ -{{ hunk.oldStart }},{{ hunk.oldLines }} +{{ hunk.newStart }},{{ hunk.newLines }} @@
+                <tr class="bg-gradient-to-r from-slate-800/40 to-slate-800/30 border-y border-slate-700/30">
+                  <td colspan="4" class="px-4 py-2 text-slate-400 text-xs font-mono">
+                    <span class="text-slate-500">@</span>@ -{{ hunk.oldStart }},{{ hunk.oldLines }} <span class="text-blue-400">+</span>{{ hunk.newStart }},{{ hunk.newLines }} <span class="text-slate-500">@</span>@
                   </td>
                 </tr>
 
@@ -241,113 +242,103 @@
                   <tr
                     :ref="el => setLineRef(line.newLineNumber || line.oldLineNumber, el)"
                     :class="[
-                      'hover:bg-slate-800/30 group',
+                      'hover:bg-slate-800/40 group transition-colors duration-150',
                       {
-                        'bg-green-500/10': line.type === 'add',
-                        'bg-red-500/10': line.type === 'delete',
-                        'bg-yellow-500/20': highlightedLine === line.newLineNumber || highlightedLine === line.oldLineNumber,
+                        'bg-emerald-500/5 border-l-2 border-emerald-500/50': line.type === 'add',
+                        'bg-rose-500/5 border-l-2 border-rose-500/50': line.type === 'delete',
+                        'bg-amber-500/10 border-l-2 border-amber-500/50': highlightedLine === line.newLineNumber || highlightedLine === line.oldLineNumber,
+                        'border-l-2 border-transparent': line.type !== 'add' && line.type !== 'delete' && highlightedLine !== line.newLineNumber && highlightedLine !== line.oldLineNumber
                       }
                     ]"
                   >
                     <!-- Line Numbers -->
-                    <td class="px-2 py-0.5 text-slate-500 text-right select-none border-r border-slate-700/50 bg-slate-900/50">
+                    <td class="px-3 py-1 text-slate-600 text-right select-none border-r border-slate-800 bg-slate-950/50">
                       {{ line.oldLineNumber || '' }}
                     </td>
-                    <td class="px-2 py-0.5 text-slate-500 text-right select-none border-r border-slate-700/50 bg-slate-900/50">
+                    <td class="px-3 py-1 text-slate-600 text-right select-none border-r border-slate-800 bg-slate-950/50">
                       {{ line.newLineNumber || '' }}
                     </td>
-                    <td class="px-1 bg-slate-900/50">
+                    <td class="px-1.5 bg-slate-950/50">
                       <button
                         v-if="line.newLineNumber"
                         @click="startComment(line.newLineNumber!)"
-                        class="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-slate-700 rounded transition-opacity"
+                        class="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-700 rounded-md transition-all duration-200"
                         title="Add comment"
                       >
-                        <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                         </svg>
                       </button>
                     </td>
                     <td
                       :class="[
-                        'px-3 py-0.5 font-mono text-sm overflow-hidden',
-                        line.type === 'add' ? 'bg-green-500/5' : line.type === 'delete' ? 'bg-red-500/5' : 'bg-slate-900/30'
+                        'px-4 py-1 font-mono text-sm overflow-hidden',
+                        line.type === 'add' ? 'bg-emerald-950/10' : line.type === 'delete' ? 'bg-rose-950/10' : 'bg-slate-950/30'
                       ]"
                     >
-                      <span v-if="line.type === 'add'" class="text-green-400 select-none mr-1">+</span>
-                      <span v-else-if="line.type === 'delete'" class="text-red-400 select-none mr-1">-</span>
-                      <span v-else class="mr-1"> </span>
+                      <span v-if="line.type === 'add'" class="text-emerald-400 select-none mr-1">+</span>
+                      <span v-else-if="line.type === 'delete'" class="text-rose-400 select-none mr-1">-</span>
+                      <span v-else class="opacity-0 select-none mr-1">·</span>
                       <code style="white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;" v-html="highlightSyntax(line.content)" />
                     </td>
                   </tr>
 
                   <!-- Comments -->
                   <tr v-if="commentingLine === line.newLineNumber || getCommentsForLine(line.newLineNumber).length > 0">
-                    <td colspan="4" class="p-0 bg-slate-800/50">
-                      <div v-if="commentingLine === line.newLineNumber" class="p-3 border-t border-slate-700/50">
+                    <td colspan="4" class="p-0 bg-gradient-to-b from-slate-900/50 to-slate-950/30 border-t border-slate-700/20">
+                      <div v-if="commentingLine === line.newLineNumber" class="p-4 border-b border-slate-700/20">
                         <textarea
                           v-model="commentText"
                           placeholder="Add your comment..."
-                          class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-slate-200 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          class="w-full px-4 py-3 bg-slate-900/80 border border-slate-600/50 rounded-xl text-slate-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-200 placeholder:text-slate-500"
                           rows="3"
                           ref="commentTextarea"
                         />
-                        <div class="flex gap-2 justify-end mt-2">
+                        <div class="flex gap-2 justify-end mt-3">
                           <button
                             @click="cancelComment"
-                            class="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs text-slate-200 transition-colors"
+                            class="px-4 py-2 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-xs text-slate-200 transition-all duration-200 border border-slate-600/50 hover:border-slate-500/50"
                           >
                             Cancel
                           </button>
                           <button
                             @click="submitComment"
                             :disabled="!commentText.trim()"
-                            class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-xs text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30"
                           >
                             Comment
                           </button>
                         </div>
                       </div>
 
-                      <div v-if="getCommentsForLine(line.newLineNumber).length > 0" class="p-3 space-y-2 border-t border-slate-700/50">
+                      <div v-if="getCommentsForLine(line.newLineNumber).length > 0" class="p-4 space-y-3">
                         <div
                           v-for="comment in getCommentsForLine(line.newLineNumber)"
                           :key="comment.id"
-                          class="flex gap-2 p-2 bg-slate-900/80 rounded border border-slate-700/50 hover:border-slate-600 transition-colors"
+                          class="flex gap-3 p-3 bg-gradient-to-br from-slate-900/60 to-slate-950/40 rounded-xl border border-slate-700/30 hover:border-slate-600/50 transition-all duration-200 shadow-sm"
                         >
                           <img
                             v-if="comment.authorAvatar"
                             :src="comment.authorAvatar"
                             :alt="comment.author"
-                            class="w-6 h-6 rounded-full flex-shrink-0"
+                            class="w-8 h-8 rounded-full flex-shrink-0 ring-2 ring-slate-700/50"
                           />
                           <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2 mb-1">
-                              <span class="text-sm font-medium text-slate-200">{{ comment.author }}</span>
+                            <div class="flex items-center gap-2 mb-2">
+                              <span class="text-sm font-semibold text-slate-100">{{ comment.author }}</span>
                               <span class="text-xs text-slate-500">{{ formatRelativeTime(comment.createdAt) }}</span>
+                              <!-- Outdated Badge -->
+                              <span
+                                v-if="comment.isOutdated"
+                                class="px-2 py-0.5 text-xs bg-amber-900/30 text-amber-400 rounded-full border border-amber-700/50"
+                              >
+                                Outdated
+                              </span>
                             </div>
 
-                            <!-- File Path and Line -->
-                            <div v-if="comment.path" class="flex items-center gap-2 text-xs text-slate-400">
-                              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M7 21h10a2 2 0 002-2V9.414a1 1 0 01-1.414 0l-4-4a1 1 0 01-1.414 1.414L8 12.586l7.293-7.293a1 1 0 01-1.414 1.414 0z" clip-rule="evenodd" />
-                              </svg>
-                              <span class="truncate font-mono">{{ comment.path }}</span>
-                              <span v-if="comment.line">:{{ comment.line }}</span>
-                            </div>
-
-                            <!-- Outdated Badge -->
-                            <span
-                              v-if="comment.isOutdated"
-                              class="px-2 py-0.5 text-xs bg-orange-900/30 text-orange-400 rounded border border-orange-700/50"
-                            >
-                              Outdated
-                            </span>
+                            <!-- Comment Body -->
+                            <p class="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{{ comment.body }}</p>
                           </div>
-
-                          <!-- Comment Body -->
-                          <p class="text-sm text-slate-300 whitespace-pre-wrap">{{ comment.body }}</p>
                         </div>
                       </div>
                     </td>
@@ -361,12 +352,14 @@
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading" class="p-6 text-center text-slate-400 bg-slate-900/50">
-      <svg class="animate-spin h-6 w-6 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0-3.042 1.135 5.824 3.7.938l3.2.647z"></path>
-      </svg>
-      <span class="text-xs">Loading diff...</span>
+    <div v-if="loading" class="p-8 text-center bg-slate-950/30">
+      <div class="flex flex-col items-center gap-3">
+        <svg class="animate-spin h-8 w-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0-3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span class="text-sm text-slate-400">Loading diff...</span>
+      </div>
     </div>
   </div>
 </template>
@@ -501,14 +494,14 @@ const getStatusIcon = (status: string) => {
   return icons[status] || 'M';
 };
 
-const getStatusColor = (status: string) => {
-  const colors: Record<string, string> = {
-    added: 'text-green-400',
-    modified: 'text-yellow-400',
-    deleted: 'text-red-400',
-    renamed: 'text-blue-400',
+const getStatusBadgeClass = (status: string) => {
+  const classes: Record<string, string> = {
+    added: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30',
+    modified: 'bg-amber-500/10 text-amber-400 border border-amber-500/30',
+    deleted: 'bg-rose-500/10 text-rose-400 border border-rose-500/30',
+    renamed: 'bg-blue-500/10 text-blue-400 border border-blue-500/30',
   };
-  return colors[status] || 'text-slate-400';
+  return classes[status] || 'bg-slate-500/10 text-slate-400 border border-slate-500/30';
 };
 
 const startComment = async (line: number) => {

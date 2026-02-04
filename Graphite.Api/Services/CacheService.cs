@@ -235,7 +235,7 @@ public class CacheService(
 
         var currentIds = currentPRs.Select(pr => pr.Id).ToList();
         var oldPRs = await context.PullRequests
-            .Where(pr => !currentIds.Contains(pr.GitHubId))
+            .Where(pr => !currentIds.Contains(pr.GitHubId) && !pr.IsMerged && pr.Status == "Open")
             .ToListAsync();
 
         if (!oldPRs.Any()) return;
@@ -270,6 +270,7 @@ public class CacheService(
                     if (statusData.IsMerged)
                     {
                         pr.IsMerged = true;
+                        pr.Status = "Merged";
                         pr.MergedAt = statusData.MergedAt;
                         logger.LogInformation("Marked PR {Repository}#{Number} as merged at {MergedAt}",
                             pr.Repository, pr.GitHubId, statusData.MergedAt);
@@ -278,6 +279,7 @@ public class CacheService(
                     {
                         pr.IsMerged = false;
                         pr.MergedAt = null;
+                        pr.Status = "Closed";
                         logger.LogInformation("Marked PR {Repository}#{Number} as closed (not merged)",
                             pr.Repository, pr.GitHubId);
                     }

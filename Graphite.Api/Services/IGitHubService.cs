@@ -1,4 +1,5 @@
 using Graphite.Domain.Models;
+using Octokit.GraphQL.Model;
 
 namespace Graphite.Api.Services;
 
@@ -91,6 +92,6 @@ public record GitHubPRStatusData(
     bool IsMerged,
     bool IsClosed,
     bool IsOpen,
+    PullRequestState State,
     DateTime? MergedAt,
-    DateTime? ClosedAt
-);
+    DateTime? ClosedAt);
