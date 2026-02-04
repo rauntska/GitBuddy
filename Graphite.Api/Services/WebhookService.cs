@@ -202,6 +202,7 @@ public class WebhookService : IWebhookService
                 GitHubId = thread.GitHubId,
                 Path = thread.Path,
                 Line = thread.Line,
+                DiffSide = MapDiffSide(thread.diffSide),
                 State = thread.State,
                 IsResolved = thread.IsResolved,
                 IsOutdated = thread.IsOutdated,
@@ -212,6 +213,16 @@ public class WebhookService : IWebhookService
                 CommentCount = thread.CommentCount
             });
         }
+    }
+
+    private static Domain.Models.DiffSide MapDiffSide(Octokit.GraphQL.Model.DiffSide gitHubDiffSide)
+    {
+        return gitHubDiffSide switch
+        {
+            Octokit.GraphQL.Model.DiffSide.Left => Domain.Models.DiffSide.Left,
+            Octokit.GraphQL.Model.DiffSide.Right => Domain.Models.DiffSide.Right,
+            _ => Domain.Models.DiffSide.Right
+        };
     }
 
     private void AddCommentsToContext(PullRequest pullRequest, List<GitHubCommentData> comments)

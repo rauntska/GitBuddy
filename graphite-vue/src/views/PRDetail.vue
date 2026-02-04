@@ -333,6 +333,7 @@
                   :file="file"
                   :viewed="isFileViewed(file.path!)"
                   :comments="prDetail.allComments"
+                  :review-threads="prDetail.reviewThreads"
                   :on-add-comment="(line: number, body: string) => handleAddComment(file.path!, line, body)"
                   :on-toggle-viewed="handleToggleViewed"
                   :initial-expanded="!isFileViewed(file.path!)"

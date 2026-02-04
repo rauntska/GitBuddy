@@ -14,6 +14,7 @@ public record ReviewThreadDto(
     string GitHubId,
     string Path,
     int? Line,
+    string? DiffSide,
     string State,
     bool IsResolved,
     bool IsOutdated,

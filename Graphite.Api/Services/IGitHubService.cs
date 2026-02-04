@@ -54,7 +54,7 @@ public record GitHubReviewThreadData(
     string GitHubId,
     string Path,
     int? Line,
-    DiffSide diffSide,
+    Octokit.GraphQL.Model.DiffSide diffSide,
     string State,
     bool IsResolved,
     bool IsOutdated,

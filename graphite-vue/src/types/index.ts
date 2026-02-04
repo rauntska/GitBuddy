@@ -12,6 +12,7 @@ export interface ReviewThread {
   gitHubId: string;
   path: string;
   line?: number;
+  diffSide?: 'LEFT' | 'RIGHT';
   state: string;
   isResolved: boolean;
   isOutdated: boolean;

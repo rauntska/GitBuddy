@@ -154,9 +154,44 @@
                     </td>
                   </tr>
 
-                  <!-- Comments -->
-                  <tr v-if="commentingLine === line.newLineNumber || getCommentsForLine(line.newLineNumber).length > 0">
-                    <td colspan="5" class="p-0 bg-gradient-to-b from-slate-900/50 to-slate-950/30 border-t border-slate-700/20">
+                  <!-- Comments for Left Side (Old Code) -->
+                  <tr v-if="getCommentsForLine(line.oldLineNumber, 'left').length > 0 || (commentingLine === line.oldLineNumber && getCommentsForLine(line.oldLineNumber, 'left').length >= 0)">
+                    <td colspan="2" class="p-0 bg-gradient-to-b from-slate-900/50 to-slate-950/30 border-t border-slate-700/20">
+                      <div v-if="getCommentsForLine(line.oldLineNumber, 'left').length > 0" class="p-4 space-y-3">
+                        <div
+                          v-for="comment in getCommentsForLine(line.oldLineNumber, 'left')"
+                          :key="comment.id"
+                          class="flex gap-3 p-3 bg-gradient-to-br from-slate-900/60 to-slate-950/40 rounded-xl border border-slate-700/30 hover:border-slate-600/50 transition-all duration-200 shadow-sm"
+                        >
+                          <img
+                            v-if="comment.authorAvatar"
+                            :src="comment.authorAvatar"
+                            :alt="comment.author"
+                            class="w-8 h-8 rounded-full flex-shrink-0 ring-2 ring-slate-700/50"
+                          />
+                          <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-2">
+                              <span class="text-sm font-semibold text-slate-100">{{ comment.author }}</span>
+                              <span class="text-xs text-slate-500">{{ formatRelativeTime(comment.createdAt) }}</span>
+                              <span
+                                v-if="comment.isOutdated"
+                                class="px-2 py-0.5 text-xs bg-amber-900/30 text-amber-400 rounded-full border border-amber-700/50"
+                              >
+                                Outdated
+                              </span>
+                            </div>
+                            <p class="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{{ comment.body }}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td colspan="3" class="bg-slate-950/30"></td>
+                  </tr>
+
+                  <!-- Comments for Right Side (New Code) -->
+                  <tr v-if="commentingLine === line.newLineNumber || getCommentsForLine(line.newLineNumber, 'right').length > 0">
+                    <td colspan="3" class="bg-slate-950/30"></td>
+                    <td colspan="2" class="p-0 bg-gradient-to-b from-slate-900/50 to-slate-950/30 border-t border-slate-700/20">
                       <div v-if="commentingLine === line.newLineNumber" class="p-4 border-b border-slate-700/20">
                         <textarea
                           v-model="commentText"
@@ -182,9 +217,9 @@
                         </div>
                       </div>
 
-                      <div v-if="getCommentsForLine(line.newLineNumber).length > 0" class="p-4 space-y-3">
+                      <div v-if="getCommentsForLine(line.newLineNumber, 'right').length > 0" class="p-4 space-y-3">
                         <div
-                          v-for="comment in getCommentsForLine(line.newLineNumber)"
+                          v-for="comment in getCommentsForLine(line.newLineNumber, 'right')"
                           :key="comment.id"
                           class="flex gap-3 p-3 bg-gradient-to-br from-slate-900/60 to-slate-950/40 rounded-xl border border-slate-700/30 hover:border-slate-600/50 transition-all duration-200 shadow-sm"
                         >
@@ -366,7 +401,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, watch } from 'vue';
-import type { FileDiff, Comment } from '../types';
+import type { FileDiff, Comment, ReviewThread } from '../types';
 import { parsePatch } from '../utils/diffHelpers';
 import { highlightCode, detectLanguageFromPath } from '../utils/syntaxHighlight';
 import { useUserPreferences } from '../composables/useUserPreferences';
@@ -374,6 +409,7 @@ import { useUserPreferences } from '../composables/useUserPreferences';
 const props = defineProps<{
   file: FileDiff;
   comments: Comment[];
+  reviewThreads: ReviewThread[];
   onAddComment: (line: number, body: string) => Promise<void>;
   initialExpanded?: boolean;
   viewed?: boolean;
@@ -430,6 +466,10 @@ const viewMode = computed(() => preferences.value.diffViewMode);
 
 const fileComments = computed(() =>
   props.comments.filter(c => c.path === props.file.path && c.line)
+);
+
+const fileReviewThreads = computed(() =>
+  props.reviewThreads.filter(rt => rt.path === props.file.path)
 );
 
 const onHeaderClick = () => {
@@ -523,9 +563,40 @@ const submitComment = async () => {
   commentingLine.value = null;
 };
 
-const getCommentsForLine = (line: number | undefined): Comment[] => {
+const getCommentsForLine = (line: number | undefined, side?: 'left' | 'right'): Comment[] => {
   if (!line) return [];
-  return fileComments.value.filter(c => c.line === line);
+
+  const comments = fileComments.value.filter(c => c.line === line);
+
+  if (!side) return comments;
+
+  const expectedSide = side === 'left' ? 'LEFT' : 'RIGHT';
+
+  return comments.filter(comment => {
+    if (!comment.reviewThreadId) return true;
+
+    const reviewThread = fileReviewThreads.value.find(rt => rt.id === comment.reviewThreadId);
+    if (!reviewThread) {
+      console.log('Comment has reviewThreadId but no matching review thread found:', {
+        commentReviewThreadId: comment.reviewThreadId,
+        allReviewThreadIds: fileReviewThreads.value.map(rt => rt.id)
+      });
+      return true;
+    }
+
+    const diffSideMatch = !reviewThread.diffSide || reviewThread.diffSide.toUpperCase() === expectedSide;
+
+    if (!diffSideMatch) {
+      console.log('Comment filtered by diffSide:', {
+        commentId: comment.id,
+        reviewThreadId: reviewThread.id,
+        reviewThreadDiffSide: reviewThread.diffSide,
+        expectedSide
+      });
+    }
+
+    return diffSideMatch;
+  });
 };
 
 const getCommentPosition = (line: number | undefined): number => {

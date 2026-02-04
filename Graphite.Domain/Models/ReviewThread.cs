@@ -7,6 +7,7 @@ public class ReviewThread
     public string GitHubId { get; set; } = string.Empty;
     public string Path { get; set; } = string.Empty;
     public int? Line { get; set; }
+    public DiffSide DiffSide { get; set; } = DiffSide.Right;
     public string State { get; set; } = string.Empty; // RESOLVED, UNRESOLVED
     public bool IsResolved { get; set; }
     public bool IsOutdated { get; set; }
