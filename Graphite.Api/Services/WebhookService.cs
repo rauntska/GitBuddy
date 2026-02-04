@@ -603,6 +603,142 @@ public class WebhookService : IWebhookService
         }
     }
 
+    public async Task HandlePullRequestReviewEventAsync(PullRequestReviewEvent pullRequestReviewEvent)
+    {
+        try
+        {
+            var action = pullRequestReviewEvent.Action?.ToLower();
+            var review = pullRequestReviewEvent.Review;
+            var repo = pullRequestReviewEvent.Repository;
+            var pr = pullRequestReviewEvent.PullRequest;
+
+            _logger.LogInformation("Pull request review webhook: {Action} - {Repository}#{PRNumber} - Review #{ReviewId} - State: {State}",
+                action, repo.FullName, pr.Number, review.Id, review.State);
+
+            var existingPR = await _context.PullRequests
+                .Include(p => p.Reviews)
+                .FirstOrDefaultAsync(p => p.GitHubId == pr.Number);
+
+            if (existingPR == null)
+            {
+                _logger.LogWarning("PR {Number} not found in database", pr.Number);
+                return;
+            }
+
+            await ProcessPullRequestReviewActionAsync(action, existingPR, review);
+
+            // Update PR status based on reviews
+            var allReviews = await _context.Reviews
+                .Where(r => r.PullRequestId == existingPR.Id)
+                .ToListAsync();
+
+            var reviewData = allReviews.Select(r => new GitHubReviewData(
+                r.GitHubId,
+                r.Reviewer,
+                r.ReviewerAvatar,
+                r.State,
+                r.SubmittedAt
+            )).ToList();
+
+            existingPR.Status = _statusService.DeterminePrStatus(existingPR.Draft, reviewData);
+            existingPR.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
+            if (config != null)
+            {
+                await TriggerBackgroundRefreshAsync(config, repo.Name, pr.Number);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing pull request review event");
+            throw;
+        }
+    }
+
+    private async Task ProcessPullRequestReviewActionAsync(string? action, PullRequest existingPR, dynamic review)
+    {
+        var reviewState = review.State?.ToString().ToPascalCase() ?? "Commented";
+
+        switch (action)
+        {
+            case "submitted":
+                await CreateOrUpdateReviewAsync(existingPR, review, reviewState);
+                break;
+            case "edited":
+                await UpdateExistingReviewAsync(existingPR, review, reviewState);
+                break;
+            case "dismissed":
+                await DismissReviewAsync(existingPR, review.Id);
+                break;
+        }
+    }
+
+    private async Task CreateOrUpdateReviewAsync(PullRequest pr, dynamic reviewData, string reviewState)
+    {
+        var existingReview = pr.Reviews.FirstOrDefault(r => r.GitHubId == reviewData.Id.ToString());
+
+        if (existingReview != null)
+        {
+            // Update existing review
+            existingReview.State = reviewState;
+            existingReview.SubmittedAt = reviewData.SubmittedAt?.UtcDateTime;
+            long reviewId = reviewData.Id;
+            _logger.LogInformation("Updated review #{ReviewId} with state {State}", reviewId, reviewState);
+        }
+        else
+        {
+            // Create new review
+            var newReview = new Review
+            {
+                PullRequestId = pr.Id,
+                GitHubId = reviewData.Id.ToString(),
+                Reviewer = reviewData.User.Login,
+                ReviewerAvatar = reviewData.User.AvatarUrl,
+                State = reviewState,
+                SubmittedAt = reviewData.SubmittedAt?.UtcDateTime
+            };
+            _context.Reviews.Add(newReview);
+            long reviewId = reviewData.Id;
+            _logger.LogInformation("Created review #{ReviewId} with state {State}", reviewId, reviewState);
+        }
+
+        await _context.SaveChangesAsync();
+    }
+
+    private async Task UpdateExistingReviewAsync(PullRequest pr, dynamic reviewData, string reviewState)
+    {
+        var existingReview = pr.Reviews.FirstOrDefault(r => r.GitHubId == reviewData.Id.ToString());
+        if (existingReview == null)
+        {
+            long reviewId = reviewData.Id;
+            _logger.LogWarning("Review #{ReviewId} not found for update", reviewId);
+            return;
+        }
+
+        existingReview.State = reviewState;
+        existingReview.SubmittedAt = reviewData.SubmittedAt?.UtcDateTime;
+
+        await _context.SaveChangesAsync();
+        long id = reviewData.Id;
+        _logger.LogInformation("Updated review #{ReviewId} with state {State}", id, reviewState);
+    }
+
+    private async Task DismissReviewAsync(PullRequest pr, long reviewId)
+    {
+        var existingReview = pr.Reviews.FirstOrDefault(r => r.GitHubId == reviewId.ToString());
+        if (existingReview == null)
+        {
+            _logger.LogWarning("Review #{ReviewId} not found for dismissal", reviewId);
+            return;
+        }
+
+        existingReview.State = "DISMISSED";
+        await _context.SaveChangesAsync();
+        _logger.LogInformation("Dismissed review #{ReviewId}", reviewId);
+    }
+
     private Task TriggerBackgroundRefreshAsync(GitHubConfig config, string? repository, long? prNumber)
     {
         return Task.CompletedTask;

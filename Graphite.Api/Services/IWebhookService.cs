@@ -9,4 +9,5 @@ public interface IWebhookService
     Task HandleCommentEventAsync(IssueCommentEvent issueCommentEvent);
     Task HandleReviewCommentEventAsync(PullRequestReviewCommentEvent pullRequestReviewCommentEvent);
     Task HandleReviewThreadEventAsync(PullRequestReviewThreadEvent pullRequestReviewThreadEvent);
+    Task HandlePullRequestReviewEventAsync(PullRequestReviewEvent pullRequestReviewEvent);
 }

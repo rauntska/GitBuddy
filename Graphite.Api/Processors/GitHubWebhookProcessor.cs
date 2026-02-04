@@ -3,6 +3,7 @@ using Octokit.Webhooks;
 using Octokit.Webhooks.Events;
 using Octokit.Webhooks.Events.PullRequest;
 using Octokit.Webhooks.Events.IssueComment;
+using Octokit.Webhooks.Events.PullRequestReview;
 using Octokit.Webhooks.Events.PullRequestReviewComment;
 using Octokit.Webhooks.Events.PullRequestReviewThread;
 
@@ -58,5 +59,12 @@ public class GitHubWebhookProcessor(IWebhookService webhookService, ILogger<GitH
     {
         logger.LogInformation("Processing pull request review thread webhook: {Action}", action);
         await webhookService.HandleReviewThreadEventAsync(pullRequestReviewThreadEvent);
+    }
+
+    protected override async ValueTask ProcessPullRequestReviewWebhookAsync(WebhookHeaders headers, PullRequestReviewEvent pullRequestReviewEvent,
+        PullRequestReviewAction action, CancellationToken cancellationToken = new CancellationToken())
+    {
+        logger.LogInformation("Processing pull request review webhook: {Action}", action);
+        await webhookService.HandlePullRequestReviewEventAsync(pullRequestReviewEvent);
     }
 }

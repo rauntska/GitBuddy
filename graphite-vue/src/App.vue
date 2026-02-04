@@ -41,7 +41,7 @@ const handleSettingsSaved = () => {
     <header class="sticky top-0 z-10 bg-slate-900/95 backdrop-blur border-b border-slate-800">
       <div class="max-w-screen-2xl mx-auto px-4 py-4">
         <div class="flex items-center justify-between">
-          <h1 class="text-xl font-semibold text-white flex items-center gap-2">
+          <router-link to="/" class="text-xl font-semibold text-white flex items-center gap-2 hover:opacity-80 transition-opacity">
             <svg class="w-10 h-10" fill="none" viewBox="0 0 24 24">
               <circle cx="12" cy="4" r="2.5" stroke="#22c55e" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />
               <path stroke="#22c55e" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 7v3" />
@@ -51,8 +51,8 @@ const handleSettingsSaved = () => {
               <path stroke="#3b82f6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 13l2 2m0 0l2-2m-2 2V7" />
               <path stroke="#3b82f6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13l-2 2m0 0l-2-2m2 2V7" />
             </svg>
-            Git Buddy
-          </h1>
+            Code Buddy
+          </router-link>
           <div class="flex items-center gap-3">
             <span
               v-if="shouldShowDashboardControls && lastRefresh"
