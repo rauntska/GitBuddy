@@ -235,7 +235,7 @@ public class CacheService(
 
         var currentIds = currentPRs.Select(pr => pr.Id).ToList();
         var oldPRs = await context.PullRequests
-            .Where(pr => !currentIds.Contains(pr.GitHubId) && !pr.IsMerged && pr.Status == "Open")
+            .Where(pr => !currentIds.Contains(pr.GitHubId) && !pr.IsMerged && pr.Status != "Closed")
             .ToListAsync();
 
         if (!oldPRs.Any()) return;

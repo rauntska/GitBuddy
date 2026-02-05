@@ -1,3 +1,4 @@
+using Graphite.Api.Extensions;
 using Graphite.Domain.Data;
 using Graphite.Domain.Models;
 using Microsoft.EntityFrameworkCore;
@@ -545,12 +546,13 @@ public class WebhookService : IWebhookService
         try
         {
             var action = pullRequestReviewThreadEvent.Action?.ToLower();
+            //the actual thread is under json "thread" not "review"
             var thread = pullRequestReviewThreadEvent.Review;
             var repo = pullRequestReviewThreadEvent.Repository;
             var pr = pullRequestReviewThreadEvent.PullRequest;
 
             _logger.LogInformation("Review thread webhook: {Action} - {Repository}#{PRNumber} - Thread #{ThreadId}",
-                action, repo.FullName, pr.Number, thread.Id);
+                action, repo?.FullName, pr.Number, thread?.Id);
 
             var existingPR = await _context.PullRequests
                 .Include(p => p.ReviewThreads)
@@ -659,7 +661,13 @@ public class WebhookService : IWebhookService
 
     private async Task ProcessPullRequestReviewActionAsync(string? action, PullRequest existingPR, dynamic review)
     {
-        var reviewState = review.State?.ToString().ToPascalCase() ?? "Commented";
+        var reviewStateString = "Commented";
+        if (review.State != null)
+        {
+            reviewStateString = review.State.ToString();
+        }
+
+        var reviewState = reviewStateString.ToPascalCase();
 
         switch (action)
         {
