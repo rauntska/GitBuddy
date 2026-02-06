@@ -495,7 +495,7 @@ const getVisibleLines = (lines: any[]) => {
   if (preferences.value.showContext) return lines;
 
   const result: any[] = [];
-  const contextLines = 1;
+  const contextLines = 5;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];

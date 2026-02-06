@@ -4,7 +4,7 @@ import { apiService } from '../services/api';
 
 const preferences = ref<UserPreferences>({
   diffViewMode: 'unified',
-  showContext: false,
+  showContext: true,
   fileTreeWidth: 256,
   commentsPanelWidth: 320,
   fileTreeVisible: true,
@@ -44,7 +44,8 @@ export function useUserPreferences() {
 
     try {
       const updated = await apiService.updateUserPreferences({ [key]: value });
-      preferences.value = updated;
+      // Merge the updated preferences, ensuring our value is preserved
+      preferences.value = { ...preferences.value, ...updated };
     } catch (error) {
       // Revert on error
       (preferences.value as any)[key] = oldValue;

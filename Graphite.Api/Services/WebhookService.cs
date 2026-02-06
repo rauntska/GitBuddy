@@ -51,7 +51,7 @@ public class WebhookService : IWebhookService
                 .Include(pr => pr.Reviews)
                 .Include(pr => pr.ReviewThreads)
                 .Include(pr => pr.Comments)
-                .FirstOrDefaultAsync(pr => pr.GitHubId == prData.Id);
+                .FirstOrDefaultAsync(pr => pr.GitHubId == prData.Number);
 
             await ProcessPullRequestActionAsync(action, existingPR, pullRequestEvent, config, repo, prData);
             await TriggerBackgroundRefreshAsync(config, repo.Name, prData.Number);
@@ -556,7 +556,7 @@ public class WebhookService : IWebhookService
 
             var existingPR = await _context.PullRequests
                 .Include(p => p.ReviewThreads)
-                .FirstOrDefaultAsync(p => p.GitHubId == pr.Id);
+                .FirstOrDefaultAsync(p => p.GitHubId == pr.Number);
 
             if (existingPR == null)
             {
