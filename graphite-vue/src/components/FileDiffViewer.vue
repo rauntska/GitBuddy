@@ -119,7 +119,7 @@
                       <span v-else class="opacity-0 select-none mr-1">·</span>
                       <code
                         v-if="line.type === 'delete'"
-                        :class="line.type === 'delete' ? 'text-rose-300/90' : 'text-slate-300'"
+                        :class="line.type === 'delete' ? 'diff-line-deleted' : 'diff-line-default'"
                         style="white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;"
                         v-html="highlightSyntax(line.content)"
                       />
@@ -151,7 +151,7 @@
                       <span v-else class="opacity-0 select-none mr-1">·</span>
                       <code
                         v-if="line.type !== 'delete'"
-                        :class="line.type === 'add' ? 'text-emerald-300/90' : 'text-slate-300'"
+                        :class="line.type === 'add' ? 'diff-line-added' : 'diff-line-default'"
                         style="white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;"
                         v-html="highlightSyntax(line.content)"
                       />
@@ -656,59 +656,5 @@ const formatRelativeTime = (dateString: string): string => {
 </script>
 
 <style scoped>
-/* Prism syntax highlighting theme for dark backgrounds */
-:deep(.token.comment),
-:deep(.token.prolog),
-:deep(.token.doctype),
-:deep(.token.cdata) {
-  color: #6b7280;
-}
-
-:deep(.token.punctuation) {
-  color: #94a3b8;
-}
-
-:deep(.token.property),
-:deep(.token.tag),
-:deep(.token.boolean),
-:deep(.token.number),
-:deep(.token.constant),
-:deep(.token.symbol),
-:deep(.token.deleted) {
-  color: #f87171;
-}
-
-:deep(.token.selector),
-:deep(.token.attr-name),
-:deep(.token.string),
-:deep(.token.char),
-:deep(.token.builtin),
-:deep(.token.inserted) {
-  color: #4ade80;
-}
-
-:deep(.token.operator),
-:deep(.token.entity),
-:deep(.token.url),
-:deep(.language-css .token.string),
-:deep(.style .token.string) {
-  color: #60a5fa;
-}
-
-:deep(.token.atrule),
-:deep(.token.attr-value),
-:deep(.token.keyword) {
-  color: #a78bfa;
-}
-
-:deep(.token.function),
-:deep(.token.class-name) {
-  color: #fbbf24;
-}
-
-:deep(.token.regex),
-:deep(.token.important),
-:deep(.token.variable) {
-  color: #fb923c;
-}
+@import url('../styles/github-dark-syntax.css');
 </style>
