@@ -324,7 +324,7 @@ public class CacheService(
         var pendingThreads = pullRequests.Sum(pr => pr.ReviewThreads.Count(rt => !rt.IsResolved));
 
         return new PRStats(
-            TotalOpen: pullRequests.Count,
+            TotalOpen: pullRequests.Count(pr=>pr.Status != "Closed" && pr.Status != "Merged"),
             Draft: pullRequests.Count(pr => pr.Status == "Draft"),
             Approved: pullRequests.Count(pr => pr.Status == "Approved"),
             AwaitingReview: pullRequests.Count(pr => pr.Status == "AwaitingReview"),
