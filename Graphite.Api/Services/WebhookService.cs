@@ -87,6 +87,8 @@ public class WebhookService : IWebhookService
 
             case "synchronized":
             case "edited":
+            case "ready_for_review":
+            case "converted_to_draft":
                 if (existingPR != null)
                 {
                     await UpdatePrAsync(existingPR, prData, false);
@@ -251,6 +253,21 @@ public class WebhookService : IWebhookService
     private async Task UpdatePrAsync(PullRequest existingPr, Octokit.Webhooks.Models.PullRequestEvent.PullRequest prData, bool reopened)
     {
         UpdatePullRequestFields(existingPr, prData, reopened);
+
+        var allReviews = await _context.Reviews
+            .Where(r => r.PullRequestId == existingPr.Id)
+            .ToListAsync();
+
+        var reviewData = allReviews.Select(r => new GitHubReviewData(
+            r.GitHubId,
+            r.Reviewer,
+            r.ReviewerAvatar,
+            r.State,
+            r.SubmittedAt
+        )).ToList();
+
+        existingPr.Status = _statusService.DeterminePrStatus(prData.Draft, reviewData);
+
         await _context.SaveChangesAsync();
         _logger.LogInformation("Updated PR #{GitHubId}", existingPr.GitHubId);
     }
