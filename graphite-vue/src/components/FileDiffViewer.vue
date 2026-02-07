@@ -161,30 +161,73 @@
                   <!-- Comments for Left Side (Old Code) -->
                   <tr v-if="line.type === 'delete' && (getCommentsForLine(line.oldLineNumber, 'left').length > 0 || (commentingLine === line.oldLineNumber && getCommentsForLine(line.oldLineNumber, 'left').length >= 0))">
                     <td colspan="2" class="p-0 bg-gradient-to-b from-slate-900/50 to-slate-950/30 border-t border-slate-700/20">
-                      <div v-if="getCommentsForLine(line.oldLineNumber, 'left').length > 0" class="p-4 space-y-3">
+                      <div v-if="getCommentsForLine(line.oldLineNumber, 'left').length > 0" class="p-4 space-y-4">
+                        <!-- Comment Threads -->
                         <div
-                          v-for="comment in getCommentsForLine(line.oldLineNumber, 'left')"
-                          :key="comment.id"
-                          class="flex gap-3 p-3 bg-gradient-to-br from-slate-900/60 to-slate-950/40 rounded-xl border border-slate-700/30 hover:border-slate-600/50 transition-all duration-200 shadow-sm"
+                          v-for="[threadId, comments] in getCommentsGroupedByThread(line.oldLineNumber, 'left')"
+                          :key="threadId || 'standalone-' + comments[0]?.id"
+                          class="border border-slate-700/30 rounded-xl overflow-hidden"
                         >
-                          <img
-                            v-if="comment.authorAvatar"
-                            :src="comment.authorAvatar"
-                            :alt="comment.author"
-                            class="w-8 h-8 rounded-full flex-shrink-0 ring-2 ring-slate-700/50"
-                          />
-                          <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2 mb-2">
-                              <span class="text-sm font-semibold text-slate-100">{{ comment.author }}</span>
-                              <span class="text-xs text-slate-500">{{ formatRelativeTime(comment.createdAt) }}</span>
+                          <!-- Thread Header -->
+                          <div
+                            v-if="threadId"
+                            class="px-4 py-3 bg-slate-800/60 border-b border-slate-700/30 flex items-center justify-between"
+                          >
+                            <div class="flex items-center gap-2">
+                              <span class="text-xs font-medium text-slate-300">{{ comments.length }} comment{{ comments.length > 1 ? 's' : '' }}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
                               <span
-                                v-if="comment.isOutdated"
+                                v-if="getThreadInfo(threadId)?.isOutdated"
                                 class="px-2 py-0.5 text-xs bg-amber-900/30 text-amber-400 rounded-full border border-amber-700/50"
                               >
                                 Outdated
                               </span>
+                              <span
+                                v-if="getThreadInfo(threadId)?.isResolved"
+                                class="px-2 py-0.5 text-xs bg-emerald-900/30 text-emerald-400 rounded-full border border-emerald-700/50"
+                              >
+                                Resolved
+                              </span>
                             </div>
-                            <p class="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{{ comment.body }}</p>
+                          </div>
+
+                          <!-- Comments in Thread -->
+                          <div class="p-4 space-y-4">
+                            <div
+                              v-for="(comment, index) in comments"
+                              :key="comment.id"
+                              class="flex gap-3 relative"
+                              :class="{ 'ml-8': index > 0 }"
+                            >
+                              <!-- Thread Connector Line -->
+                              <div
+                                v-if="index > 0"
+                                class="absolute left-4 top-0 bottom-0 w-0.5 bg-slate-700/30"
+                                style="margin-left: -2px;"
+                              ></div>
+
+                              <img
+                                v-if="comment.authorAvatar"
+                                :src="comment.authorAvatar"
+                                :alt="comment.author"
+                                class="w-8 h-8 rounded-full flex-shrink-0 ring-2 ring-slate-700/50 z-10 relative"
+                                :class="{ 'w-6 h-6': index > 0 }"
+                              />
+                              <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-2">
+                                  <span class="text-sm font-semibold text-slate-100">{{ comment.author }}</span>
+                                  <span class="text-xs text-slate-500">{{ formatRelativeTime(comment.createdAt) }}</span>
+                                  <span
+                                    v-if="comment.isOutdated && !threadId"
+                                    class="px-2 py-0.5 text-xs bg-amber-900/30 text-amber-400 rounded-full border border-amber-700/50"
+                                  >
+                                    Outdated
+                                  </span>
+                                </div>
+                                <p class="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{{ comment.body }}</p>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -221,33 +264,76 @@
                         </div>
                       </div>
 
-                      <div v-if="getCommentsForLine(line.newLineNumber, 'right').length > 0" class="p-4 space-y-3">
+                      <div v-if="getCommentsForLine(line.newLineNumber, 'right').length > 0" class="p-4 space-y-4">
+                        <!-- Comment Threads -->
                         <div
-                          v-for="comment in getCommentsForLine(line.newLineNumber, 'right')"
-                          :key="comment.id"
-                          class="flex gap-3 p-3 bg-gradient-to-br from-slate-900/60 to-slate-950/40 rounded-xl border border-slate-700/30 hover:border-slate-600/50 transition-all duration-200 shadow-sm"
+                          v-for="[threadId, comments] in getCommentsGroupedByThread(line.newLineNumber, 'right')"
+                          :key="threadId || 'standalone-' + comments[0]?.id"
+                          class="border border-slate-700/30 rounded-xl overflow-hidden"
                         >
-                          <img
-                            v-if="comment.authorAvatar"
-                            :src="comment.authorAvatar"
-                            :alt="comment.author"
-                            class="w-8 h-8 rounded-full flex-shrink-0 ring-2 ring-slate-700/50"
-                          />
-                          <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2 mb-2">
-                              <span class="text-sm font-semibold text-slate-100">{{ comment.author }}</span>
-                              <span class="text-xs text-slate-500">{{ formatRelativeTime(comment.createdAt) }}</span>
-                              <!-- Outdated Badge -->
+                          <!-- Thread Header -->
+                          <div
+                            v-if="threadId"
+                            class="px-4 py-3 bg-slate-800/60 border-b border-slate-700/30 flex items-center justify-between"
+                          >
+                            <div class="flex items-center gap-2">
+                              <span class="text-xs font-medium text-slate-300">{{ comments.length }} comment{{ comments.length > 1 ? 's' : '' }}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
                               <span
-                                v-if="comment.isOutdated"
+                                v-if="getThreadInfo(threadId)?.isOutdated"
                                 class="px-2 py-0.5 text-xs bg-amber-900/30 text-amber-400 rounded-full border border-amber-700/50"
                               >
                                 Outdated
                               </span>
+                              <span
+                                v-if="getThreadInfo(threadId)?.isResolved"
+                                class="px-2 py-0.5 text-xs bg-emerald-900/30 text-emerald-400 rounded-full border border-emerald-700/50"
+                              >
+                                Resolved
+                              </span>
                             </div>
+                          </div>
 
-                            <!-- Comment Body -->
-                            <p class="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{{ comment.body }}</p>
+                          <!-- Comments in Thread -->
+                          <div class="p-4 space-y-4">
+                            <div
+                              v-for="(comment, index) in comments"
+                              :key="comment.id"
+                              class="flex gap-3 relative"
+                              :class="{ 'ml-8': index > 0 }"
+                            >
+                              <!-- Thread Connector Line -->
+                              <div
+                                v-if="index > 0"
+                                class="absolute left-4 top-0 bottom-0 w-0.5 bg-slate-700/30"
+                                style="margin-left: -2px;"
+                              ></div>
+
+                              <img
+                                v-if="comment.authorAvatar"
+                                :src="comment.authorAvatar"
+                                :alt="comment.author"
+                                class="w-8 h-8 rounded-full flex-shrink-0 ring-2 ring-slate-700/50 z-10 relative"
+                                :class="{ 'w-6 h-6': index > 0 }"
+                              />
+                              <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-2">
+                                  <span class="text-sm font-semibold text-slate-100">{{ comment.author }}</span>
+                                  <span class="text-xs text-slate-500">{{ formatRelativeTime(comment.createdAt) }}</span>
+                                  <!-- Outdated Badge -->
+                                  <span
+                                    v-if="comment.isOutdated && !threadId"
+                                    class="px-2 py-0.5 text-xs bg-amber-900/30 text-amber-400 rounded-full border border-amber-700/50"
+                                  >
+                                    Outdated
+                                  </span>
+                                </div>
+
+                                <!-- Comment Body -->
+                                <p class="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{{ comment.body }}</p>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -350,33 +436,76 @@
                         </div>
                       </div>
 
-                      <div v-if="getCommentsForLine(line.newLineNumber).length > 0" class="p-4 space-y-3">
+                      <div v-if="getCommentsForLine(line.newLineNumber).length > 0" class="p-4 space-y-4">
+                        <!-- Comment Threads -->
                         <div
-                          v-for="comment in getCommentsForLine(line.newLineNumber)"
-                          :key="comment.id"
-                          class="flex gap-3 p-3 bg-gradient-to-br from-slate-900/60 to-slate-950/40 rounded-xl border border-slate-700/30 hover:border-slate-600/50 transition-all duration-200 shadow-sm"
+                          v-for="[threadId, comments] in getCommentsGroupedByThread(line.newLineNumber)"
+                          :key="threadId || 'standalone-' + comments[0]?.id"
+                          class="border border-slate-700/30 rounded-xl overflow-hidden"
                         >
-                          <img
-                            v-if="comment.authorAvatar"
-                            :src="comment.authorAvatar"
-                            :alt="comment.author"
-                            class="w-8 h-8 rounded-full flex-shrink-0 ring-2 ring-slate-700/50"
-                          />
-                          <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2 mb-2">
-                              <span class="text-sm font-semibold text-slate-100">{{ comment.author }}</span>
-                              <span class="text-xs text-slate-500">{{ formatRelativeTime(comment.createdAt) }}</span>
-                              <!-- Outdated Badge -->
+                          <!-- Thread Header -->
+                          <div
+                            v-if="threadId"
+                            class="px-4 py-3 bg-slate-800/60 border-b border-slate-700/30 flex items-center justify-between"
+                          >
+                            <div class="flex items-center gap-2">
+                              <span class="text-xs font-medium text-slate-300">{{ comments.length }} comment{{ comments.length > 1 ? 's' : '' }}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
                               <span
-                                v-if="comment.isOutdated"
+                                v-if="getThreadInfo(threadId)?.isOutdated"
                                 class="px-2 py-0.5 text-xs bg-amber-900/30 text-amber-400 rounded-full border border-amber-700/50"
                               >
                                 Outdated
                               </span>
+                              <span
+                                v-if="getThreadInfo(threadId)?.isResolved"
+                                class="px-2 py-0.5 text-xs bg-emerald-900/30 text-emerald-400 rounded-full border border-emerald-700/50"
+                              >
+                                Resolved
+                              </span>
                             </div>
+                          </div>
 
-                            <!-- Comment Body -->
-                            <p class="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{{ comment.body }}</p>
+                          <!-- Comments in Thread -->
+                          <div class="p-4 space-y-4">
+                            <div
+                              v-for="(comment, index) in comments"
+                              :key="comment.id"
+                              class="flex gap-3 relative"
+                              :class="{ 'ml-8': index > 0 }"
+                            >
+                              <!-- Thread Connector Line -->
+                              <div
+                                v-if="index > 0"
+                                class="absolute left-4 top-0 bottom-0 w-0.5 bg-slate-700/30"
+                                style="margin-left: -2px;"
+                              ></div>
+
+                              <img
+                                v-if="comment.authorAvatar"
+                                :src="comment.authorAvatar"
+                                :alt="comment.author"
+                                class="w-8 h-8 rounded-full flex-shrink-0 ring-2 ring-slate-700/50 z-10 relative"
+                                :class="{ 'w-6 h-6': index > 0 }"
+                              />
+                              <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-2">
+                                  <span class="text-sm font-semibold text-slate-100">{{ comment.author }}</span>
+                                  <span class="text-xs text-slate-500">{{ formatRelativeTime(comment.createdAt) }}</span>
+                                  <!-- Outdated Badge -->
+                                  <span
+                                    v-if="comment.isOutdated && !threadId"
+                                    class="px-2 py-0.5 text-xs bg-amber-900/30 text-amber-400 rounded-full border border-amber-700/50"
+                                  >
+                                    Outdated
+                                  </span>
+                                </div>
+
+                                <!-- Comment Body -->
+                                <p class="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{{ comment.body }}</p>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -601,6 +730,31 @@ const getCommentsForLine = (line: number | undefined, side?: 'left' | 'right'): 
 
     return diffSideMatch;
   });
+};
+
+const getCommentsGroupedByThread = (line: number | undefined, side?: 'left' | 'right') => {
+  const comments = getCommentsForLine(line, side);
+
+  const threadMap = new Map<number | null, Comment[]>();
+
+  comments.forEach(comment => {
+    const threadId = comment.reviewThreadId ?? null;
+    if (!threadMap.has(threadId)) {
+      threadMap.set(threadId, []);
+    }
+    threadMap.get(threadId)!.push(comment);
+  });
+
+  threadMap.forEach(comments => {
+    comments.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  });
+
+  return Array.from(threadMap.entries());
+};
+
+const getThreadInfo = (threadId: number | null) => {
+  if (!threadId) return null;
+  return fileReviewThreads.value.find(rt => rt.id === threadId);
 };
 
 const getCommentPosition = (line: number | undefined): number => {
