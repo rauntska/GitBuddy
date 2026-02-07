@@ -114,8 +114,8 @@
       <!-- File Tree Sidebar (Resizable) -->
       <div
         v-if="preferences.fileTreeVisible"
-        :style="{ width: `${fileTreeWidth}px`, height: '100vh' }"
-        class="flex-shrink-0 overflow-auto bg-gradient-to-b from-slate-900/40 to-slate-950/40 border-r border-slate-700/30 relative sticky top-0 backdrop-blur-sm"
+        :style="{ width: `${fileTreeWidth}px` }"
+        class="flex-shrink-0 overflow-auto bg-gradient-to-b from-slate-900/40 to-slate-950/40 border-r border-slate-700/30 relative sticky top-20 h-[calc(100vh-5rem)] backdrop-blur-sm"
       >
         <FileTree
           :files="prDetail.files"
@@ -353,7 +353,7 @@
         <div
           v-if="commentsPanel"
           :style="{ width: `${commentsPanelWidth}px` }"
-          class="flex-shrink-0 relative"
+          class="flex-shrink-0 relative sticky top-20 h-[calc(100vh-5rem)]"
         >
           <CommentsPanel
             :comments="prDetail?.allComments || []"
