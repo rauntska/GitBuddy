@@ -185,6 +185,153 @@ public class PullRequestsController(ICacheService cacheService, AppDbContext con
         return Ok(comment.ToDto());
     }
 
+    [HttpPost("{id}/comments/reply")]
+    [Authorize]
+    public async Task<IActionResult> AddCommentReply(int id, [FromBody] AddCommentReplyRequest request)
+    {
+        var userIdClaim = User.FindFirst("UserId")?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized(new { message = "User not authenticated" });
+        }
+
+        var user = await context.Users
+            .FirstOrDefaultAsync(u => u.Id == userId);
+
+        if (user == null || string.IsNullOrEmpty(user.AccessToken))
+        {
+            return Unauthorized(new { message = "User token not available" });
+        }
+
+        var pr = await context.PullRequests.FindAsync(id);
+        if (pr == null)
+        {
+            return NotFound(new { message = "Pull request not found" });
+        }
+
+        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
+        if (config == null)
+        {
+            return BadRequest(new { message = "GitHub configuration not found" });
+        }
+
+        try
+        {
+            var comment = await gitHubService.AddPullRequestReviewThreadReplyAsync(
+                config.Organization,
+                pr.Repository,
+                pr.GitHubId,
+                request.ReviewThreadId,
+                request.Body,
+                config,
+                user.AccessToken
+            );
+
+            return Ok(comment);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to add reply", error = ex.Message });
+        }
+    }
+
+    [HttpPost("{id}/threads/{threadId}/resolve")]
+    [Authorize]
+    public async Task<IActionResult> ResolveReviewThread(int id, string threadId, [FromBody] ResolveThreadRequest request)
+    {
+        var userIdClaim = User.FindFirst("UserId")?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized(new { message = "User not authenticated" });
+        }
+
+        var user = await context.Users
+            .FirstOrDefaultAsync(u => u.Id == userId);
+
+        if (user == null || string.IsNullOrEmpty(user.AccessToken))
+        {
+            return Unauthorized(new { message = "User token not available" });
+        }
+
+        var pr = await context.PullRequests.FindAsync(id);
+        if (pr == null)
+        {
+            return NotFound(new { message = "Pull request not found" });
+        }
+
+        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
+        if (config == null)
+        {
+            return BadRequest(new { message = "GitHub configuration not found" });
+        }
+
+        try
+        {
+            await gitHubService.ResolveReviewThreadAsync(
+                config.Organization,
+                pr.Repository,
+                threadId,
+                request.Resolved,
+                config,
+                user.AccessToken
+            );
+
+            return Ok(new { message = "Thread resolved successfully" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to resolve thread", error = ex.Message });
+        }
+    }
+
+    [HttpPost("{id}/threads/{threadId}/unresolve")]
+    [Authorize]
+    public async Task<IActionResult> UnresolveReviewThread(int id, string threadId, [FromBody] UnresolveThreadRequest request)
+    {
+        var userIdClaim = User.FindFirst("UserId")?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized(new { message = "User not authenticated" });
+        }
+
+        var user = await context.Users
+            .FirstOrDefaultAsync(u => u.Id == userId);
+
+        if (user == null || string.IsNullOrEmpty(user.AccessToken))
+        {
+            return Unauthorized(new { message = "User token not available" });
+        }
+
+        var pr = await context.PullRequests.FindAsync(id);
+        if (pr == null)
+        {
+            return NotFound(new { message = "Pull request not found" });
+        }
+
+        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
+        if (config == null)
+        {
+            return BadRequest(new { message = "GitHub configuration not found" });
+        }
+
+        try
+        {
+            await gitHubService.UnresolveReviewThreadAsync(
+                config.Organization,
+                pr.Repository,
+                threadId,
+                config,
+                user.AccessToken
+            );
+
+            return Ok(new { message = "Thread unresolved successfully" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to unresolve thread", error = ex.Message });
+        }
+    }
+
     [HttpPost("{id}/review")]
     [Authorize]
     public async Task<IActionResult> SubmitReview(int id, [FromBody] SubmitReviewRequest request)

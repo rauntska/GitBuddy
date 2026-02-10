@@ -31,10 +31,8 @@ export function usePRDetail() {
     try {
       const newComment = await apiService.addComment(prId, comment);
       
-      // Optimistically add comment to local state
-      if (prDetail.value) {
-        prDetail.value.allComments = [...prDetail.value.allComments, newComment];
-      }
+      // Refresh PR details to get review threads from backend
+      await fetchPRDetail(prId);
       
       return newComment;
     } catch (err: any) {

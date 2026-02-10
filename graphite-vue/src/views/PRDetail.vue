@@ -333,6 +333,8 @@
                   :comments="prDetail.allComments"
                   :review-threads="prDetail.reviewThreads"
                   :on-add-comment="(line: number, body: string) => handleAddComment(file.path!, line, body)"
+                  :on-reply-to-thread="(threadId: string, line: number, body: string) => handleReplyToThread(threadId, line, body)"
+                  :on-resolve-thread="(threadId: string, resolved: boolean) => handleResolveThread(threadId, resolved)"
                   :on-toggle-viewed="handleToggleViewed"
                   :initial-expanded="!isFileViewed(file.path!)"
                   class="mb-4"
@@ -630,12 +632,36 @@ const handleClickOutside = (e: MouseEvent) => {
   }
 };
 
-const handleAddComment = async (path: string, line: number, body: string) => {
-  const comment = await addComment(props.id, { path, line, body });
-  if (comment) {
-    console.log('Comment added successfully');
-  }
-};
+  const handleAddComment = async (path: string, line: number, body: string) => {
+    const comment = await addComment(props.id, { path, line, body });
+    if (comment) {
+      console.log('Comment added successfully');
+    }
+  };
+
+  const handleReplyToThread = async (threadId: string, _line: number, body: string) => {
+    const reply = await apiService.addCommentReply(props.id, { reviewThreadId: threadId, body });
+    if (reply) {
+      console.log('Reply added successfully');
+      await fetchPRDetail(props.id);
+    }
+  };
+
+  const handleResolveThread = async (threadId: string, resolved: boolean) => {
+    try {
+      if (resolved) {
+        await apiService.resolveReviewThread(props.id, threadId, true);
+        console.log('Thread resolved successfully');
+      } else {
+        await apiService.unresolveReviewThread(props.id, threadId);
+        console.log('Thread unresolved successfully');
+      }
+      await fetchPRDetail(props.id);
+    } catch (error) {
+      console.error('Failed to resolve/unresolve thread:', error);
+    }
+  };
+
 
 const handleSubmitReview = async () => {
   if (reviewAction.value === 'CHANGES_REQUESTED' && !reviewComment.value.trim()) {

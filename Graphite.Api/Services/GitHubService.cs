@@ -356,4 +356,19 @@ public class GitHubService(
             return null;
         }
     }
+
+    public async Task<GitHubCommentData> AddPullRequestReviewThreadReplyAsync(string organization, string repository, long pullRequestNumber, string reviewThreadId, string body, GitHubConfig config, string userAccessToken)
+    {
+        return await graphQlService.AddPullRequestReviewThreadReplyAsync(organization, repository, pullRequestNumber, reviewThreadId, body, userAccessToken);
+    }
+
+    public async Task ResolveReviewThreadAsync(string organization, string repository, string threadId, bool resolved, GitHubConfig config, string userAccessToken)
+    {
+        await graphQlService.ResolveReviewThreadAsync(organization, repository, threadId, resolved, userAccessToken);
+    }
+
+    public async Task UnresolveReviewThreadAsync(string organization, string repository, string threadId, GitHubConfig config, string userAccessToken)
+    {
+        await graphQlService.UnresolveReviewThreadAsync(organization, repository, threadId, userAccessToken);
+    }
 }

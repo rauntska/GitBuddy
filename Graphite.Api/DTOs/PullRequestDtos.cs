@@ -115,3 +115,15 @@ public record UpdateViewedStateRequest(
     string Path,
     bool Viewed
 );
+
+public record AddCommentReplyRequest(
+    string ReviewThreadId,
+    string Body
+);
+
+public record ResolveThreadRequest(
+    bool Resolved
+);
+
+public record UnresolveThreadRequest(
+);

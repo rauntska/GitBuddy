@@ -64,6 +64,21 @@ export const apiService = {
     return response.data;
   },
 
+  addCommentReply: async (prId: number, reply: { reviewThreadId: string; body: string }): Promise<Comment> => {
+    const response = await api.post<Comment>(`/pullrequests/${prId}/comments/reply`, reply);
+    return response.data;
+  },
+
+  resolveReviewThread: async (prId: number, threadId: string, resolved: boolean): Promise<{ message: string }> => {
+    const response = await api.post<{ message: string }>(`/pullrequests/${prId}/threads/${threadId}/resolve`, { resolved });
+    return response.data;
+  },
+
+  unresolveReviewThread: async (prId: number, threadId: string): Promise<{ message: string }> => {
+    const response = await api.post<{ message: string }>(`/pullrequests/${prId}/threads/${threadId}/unresolve`, {});
+    return response.data;
+  },
+
   submitReview: async (prId: number, review: { state: 'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENT'; body?: string }): Promise<{ message: string }> => {
     const response = await api.post<{ message: string }>(`/pullrequests/${prId}/review`, review);
     return response.data;
