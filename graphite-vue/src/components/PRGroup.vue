@@ -9,32 +9,32 @@
         {{ title }}
         <span class="text-sm font-normal text-slate-500">({{ pullRequests.length }})</span>
       </h2>
-      <button
-        @click="$emit('toggle')"
-        class="text-slate-500 hover:text-slate-300 transition-colors p-1"
-        :title="expanded ? 'Collapse' : 'Expand'"
-      >
-        <svg
-          class="w-5 h-5 transition-transform duration-200"
-          :class="{ 'rotate-180': expanded }"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M19 9l-7 7-7-7"
-          />
-        </svg>
-      </button>
+       <button
+         @click="$emit('toggle')"
+         class="text-slate-500 hover:text-slate-300 transition-colors p-1"
+         :title="isExpanded ? 'Collapse' : 'Expand'"
+       >
+         <svg
+           class="w-5 h-5 transition-transform duration-200"
+           :class="{ 'rotate-180': isExpanded }"
+           fill="none"
+           stroke="currentColor"
+           viewBox="0 0 24 24"
+         >
+           <path
+             stroke-linecap="round"
+             stroke-linejoin="round"
+             stroke-width="2"
+             d="M19 9l-7 7-7-7"
+           />
+         </svg>
+       </button>
     </div>
 
-    <div
-      v-if="expanded"
-      class="space-y-2 transition-all duration-200"
-    >
+     <div
+       v-if="isExpanded"
+       class="space-y-2 transition-all duration-200"
+     >
       <PRRow
         v-for="pr in pullRequests"
         :key="pr.gitHubId"
@@ -63,19 +63,26 @@ const props = defineProps<{
   expanded?: boolean;
 }>();
 
-defineEmits<{
+ defineEmits<{
   toggle: [];
-}>();
+ }>();
 
-const statusColor = computed(() => {
-  const colors: Record<string, string> = {
-    AwaitingReview: 'bg-blue-500',
-    Approved: 'bg-green-500',
-    Reviewed: 'bg-purple-500',
-    ChangesRequested: 'bg-orange-500',
-    Draft: 'bg-gray-500',
-    Merged: 'bg-slate-600',
-  };
-  return colors[props.status] || 'bg-gray-500';
-});
+ const isExpanded = computed(() => {
+   if (props.pullRequests.length === 0) {
+     return false;
+   }
+   return props.expanded;
+ });
+
+ const statusColor = computed(() => {
+   const colors: Record<string, string> = {
+     AwaitingReview: 'bg-blue-500',
+     Approved: 'bg-green-500',
+     Reviewed: 'bg-purple-500',
+     ChangesRequested: 'bg-orange-500',
+     Draft: 'bg-gray-500',
+     Merged: 'bg-slate-600',
+   };
+   return colors[props.status] || 'bg-gray-500';
+ });
 </script>

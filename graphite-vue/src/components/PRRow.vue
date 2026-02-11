@@ -34,19 +34,17 @@
       </div>
     </div>
 
-    <!-- Metadata Section (Compact) -->
-    <div class="flex items-center gap-3 flex-shrink-0 w-[520px] justify-end">
+     <!-- Metadata Section (Compact) -->
+     <div class="flex items-center gap-3 flex-shrink-0 w-[480px] justify-end">
       <!-- PR Size Badge -->
       <div class="w-[60px] flex justify-center">
         <PRSizeBadge :additions="pr.additions" :deletions="pr.deletions" />
       </div>
 
       <!-- CI/CD Status Badge -->
-      <div class="w-[80px] flex justify-center">
+      <div class="w-[40px] flex justify-center">
         <CIBadge 
           :status="pr.checksStatus" 
-          :show-count="true"
-          :total-count="pr.totalCheckRuns || 0"
           :compact="true"
         />
       </div>
