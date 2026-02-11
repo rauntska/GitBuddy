@@ -38,7 +38,7 @@ public static class MappingExtensions
             pr.ChangedFiles,
             pr.CreatedAt,
             pr.UpdatedAt,
-            pr.            LastSyncedAt,
+            pr.LastSyncedAt,
             GetLatestReviewsPerReviewer(pr.Reviews),
             pr.ReviewThreads.Select(rt => new ReviewThreadDto(
                 rt.Id,
@@ -54,7 +54,8 @@ public static class MappingExtensions
                 rt.FirstCommentAuthor,
                 rt.FirstCommentBody,
                 rt.CommentCount
-            )).ToList()
+            )).ToList(),
+            pr.ChecksStatus
         );
 
     }
@@ -145,7 +146,17 @@ public static class MappingExtensions
                 rt.CommentCount
             )).ToList(),
             fileDtos,
-            comments.Select(c => c.ToDto()).ToList()
+            comments.Select(c => c.ToDto()).ToList(),
+            pr.CheckRuns.Select(cr => new CheckRunDto(
+                cr.Id,
+                cr.GitHubId,
+                cr.Name,
+                cr.Status,
+                cr.Conclusion,
+                cr.Url,
+                cr.StartedAt,
+                cr.CompletedAt
+            )).ToList()
         );
     }
 }

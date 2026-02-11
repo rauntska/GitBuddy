@@ -42,7 +42,9 @@ public record GitHubPRData(
     string Description,
     string SourceBranch,
     string TargetBranch,
-    string? MergeableState
+    string? MergeableState,
+    string? ChecksStatus,
+    List<GitHubCheckRunData>? CheckRuns
 );
 
 public record GitHubReviewData(
@@ -98,3 +100,13 @@ public record GitHubPRStatusData(
     PullRequestState State,
     DateTime? MergedAt,
     DateTime? ClosedAt);
+
+public record GitHubCheckRunData(
+    string Id,
+    string Name,
+    string Status,
+    string? Conclusion,
+    string? Url,
+    DateTime StartedAt,
+    DateTime? CompletedAt
+);

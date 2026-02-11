@@ -35,6 +35,7 @@ public class PullRequestsController(ICacheService cacheService, AppDbContext con
         var pr = await context.PullRequests
             .Include(p => p.Reviews)
             .Include(p => p.ReviewThreads)
+            .Include(p => p.CheckRuns)
             .FirstOrDefaultAsync(p => p.Id == id);
 
         if (pr == null)

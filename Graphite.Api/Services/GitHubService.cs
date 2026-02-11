@@ -94,6 +94,10 @@ public class GitHubService(
         var status = statusService.DeterminePrStatus(pr.IsDraft, reviews);
         var reviewThreads = await GetReviewThreadsAsync(organization, repoName, pr.Number, config);
 
+        var checkResult = await GetCheckStatusAsync(organization, repoName, pr.Number, config);
+        var checkStatus = checkResult.Item1;
+        var checkRuns = checkResult.Item2;
+
         return new GitHubPRData(
             pr.Number,
             pr.Title,
@@ -113,7 +117,9 @@ public class GitHubService(
             pr.Body ?? string.Empty,
             pr.HeadRefName,
             pr.BaseRefName,
-            pr.Mergeable.ToString()
+            pr.Mergeable.ToString(),
+            checkStatus,
+            checkRuns
         );
     }
 
@@ -370,5 +376,11 @@ public class GitHubService(
     public async Task UnresolveReviewThreadAsync(string organization, string repository, string threadId, GitHubConfig config, string userAccessToken)
     {
         await graphQlService.UnresolveReviewThreadAsync(organization, repository, threadId, userAccessToken);
+    }
+
+    public async Task<(string? OverallStatus, List<GitHubCheckRunData> CheckRuns)> GetCheckStatusAsync(string organization, string repository, long pullRequestNumber, GitHubConfig config)
+    {
+        var accessToken = await tokenService.GetAccessTokenAsync(config);
+        return await graphQlService.GetCheckStatusAsync(organization, repository, pullRequestNumber, accessToken);
     }
 }

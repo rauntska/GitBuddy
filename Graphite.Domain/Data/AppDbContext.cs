@@ -16,6 +16,7 @@ public class AppDbContext : DbContext
     public DbSet<User> Users { get; set; }
     public DbSet<UserPreferences> UserPreferences { get; set; }
     public DbSet<UserFileViewedState> UserFileViewedStates { get; set; }
+    public DbSet<CheckRun> CheckRuns { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -41,6 +42,11 @@ public class AppDbContext : DbContext
             entity.HasMany(e => e.Comments)
                 .WithOne()
                 .HasForeignKey(c => c.PullRequestId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(e => e.CheckRuns)
+                .WithOne(cr => cr.PullRequest)
+                .HasForeignKey(cr => cr.PullRequestId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
@@ -122,6 +128,18 @@ public class AppDbContext : DbContext
             entity.HasOne(e => e.FileDiff)
                 .WithMany(f => f.UserViewStates)
                 .HasForeignKey(e => e.FileDiffId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CheckRun>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.GitHubId).IsUnique();
+            entity.HasIndex(e => e.PullRequestId);
+
+            entity.HasOne(e => e.PullRequest)
+                .WithMany(pr => pr.CheckRuns)
+                .HasForeignKey(e => e.PullRequestId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

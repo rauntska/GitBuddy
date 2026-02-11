@@ -41,6 +41,8 @@ export interface PullRequest {
   lastSyncedAt: string;
   reviews: Review[];
   reviewThreads: ReviewThread[];
+  checksStatus?: 'SUCCESS' | 'FAILURE' | 'PENDING' | 'NEUTRAL' | null;
+  totalCheckRuns?: number;
   isMerged?: boolean;
   mergedAt?: string;
 }
@@ -116,6 +118,17 @@ export interface DiffLine {
   hasComment?: boolean;
 }
 
+export interface CheckRun {
+  id: number;
+  gitHubId: string;
+  name: string;
+  status: string;
+  conclusion?: string;
+  url?: string;
+  startedAt: string;
+  completedAt?: string;
+}
+
 export interface PRDetail extends PullRequest {
   description: string;
   sourceBranch: string;
@@ -123,7 +136,7 @@ export interface PRDetail extends PullRequest {
   files: FileDiff[];
   allComments: Comment[];
   mergeableState?: string;
-  checksStatus?: 'pending' | 'success' | 'failure';
+  checkRuns?: CheckRun[];
   viewedFiles?: string[];
 }
 

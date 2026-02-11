@@ -21,6 +21,7 @@ public class CacheService(
                 .Include(pr => pr.Reviews)
                 .Include(pr => pr.ReviewThreads)
                 .Include(pr => pr.Comments)
+                .Include(pr => pr.CheckRuns)
                 .FirstOrDefaultAsync(pr => pr.GitHubId == prData.Id);
 
             if (existingPR != null)
@@ -40,6 +41,7 @@ public class CacheService(
                 existingPR.SourceBranch = prData.SourceBranch;
                 existingPR.TargetBranch = prData.TargetBranch;
                 existingPR.MergeableState = prData.MergeableState;
+                existingPR.ChecksStatus = prData.ChecksStatus;
             }
             else
             {
@@ -62,7 +64,8 @@ public class CacheService(
                     Description = prData.Description,
                     SourceBranch = prData.SourceBranch,
                     TargetBranch = prData.TargetBranch,
-                    MergeableState = prData.MergeableState
+                    MergeableState = prData.MergeableState,
+                    ChecksStatus = prData.ChecksStatus
                 };
                 context.PullRequests.Add(existingPR);
                 await context.SaveChangesAsync();
@@ -187,6 +190,53 @@ public class CacheService(
             {
                 var thread = existingPR.ReviewThreads.First(rt => rt.GitHubId == threadId);
                 context.ReviewThreads.Remove(thread);
+            }
+
+            // Sync check runs
+            try
+            {
+                var existingCheckRunIds = existingPR.CheckRuns.Select(cr => cr.GitHubId).ToHashSet();
+                var incomingCheckRunIds = (prData.CheckRuns ?? []).Select(cr => cr.Id).ToHashSet();
+
+                foreach (var checkRunData in prData.CheckRuns ?? [])
+                {
+                    if (!existingCheckRunIds.Contains(checkRunData.Id))
+                    {
+                        context.CheckRuns.Add(new CheckRun
+                        {
+                            PullRequestId = existingPR.Id,
+                            GitHubId = checkRunData.Id,
+                            Name = checkRunData.Name,
+                            Status = checkRunData.Status,
+                            Conclusion = checkRunData.Conclusion,
+                            Url = checkRunData.Url,
+                            StartedAt = checkRunData.StartedAt,
+                            CompletedAt = checkRunData.CompletedAt,
+                            LastSyncedAt = DateTime.UtcNow
+                        });
+                    }
+                    else
+                    {
+                        var existingCheckRun = existingPR.CheckRuns.First(cr => cr.GitHubId == checkRunData.Id);
+                        existingCheckRun.Name = checkRunData.Name;
+                        existingCheckRun.Status = checkRunData.Status;
+                        existingCheckRun.Conclusion = checkRunData.Conclusion;
+                        existingCheckRun.Url = checkRunData.Url;
+                        existingCheckRun.StartedAt = checkRunData.StartedAt;
+                        existingCheckRun.CompletedAt = checkRunData.CompletedAt;
+                        existingCheckRun.LastSyncedAt = DateTime.UtcNow;
+                    }
+                }
+
+                // Remove check runs that are no longer in response
+                foreach (var checkRun in existingPR.CheckRuns.Where(cr => !incomingCheckRunIds.Contains(cr.GitHubId)))
+                {
+                    context.CheckRuns.Remove(checkRun);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error syncing check runs for PR {PrId}", prData.Id);
             }
 
             // Fetch and store file diffs

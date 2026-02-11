@@ -13,6 +13,7 @@ public class WebhookService : IWebhookService
     private readonly IGitHubService _gitHubService;
     private readonly ICacheService _cacheService;
     private readonly IPullRequestStatusService _statusService;
+    private readonly ILanguageDetectionService _languageDetectionService;
     private readonly ILogger<WebhookService> _logger;
 
     public WebhookService(
@@ -20,12 +21,14 @@ public class WebhookService : IWebhookService
         IGitHubService gitHubService,
         ICacheService cacheService,
         IPullRequestStatusService statusService,
+        ILanguageDetectionService languageDetectionService,
         ILogger<WebhookService> logger)
     {
         _context = context;
         _gitHubService = gitHubService;
         _cacheService = cacheService;
         _statusService = statusService;
+        _languageDetectionService = languageDetectionService;
         _logger = logger;
     }
     public async Task HandlePullRequestEventAsync(PullRequestEvent pullRequestEvent)
@@ -85,6 +88,7 @@ public class WebhookService : IWebhookService
                 }
                 break;
 
+            case "synchronize":
             case "synchronized":
             case "edited":
             case "ready_for_review":
@@ -146,6 +150,18 @@ public class WebhookService : IWebhookService
         AddCommentsToContext(pullRequest, comments);
 
         await _context.SaveChangesAsync();
+        
+        try
+        {
+            var fileDiffs = await _gitHubService.GetFileDiffsAsync(organization, repo.Name, prData.Number, config);
+            AddFileDiffsToContext(pullRequest.Id, fileDiffs);
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching file diffs for PR {Repository}#{Number}", repo.FullName, prData.Number);
+        }
+        
         _logger.LogInformation("Created new PR {Repository}#{Number}", repo.FullName, prData.Number);
     }
 
@@ -246,6 +262,26 @@ public class WebhookService : IWebhookService
                 IsOutdated = comment.IsOutdated,
                 CreatedAt = comment.CreatedAt,
                 UpdatedAt = comment.UpdatedAt
+            });
+        }
+    }
+
+    private void AddFileDiffsToContext(int pullRequestId, List<GitHubFileDiffData> fileDiffs)
+    {
+        foreach (var fileDiff in fileDiffs)
+        {
+            var language = _languageDetectionService.DetectLanguage(fileDiff.Path);
+            _context.FileDiffs.Add(new FileDiff
+            {
+                PullRequestId = pullRequestId,
+                Path = fileDiff.Path,
+                OldPath = fileDiff.OldPath,
+                Status = fileDiff.Status,
+                Additions = fileDiff.Additions,
+                Deletions = fileDiff.Deletions,
+                Changes = fileDiff.Changes,
+                Patch = fileDiff.Patch,
+                Language = language
             });
         }
     }

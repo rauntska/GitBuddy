@@ -161,28 +161,28 @@
 
             <!-- Right: Info & Stats -->
             <div class="w-96 flex-shrink-0 space-y-4">
-              <!-- Stats - Compact Table -->
-              <div class="p-4 bg-gradient-to-br from-slate-800/40 to-slate-800/20 border border-slate-700/30 rounded-xl shadow-sm">
-                <div class="text-xs font-medium text-slate-400 mb-3">Stats</div>
-                <table class="w-full text-sm">
-                  <tr class="border-b border-slate-700/20 last:border-0">
-                    <td class="text-slate-500 py-2">Files</td>
-                    <td class="text-slate-200 text-right font-semibold">{{ prDetail.changedFiles }}</td>
-                  </tr>
-                  <tr class="border-b border-slate-700/20 last:border-0">
-                    <td class="text-slate-500 py-2">Comments</td>
-                    <td class="text-blue-400 text-right font-semibold">{{ prDetail.allComments.length }}</td>
-                  </tr>
-                  <tr class="border-b border-slate-700/20 last:border-0">
-                    <td class="text-slate-500 py-2">Additions</td>
-                    <td class="text-emerald-400 text-right font-semibold">+{{ prDetail.additions }}</td>
-                  </tr>
-                  <tr>
-                    <td class="text-slate-500 py-2">Deletions</td>
-                    <td class="text-rose-400 text-right font-semibold">-{{ prDetail.deletions }}</td>
-                  </tr>
-                </table>
-              </div>
+<!--              &lt;!&ndash; Stats - Compact Table &ndash;&gt;-->
+<!--              <div class="p-4 bg-gradient-to-br from-slate-800/40 to-slate-800/20 border border-slate-700/30 rounded-xl shadow-sm">-->
+<!--                <div class="text-xs font-medium text-slate-400 mb-3">Stats</div>-->
+<!--                <table class="w-full text-sm">-->
+<!--                  <tr class="border-b border-slate-700/20 last:border-0">-->
+<!--                    <td class="text-slate-500 py-2">Files</td>-->
+<!--                    <td class="text-slate-200 text-right font-semibold">{{ prDetail.changedFiles }}</td>-->
+<!--                  </tr>-->
+<!--                  <tr class="border-b border-slate-700/20 last:border-0">-->
+<!--                    <td class="text-slate-500 py-2">Comments</td>-->
+<!--                    <td class="text-blue-400 text-right font-semibold">{{ prDetail.allComments.length }}</td>-->
+<!--                  </tr>-->
+<!--                  <tr class="border-b border-slate-700/20 last:border-0">-->
+<!--                    <td class="text-slate-500 py-2">Additions</td>-->
+<!--                    <td class="text-emerald-400 text-right font-semibold">+{{ prDetail.additions }}</td>-->
+<!--                  </tr>-->
+<!--                  <tr>-->
+<!--                    <td class="text-slate-500 py-2">Deletions</td>-->
+<!--                    <td class="text-rose-400 text-right font-semibold">-{{ prDetail.deletions }}</td>-->
+<!--                  </tr>-->
+<!--                </table>-->
+<!--              </div>-->
 
                 <!-- Reviewers - Compact with Icons -->
                 <div v-if="prDetail.reviews.length > 0" class="p-4 bg-gradient-to-br from-slate-800/40 to-slate-800/20 border border-slate-700/30 rounded-xl shadow-sm">
@@ -206,6 +206,45 @@
                         :class="['w-5 h-5', getReviewStatusColor(review.state)]"
                         :title="getReviewStatusLabel(review.state)"
                       />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- CI/CD Checks -->
+                <div v-if="prDetail.checksStatus || (prDetail.checkRuns && prDetail.checkRuns.length > 0)" class="p-4 bg-gradient-to-br from-slate-800/40 to-slate-800/20 border border-slate-700/30 rounded-xl shadow-sm">
+                  <div class="text-xs font-medium text-slate-400 mb-3">CI/CD Checks</div>
+
+                  <div v-if="prDetail.checksStatus" class="space-y-2">
+                    <div class="flex items-center gap-2 p-2 rounded-lg bg-slate-700/30">
+                      <CIBadge :status="prDetail.checksStatus" :show-count="true" :total-count="prDetail.checkRuns?.length || 0" />
+                      <span class="text-sm text-slate-200">{{ checksStatusLabel }}</span>
+                    </div>
+
+                    <div v-if="prDetail.checkRuns && prDetail.checkRuns.length > 0" class="mt-3 space-y-1.5 max-h-48 overflow-y-auto">
+                      <div
+                        v-for="check in prDetail.checkRuns"
+                        :key="check.id"
+                        class="flex items-center gap-2 p-2 rounded hover:bg-slate-700/20 transition-colors duration-200"
+                      >
+                        <CIBadge 
+                          :status="getCheckStatusFromCheckRun(check)"
+                          :show-count="false"
+                          :compact="true"
+                        />
+                        <span class="text-xs text-slate-300 truncate flex-1">{{ check.name }}</span>
+                        <a
+                          v-if="check.url"
+                          :href="check.url"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="text-slate-400 hover:text-slate-200 transition-colors duration-200"
+                          title="View on GitHub"
+                        >
+                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </a>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -468,7 +507,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { usePRDetail } from '../composables/usePRDetail';
 import { useUserPreferences } from '../composables/useUserPreferences';
 import { apiService } from '../services/api';
@@ -478,7 +517,8 @@ import CommentsPanel from '../components/CommentsPanel.vue';
 import StatusBadge from '../components/StatusBadge.vue';
 import Breadcrumb from '../components/Breadcrumb.vue';
 import DescriptionRenderer from '../components/DescriptionRenderer.vue';
-import type { Comment } from '../types';
+import CIBadge from '../components/CIBadge.vue';
+import type { Comment, CheckRun } from '../types';
 import { CheckIcon, ChatBubbleLeftIcon, ArrowPathIcon } from '@heroicons/vue/24/outline';
 import { useAuthStore } from '../stores/auth';
 
@@ -870,4 +910,29 @@ const getReviewStatusLabel = (state: string): string => {
   if (state === 'ChangesRequested') return 'Requested Changes';
   return state;
 };
+
+const checksStatusLabel = computed(() => {
+  if (!prDetail.value?.checksStatus) return 'No checks';
+  switch (prDetail.value.checksStatus) {
+    case 'SUCCESS':
+      return 'All checks passed';
+    case 'FAILURE':
+      return 'Some checks failed';
+    case 'PENDING':
+      return 'Checks pending';
+    default:
+      return 'Checks running';
+  }
+});
+
+const getCheckStatusFromCheckRun = (check: CheckRun): 'SUCCESS' | 'FAILURE' | 'PENDING' | 'NEUTRAL' => {
+  if (check.status === 'completed') {
+    if (check.conclusion === 'success') return 'SUCCESS';
+    if (check.conclusion === 'failure') return 'FAILURE';
+    return 'NEUTRAL';
+  }
+  if (check.status === 'queued' || check.status === 'in_progress') return 'PENDING';
+  return 'NEUTRAL';
+};
+
 </script>

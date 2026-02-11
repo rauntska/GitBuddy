@@ -16,6 +16,7 @@ public interface IGitHubGraphQLService
     Task<GitHubCommentData> AddPullRequestReviewThreadReplyAsync(string organization, string repository, long pullRequestNumber, string reviewThreadId, string body, string accessToken);
     Task<bool> ResolveReviewThreadAsync(string organization, string repository, string threadId, bool resolved, string accessToken);
     Task<bool> UnresolveReviewThreadAsync(string organization, string repository, string threadId, string accessToken);
+    Task<(string? OverallStatus, List<GitHubCheckRunData> CheckRuns)> GetCheckStatusAsync(string organization, string repository, long pullRequestNumber, string accessToken);
 }
 
 public class GitHubGraphQLService : IGitHubGraphQLService
@@ -326,6 +327,76 @@ public class GitHubGraphQLService : IGitHubGraphQLService
         {
             _logger.LogError(ex, "Error unresolving thread {ThreadId} for PR {Organization}/{Repository}", threadId, organization, repository);
             throw;
+        }
+    }
+
+    public async Task<(string? OverallStatus, List<GitHubCheckRunData> CheckRuns)> GetCheckStatusAsync(string organization, string repository, long pullRequestNumber, string accessToken)
+    {
+        try
+        {
+            // Use REST API instead of GraphQL as it has better permissions for CheckRuns
+            var restClient = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("Graphite-PR-Dashboard"))
+            {
+                Credentials = new Octokit.Credentials(accessToken)
+            };
+
+            // First, get the PR to find the head SHA
+            var pullRequest = await restClient.PullRequest.Get(organization, repository, (int)pullRequestNumber);
+            var headSha = pullRequest.Head.Sha;
+
+            // Get all check runs for the head commit
+            var checkRunsResponse = await restClient.Check.Run.GetAllForReference(organization, repository, headSha);
+            
+            var allCheckRuns = new List<GitHubCheckRunData>();
+
+            foreach (var checkRun in checkRunsResponse.CheckRuns)
+            {
+                var status = checkRun.Status.Value.ToString().ToLowerInvariant();
+                var conclusion = checkRun.Conclusion.HasValue 
+                    ? checkRun.Conclusion.Value.Value.ToString().ToLowerInvariant()
+                    : null;
+
+                allCheckRuns.Add(new GitHubCheckRunData(
+                    checkRun.Id.ToString(),
+                    checkRun.Name,
+                    status,
+                    conclusion,
+                    checkRun.HtmlUrl,
+                    checkRun.StartedAt.UtcDateTime,
+                    checkRun.CompletedAt?.UtcDateTime
+                ));
+            }
+
+            // Calculate overall status based on check runs
+            string? overallStatus = null;
+
+            if (allCheckRuns.Count > 0)
+            {
+                var hasFailure = allCheckRuns.Any(cr => cr.Conclusion == "failure");
+                var hasPending = allCheckRuns.Any(cr => cr.Status == "queued" || cr.Status == "in_progress");
+                var allCompleted = allCheckRuns.All(cr => cr.Status == "completed");
+
+                if (hasFailure)
+                {
+                    overallStatus = "FAILURE";
+                }
+                else if (hasPending)
+                {
+                    overallStatus = "PENDING";
+                }
+                else if (allCompleted)
+                {
+                    var hasSuccess = allCheckRuns.Any(cr => cr.Conclusion == "success");
+                    overallStatus = hasSuccess ? "SUCCESS" : "NEUTRAL";
+                }
+            }
+
+            return (overallStatus, allCheckRuns);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching check status for PR {Organization}/{Repository}#{PullRequestNumber}", organization, repository, pullRequestNumber);
+            return (null, new List<GitHubCheckRunData>());
         }
     }
 }

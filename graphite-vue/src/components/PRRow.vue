@@ -35,10 +35,20 @@
     </div>
 
     <!-- Metadata Section (Compact) -->
-    <div class="flex items-center gap-3 flex-shrink-0 w-[440px] justify-end">
+    <div class="flex items-center gap-3 flex-shrink-0 w-[520px] justify-end">
       <!-- PR Size Badge -->
       <div class="w-[60px] flex justify-center">
         <PRSizeBadge :additions="pr.additions" :deletions="pr.deletions" />
+      </div>
+
+      <!-- CI/CD Status Badge -->
+      <div class="w-[80px] flex justify-center">
+        <CIBadge 
+          :status="pr.checksStatus" 
+          :show-count="true"
+          :total-count="pr.totalCheckRuns || 0"
+          :compact="true"
+        />
       </div>
 
       <!-- Stale Indicator / Spacer -->
@@ -131,6 +141,7 @@ import { computed } from 'vue';
 import type { PullRequest } from '../types';
 import ReviewerAvatars from './ReviewerAvatars.vue';
 import PRSizeBadge from './PRSizeBadge.vue';
+import CIBadge from './CIBadge.vue';
 import {
   isStale,
   formatAge,

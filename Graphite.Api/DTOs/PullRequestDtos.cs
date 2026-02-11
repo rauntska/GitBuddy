@@ -42,7 +42,8 @@ public record PullRequestDto(
     DateTime UpdatedAt,
     DateTime LastSyncedAt,
     List<ReviewDto> Reviews,
-    List<ReviewThreadDto> ReviewThreads
+    List<ReviewThreadDto> ReviewThreads,
+    string? ChecksStatus
 );
 
 public record CommentDto(
@@ -73,6 +74,17 @@ public record FileDiffDto(
     DateTime? ViewedAt
 );
 
+public record CheckRunDto(
+    int Id,
+    string GitHubId,
+    string Name,
+    string Status,
+    string? Conclusion,
+    string? Url,
+    DateTime StartedAt,
+    DateTime? CompletedAt
+);
+
 public record PRDetailDto(
     int Id,
     long GitHubId,
@@ -97,7 +109,8 @@ public record PRDetailDto(
     List<ReviewDto> Reviews,
     List<ReviewThreadDto> ReviewThreads,
     List<FileDiffDto> Files,
-    List<CommentDto> AllComments
+    List<CommentDto> AllComments,
+    List<CheckRunDto> CheckRuns
 );
 
 public record AddCommentRequest(
