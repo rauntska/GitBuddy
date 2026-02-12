@@ -20,7 +20,8 @@
           </h1>
         </div>
 
-        <div class="flex items-center gap-3 text-xs">
+<div class="flex items-center gap-3 text-xs">
+          <ConnectionStatus :state="signalR.connectionState.value" />
           <span class="text-slate-400 font-medium">{{ prDetail?.repository }} #{{ prDetail?.gitHubId }}</span>
 
           <button
@@ -507,22 +508,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue';
-import { usePRDetail } from '../composables/usePRDetail';
-import { useUserPreferences } from '../composables/useUserPreferences';
-import { apiService } from '../services/api';
-import FileDiffViewer from '../components/FileDiffViewer.vue';
-import FileTree from '../components/FileTree.vue';
-import CommentsPanel from '../components/CommentsPanel.vue';
-import StatusBadge from '../components/StatusBadge.vue';
-import Breadcrumb from '../components/Breadcrumb.vue';
-import DescriptionRenderer from '../components/DescriptionRenderer.vue';
-import CIBadge from '../components/CIBadge.vue';
-import type { Comment, CheckRun } from '../types';
-import { CheckIcon, ChatBubbleLeftIcon, ArrowPathIcon } from '@heroicons/vue/24/outline';
-import { useAuthStore } from '../stores/auth';
+ import { ref, onMounted, onUnmounted, computed } from 'vue';
+ import { usePRDetail } from '../composables/usePRDetail';
+ import { useUserPreferences } from '../composables/useUserPreferences';
+ import { useSignalR, type CommentNotification, type ThreadNotification, type CheckRunsNotification } from '../composables/useSignalR';
+ import { apiService } from '../services/api';
+ import FileDiffViewer from '../components/FileDiffViewer.vue';
+ import FileTree from '../components/FileTree.vue';
+ import CommentsPanel from '../components/CommentsPanel.vue';
+ import StatusBadge from '../components/StatusBadge.vue';
+ import Breadcrumb from '../components/Breadcrumb.vue';
+ import DescriptionRenderer from '../components/DescriptionRenderer.vue';
+ import CIBadge from '../components/CIBadge.vue';
+ import ConnectionStatus from '../components/ConnectionStatus.vue';
+ import type { Comment, CheckRun } from '../types';
+ import { CheckIcon, ChatBubbleLeftIcon, ArrowPathIcon } from '@heroicons/vue/24/outline';
+ import { useAuthStore } from '../stores/auth';
 
-const authStore = useAuthStore();
+ const authStore = useAuthStore();
+ const signalR = useSignalR();
 
 const props = defineProps<{
   id: number;
@@ -568,10 +572,8 @@ onMounted(async () => {
   
   await fetchPRDetail(props.id);
 
-  // Fetch user's file viewed states from GitHub
   await refreshFileViewStates();
 
-  // Load viewed files from preferences
   if (preferences.value.viewedFilesByPr && preferences.value.viewedFilesByPr[props.id]) {
     if (prDetail.value) {
       prDetail.value.viewedFiles = preferences.value.viewedFilesByPr[props.id];
@@ -582,7 +584,61 @@ onMounted(async () => {
   document.addEventListener('mousemove', handleMouseMove);
   document.addEventListener('mouseup', handleMouseUp);
   document.addEventListener('click', handleClickOutside);
+
+  if (authStore.token) {
+    await signalR.connect(authStore.token);
+    await signalR.joinPRRoom(props.id);
+    setupSignalRHandlers();
+  }
 });
+
+const setupSignalRHandlers = () => {
+  signalR.onCommentChanged.value = (notification: CommentNotification) => {
+    if (notification.pullRequestId !== props.id || !prDetail.value) return;
+    
+    if (notification.action === 'added') {
+      const exists = prDetail.value.allComments.some(c => c.id === notification.comment.id);
+      if (!exists) {
+        prDetail.value.allComments.push(notification.comment);
+      }
+    } else if (notification.action === 'updated') {
+      const idx = prDetail.value.allComments.findIndex(c => c.id === notification.comment.id);
+      if (idx !== -1) {
+        prDetail.value.allComments[idx] = notification.comment;
+      }
+    } else if (notification.action === 'deleted') {
+      prDetail.value.allComments = prDetail.value.allComments.filter(c => c.id !== notification.comment.id);
+    }
+  };
+
+  signalR.onThreadChanged.value = (notification: ThreadNotification) => {
+    if (notification.pullRequestId !== props.id || !prDetail.value) return;
+    
+    const threadIdx = prDetail.value.reviewThreads.findIndex(t => t.id === notification.threadId);
+    if (threadIdx !== -1 && prDetail.value.reviewThreads[threadIdx]) {
+      prDetail.value.reviewThreads[threadIdx].isResolved = notification.isResolved;
+      prDetail.value.reviewThreads[threadIdx].state = notification.isResolved ? 'RESOLVED' : 'UNRESOLVED';
+    }
+  };
+
+  signalR.onCheckRunsUpdated.value = (notification: CheckRunsNotification) => {
+    if (notification.pullRequestId !== props.id || !prDetail.value) return;
+    
+    prDetail.value.checksStatus = notification.checksStatus as any;
+    if (notification.checkRuns) {
+      prDetail.value.checkRuns = notification.checkRuns.map(cr => ({
+        id: cr.id,
+        gitHubId: cr.gitHubId,
+        name: cr.name,
+        status: cr.status,
+        conclusion: cr.conclusion,
+        url: cr.url,
+        startedAt: cr.startedAt,
+        completedAt: cr.completedAt
+      }));
+    }
+  };
+};
 
 const toggleContext = async () => {
   console.log('Toggle context - current value:', preferences.value.showContext);
@@ -597,11 +653,14 @@ const toggleContext = async () => {
   }
 };
 
-onUnmounted(() => {
+onUnmounted(async () => {
   document.removeEventListener('keydown', handleKeyPress);
   document.removeEventListener('mousemove', handleMouseMove);
   document.removeEventListener('mouseup', handleMouseUp);
   document.removeEventListener('click', handleClickOutside);
+  
+  await signalR.leavePRRoom(props.id);
+  await signalR.disconnect();
 });
 
 // Resize handlers

@@ -1,6 +1,7 @@
 import { ref } from 'vue';
 import { apiService } from '../services/api';
 import type { GroupedPRs, PRStats, PullRequest } from '../types';
+import { useSignalR, type PRListUpdate, type PRClosedNotification, type ReviewNotification, type ThreadNotification } from './useSignalR';
 
 export function usePullRequests() {
   const pullRequests = ref<GroupedPRs>({});
@@ -21,6 +22,230 @@ export function usePullRequests() {
   const mergedPRsSkip = ref(0);
   const mergedPRsTotal = ref(0);
   const mergedPRsHasMore = ref(true);
+
+  const signalR = useSignalR();
+
+  const setupSignalRHandlers = () => {
+    signalR.onPRCreated.value = (pr: PRListUpdate) => {
+      const newPR: PullRequest = {
+        id: pr.id,
+        gitHubId: pr.gitHubId,
+        title: pr.title,
+        repository: pr.repository,
+        author: pr.author,
+        authorAvatar: pr.authorAvatar,
+        status: pr.status,
+        draft: pr.draft,
+        url: pr.url,
+        additions: pr.additions,
+        deletions: pr.deletions,
+        changedFiles: pr.changedFiles,
+        createdAt: pr.createdAt,
+        updatedAt: pr.updatedAt,
+        lastSyncedAt: pr.updatedAt,
+        reviews: pr.reviews,
+        reviewThreads: pr.reviewThreads.map(rt => ({
+          ...rt,
+          diffSide: rt.diffSide as 'LEFT' | 'RIGHT' | undefined
+        })),
+        checksStatus: pr.checksStatus as 'SUCCESS' | 'FAILURE' | 'PENDING' | 'NEUTRAL' | null | undefined
+      };
+
+      const status = pr.status || 'AwaitingReview';
+      if (!pullRequests.value[status]) {
+        pullRequests.value[status] = [];
+      }
+      
+      const prList = pullRequests.value[status];
+      if (!prList) return;
+      
+      const existingIndex = prList.findIndex(p => p.id === pr.id);
+      if (existingIndex === -1) {
+        prList.unshift(newPR);
+        stats.value.totalOpen++;
+        if (pr.draft) stats.value.draft++;
+        if (pr.status === 'Approved') stats.value.approved++;
+        if (pr.status === 'AwaitingReview') stats.value.awaitingReview++;
+      }
+    };
+
+    signalR.onPRUpdated.value = (pr: PRListUpdate) => {
+      let found = false;
+      
+      for (const status in pullRequests.value) {
+        const prList = pullRequests.value[status];
+        if (!prList) continue;
+        
+        const idx = prList.findIndex(p => p.id === pr.id);
+        if (idx !== -1) {
+          found = true;
+          const existingPR = prList[idx];
+          if (!existingPR) continue;
+          
+          if (pr.status && pr.status !== status) {
+            prList.splice(idx, 1);
+            
+            if (!pullRequests.value[pr.status]) {
+              pullRequests.value[pr.status] = [];
+            }
+            
+            const targetList = pullRequests.value[pr.status];
+            if (!targetList) continue;
+            
+            const updatedPR: PullRequest = {
+              ...existingPR,
+              title: pr.title,
+              status: pr.status,
+              draft: pr.draft,
+              additions: pr.additions,
+              deletions: pr.deletions,
+              changedFiles: pr.changedFiles,
+              updatedAt: pr.updatedAt,
+              checksStatus: pr.checksStatus as 'SUCCESS' | 'FAILURE' | 'PENDING' | 'NEUTRAL' | null | undefined,
+              reviews: pr.reviews,
+              reviewThreads: pr.reviewThreads.map(rt => ({
+                ...rt,
+                diffSide: rt.diffSide as 'LEFT' | 'RIGHT' | undefined
+              }))
+            };
+            
+            targetList.push(updatedPR);
+          } else {
+            prList[idx] = {
+              ...existingPR,
+              title: pr.title,
+              draft: pr.draft,
+              additions: pr.additions,
+              deletions: pr.deletions,
+              changedFiles: pr.changedFiles,
+              updatedAt: pr.updatedAt,
+              checksStatus: pr.checksStatus as 'SUCCESS' | 'FAILURE' | 'PENDING' | 'NEUTRAL' | null | undefined,
+              reviews: pr.reviews,
+              reviewThreads: pr.reviewThreads.map(rt => ({
+                ...rt,
+                diffSide: rt.diffSide as 'LEFT' | 'RIGHT' | undefined
+              }))
+            };
+          }
+          break;
+        }
+      }
+
+      if (!found && pr.status) {
+        const newPR: PullRequest = {
+          id: pr.id,
+          gitHubId: pr.gitHubId,
+          title: pr.title,
+          repository: pr.repository,
+          author: pr.author,
+          authorAvatar: pr.authorAvatar,
+          status: pr.status,
+          draft: pr.draft,
+          url: pr.url,
+          additions: pr.additions,
+          deletions: pr.deletions,
+          changedFiles: pr.changedFiles,
+          createdAt: pr.createdAt,
+          updatedAt: pr.updatedAt,
+          lastSyncedAt: pr.updatedAt,
+          reviews: pr.reviews,
+          reviewThreads: pr.reviewThreads.map(rt => ({
+            ...rt,
+            diffSide: rt.diffSide as 'LEFT' | 'RIGHT' | undefined
+          })),
+          checksStatus: pr.checksStatus as 'SUCCESS' | 'FAILURE' | 'PENDING' | 'NEUTRAL' | null | undefined
+        };
+
+        if (!pullRequests.value[pr.status]) {
+          pullRequests.value[pr.status] = [];
+        }
+        const targetList = pullRequests.value[pr.status];
+        if (targetList) {
+          targetList.push(newPR);
+          stats.value.totalOpen++;
+        }
+      }
+    };
+
+    signalR.onPRClosed.value = (notification: PRClosedNotification) => {
+      for (const status in pullRequests.value) {
+        const prList = pullRequests.value[status];
+        if (!prList) continue;
+        
+        const idx = prList.findIndex(p => p.id === notification.pullRequestId);
+        if (idx !== -1) {
+          prList.splice(idx, 1);
+          stats.value.totalOpen--;
+          break;
+        }
+      }
+    };
+
+    signalR.onReviewAdded.value = (notification: ReviewNotification) => {
+      const newStatus = notification.newStatus;
+      
+      for (const status in pullRequests.value) {
+        const prList = pullRequests.value[status];
+        if (!prList) continue;
+        
+        const idx = prList.findIndex(p => p.id === notification.pullRequestId);
+        if (idx !== -1) {
+          const pr = prList[idx];
+          if (!pr) continue;
+          
+          if (newStatus && newStatus !== status) {
+            prList.splice(idx, 1);
+            
+            const existingReviewIdx = pr.reviews.findIndex(r => r.id === notification.review.id);
+            if (existingReviewIdx !== -1) {
+              pr.reviews[existingReviewIdx] = notification.review;
+            } else {
+              pr.reviews.push(notification.review);
+            }
+            
+            pr.status = newStatus;
+            
+            if (!pullRequests.value[newStatus]) {
+              pullRequests.value[newStatus] = [];
+            }
+            const targetList = pullRequests.value[newStatus];
+            if (targetList) {
+              targetList.push(pr);
+            }
+          } else {
+            const existingReviewIdx = pr.reviews.findIndex(r => r.id === notification.review.id);
+            if (existingReviewIdx !== -1) {
+              pr.reviews[existingReviewIdx] = notification.review;
+            } else {
+              pr.reviews.push(notification.review);
+            }
+          }
+          break;
+        }
+      }
+    };
+
+    signalR.onThreadChanged.value = (notification: ThreadNotification) => {
+      for (const status in pullRequests.value) {
+        const prList = pullRequests.value[status];
+        if (!prList) continue;
+        
+        for (const pr of prList) {
+          const threadIdx = pr.reviewThreads.findIndex(t => t.id === notification.threadId);
+          if (threadIdx !== -1) {
+            const thread = pr.reviewThreads[threadIdx];
+            if (thread) {
+              thread.isResolved = notification.isResolved;
+              thread.state = notification.isResolved ? 'RESOLVED' : 'UNRESOLVED';
+            }
+            return;
+          }
+        }
+      }
+    };
+  };
+
+  setupSignalRHandlers();
 
   const fetchPullRequests = async () => {
     loading.value = true;
@@ -144,5 +369,12 @@ export function usePullRequests() {
     mergedPRsHasMore,
     loadMergedPRs,
     loadMoreMergedPRs,
+    signalR: {
+      connectionState: signalR.connectionState,
+      connect: signalR.connect,
+      disconnect: signalR.disconnect,
+      joinPRRoom: signalR.joinPRRoom,
+      leavePRRoom: signalR.leavePRRoom,
+    },
   };
 }

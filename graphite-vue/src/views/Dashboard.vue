@@ -41,8 +41,11 @@
 
       <!-- Authenticated Content -->
       <template v-if="authStore.isAuthenticated">
-        <!-- Stats Summary (hide during initial load) -->
-        <StatsSummary v-if="!loading || hasPRData" :stats="stats" />
+        <!-- Connection Status + Stats Summary (hide during initial load) -->
+        <div v-if="!loading || hasPRData" class="flex items-center justify-between mb-4">
+          <StatsSummary :stats="stats" />
+          <ConnectionStatus :state="signalR.connectionState.value" />
+        </div>
 
         <!-- Loading State: Skeleton Screens -->
         <div v-if="loading && !hasPRData" class="space-y-6">
@@ -153,29 +156,31 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
-import { usePullRequests } from '../composables/usePullRequests';
-import { useAuthStore } from '../stores/auth';
-import StatsSummary from '../components/StatsSummary.vue';
-import PRGroup from '../components/PRGroup.vue';
-import SkeletonPRRow from '../components/SkeletonPRRow.vue';
-import EmptyState from '../components/EmptyState.vue';
+ import { ref, onMounted, onUnmounted, computed } from 'vue';
+ import { usePullRequests } from '../composables/usePullRequests';
+ import { useAuthStore } from '../stores/auth';
+ import StatsSummary from '../components/StatsSummary.vue';
+ import PRGroup from '../components/PRGroup.vue';
+ import SkeletonPRRow from '../components/SkeletonPRRow.vue';
+ import EmptyState from '../components/EmptyState.vue';
+ import ConnectionStatus from '../components/ConnectionStatus.vue';
 
-const authStore = useAuthStore();
+ const authStore = useAuthStore();
 
-  const {
-    pullRequests,
-    stats,
-    loading,
-    error,
-    fetchPullRequests,
-    refreshPullRequests,
-    mergedPRs,
-    mergedPRsLoading,
-    mergedPRsHasMore,
-    loadMergedPRs,
-    loadMoreMergedPRs,
-  } = usePullRequests();
+   const {
+     pullRequests,
+     stats,
+     loading,
+     error,
+     fetchPullRequests,
+     refreshPullRequests,
+     mergedPRs,
+     mergedPRsLoading,
+     mergedPRsHasMore,
+     loadMergedPRs,
+     loadMoreMergedPRs,
+     signalR,
+   } = usePullRequests();
 
 const expandedGroups = ref<Record<string, boolean>>({});
 const hasAttemptedLoad = ref(false);
@@ -209,12 +214,20 @@ const handleRetry = () => {
   fetchPullRequests();
 };
 
-onMounted(() => {
+onMounted(async () => {
   if (authStore.isAuthenticated) {
     hasAttemptedLoad.value = true;
-    fetchPullRequests();
+    await fetchPullRequests();
     loadMergedPRs(true);
+    
+    if (authStore.token) {
+      await signalR.connect(authStore.token);
+    }
   }
+});
+
+onUnmounted(async () => {
+  await signalR.disconnect();
 });
 </script>
 

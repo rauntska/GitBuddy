@@ -1,5 +1,5 @@
 using Graphite.Api.BackgroundServices;
-
+using Graphite.Api.Hubs;
 using Graphite.Api.Processors;
 using Graphite.Api.Services;
 using Graphite.Domain.Data;
@@ -30,6 +30,20 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateLifetime = true,
             ClockSkew = TimeSpan.Zero
         };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization();
@@ -42,6 +56,7 @@ builder.Services.AddScoped<ICacheService, CacheService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IWebhookService, WebhookService>();
+builder.Services.AddSingleton<INotificationService, SignalRNotificationService>();
 
 // GitHub-related services
 builder.Services.AddSingleton<IGitHubTokenService, GitHubTokenService>();
@@ -70,6 +85,8 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.AddSignalR();
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
@@ -84,6 +101,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<PRHub>("/hubs/pr");
 
 var webhookSecret = builder.Configuration["GitHub:WebhookSecret"];
 app.MapGitHubWebhooks(path: "/api/webhooks/github", secret: webhookSecret);

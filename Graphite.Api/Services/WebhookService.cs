@@ -1,3 +1,4 @@
+using Graphite.Api.DTOs;
 using Graphite.Api.Extensions;
 using Graphite.Domain.Data;
 using Graphite.Domain.Models;
@@ -14,6 +15,7 @@ public class WebhookService : IWebhookService
     private readonly ICacheService _cacheService;
     private readonly IPullRequestStatusService _statusService;
     private readonly ILanguageDetectionService _languageDetectionService;
+    private readonly INotificationService _notificationService;
     private readonly ILogger<WebhookService> _logger;
 
     public WebhookService(
@@ -22,6 +24,7 @@ public class WebhookService : IWebhookService
         ICacheService cacheService,
         IPullRequestStatusService statusService,
         ILanguageDetectionService languageDetectionService,
+        INotificationService notificationService,
         ILogger<WebhookService> logger)
     {
         _context = context;
@@ -29,6 +32,7 @@ public class WebhookService : IWebhookService
         _cacheService = cacheService;
         _statusService = statusService;
         _languageDetectionService = languageDetectionService;
+        _notificationService = notificationService;
         _logger = logger;
     }
     public async Task HandlePullRequestEventAsync(PullRequestEvent pullRequestEvent)
@@ -104,6 +108,9 @@ public class WebhookService : IWebhookService
                 {
                     bool wasMerged = prData.Merged.HasValue && prData.Merged.Value;
                     DateTime? mergedAt = prData.MergedAt?.UtcDateTime;
+                    var prId = existingPR.Id;
+                    var gitHubId = existingPR.GitHubId;
+                    var repository = repo.Name;
 
                     if (config.DeleteOldPRs)
                     {
@@ -120,6 +127,7 @@ public class WebhookService : IWebhookService
                     }
 
                     await _context.SaveChangesAsync();
+                    await _notificationService.BroadcastPRClosedAsync(prId, gitHubId, repository, wasMerged);
                 }
                 break;
 
@@ -163,6 +171,16 @@ public class WebhookService : IWebhookService
         }
         
         _logger.LogInformation("Created new PR {Repository}#{Number}", repo.FullName, prData.Number);
+        
+        var fullPR = await _context.PullRequests
+            .Include(p => p.Reviews)
+            .Include(p => p.ReviewThreads)
+            .FirstOrDefaultAsync(p => p.Id == pullRequest.Id);
+        
+        if (fullPR != null)
+        {
+            await _notificationService.BroadcastPRCreatedAsync(fullPR.ToPRListUpdateDto());
+        }
     }
 
     private static PullRequest CreatePullRequestEntity(
@@ -306,6 +324,16 @@ public class WebhookService : IWebhookService
 
         await _context.SaveChangesAsync();
         _logger.LogInformation("Updated PR #{GitHubId}", existingPr.GitHubId);
+        
+        var fullPR = await _context.PullRequests
+            .Include(p => p.Reviews)
+            .Include(p => p.ReviewThreads)
+            .FirstOrDefaultAsync(p => p.Id == existingPr.Id);
+        
+        if (fullPR != null)
+        {
+            await _notificationService.BroadcastPRUpdatedAsync(fullPR.ToPRListUpdateDto());
+        }
     }
 
     private static void UpdatePullRequestFields(PullRequest existingPr, Octokit.Webhooks.Models.PullRequestEvent.PullRequest prData, bool reopened)
@@ -445,6 +473,21 @@ public class WebhookService : IWebhookService
         _context.Comments.Add(comment);
         await _context.SaveChangesAsync();
         _logger.LogInformation("Created comment #{CommentId}", commentData.Id);
+        
+        var commentDto = new CommentDto(
+            comment.Id,
+            commentData.Id,
+            null,
+            commentData.User.Login,
+            commentData.User.AvatarUrl,
+            commentData.Body,
+            commentData.CreatedAt.DateTime,
+            commentData.UpdatedAt.DateTime,
+            null,
+            null,
+            false
+        );
+        await _notificationService.BroadcastCommentChangedAsync(pr.Id, "added", commentDto);
     }
 
     private async Task UpdateCommentAsync(PullRequest pr, IssueComment commentData)
@@ -559,6 +602,21 @@ public class WebhookService : IWebhookService
         _context.Comments.Add(comment);
         await _context.SaveChangesAsync();
         _logger.LogInformation("Created review comment #{CommentId}", commentData.Id);
+        
+        var commentDto = new CommentDto(
+            comment.Id,
+            commentData.Id,
+            null,
+            commentData.User.Login,
+            commentData.User.AvatarUrl,
+            commentData.Body,
+            commentData.CreatedAt.DateTime,
+            commentData.UpdatedAt.DateTime,
+            commentData.Path,
+            commentData.Line,
+            false
+        );
+        await _notificationService.BroadcastCommentChangedAsync(pr.Id, "added", commentDto);
     }
 
     private async Task UpdateReviewCommentAsync(PullRequest pr, Octokit.Webhooks.Models.PullRequestReviewComment commentData)
@@ -646,6 +704,7 @@ public class WebhookService : IWebhookService
                 existingThread.UpdatedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
                 _logger.LogInformation("Resolved review thread #{ThreadId}", threadId);
+                await _notificationService.BroadcastThreadChangedAsync(existingThread.PullRequestId, existingThread.Id, true);
                 break;
 
             case "unresolved":
@@ -654,6 +713,7 @@ public class WebhookService : IWebhookService
                 existingThread.UpdatedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
                 _logger.LogInformation("Unresolved review thread #{ThreadId}", threadId);
+                await _notificationService.BroadcastThreadChangedAsync(existingThread.PullRequestId, existingThread.Id, false);
                 break;
         }
     }
@@ -742,7 +802,6 @@ public class WebhookService : IWebhookService
 
         if (existingReview != null)
         {
-            // Update existing review
             existingReview.State = reviewState;
             existingReview.SubmittedAt = reviewData.SubmittedAt?.UtcDateTime;
             long reviewId = reviewData.Id;
@@ -750,7 +809,6 @@ public class WebhookService : IWebhookService
         }
         else
         {
-            // Create new review
             var newReview = new Review
             {
                 PullRequestId = pr.Id,
@@ -766,6 +824,16 @@ public class WebhookService : IWebhookService
         }
 
         await _context.SaveChangesAsync();
+        
+        var reviewDto = new ReviewDto(
+            existingReview?.Id ?? 0,
+            reviewData.Id.ToString(),
+            (string)reviewData.User.Login,
+            (string?)reviewData.User.AvatarUrl,
+            reviewState,
+            (DateTime?)reviewData.SubmittedAt?.UtcDateTime
+        );
+        await _notificationService.BroadcastReviewAddedAsync(pr.Id, pr.Status, reviewDto);
     }
 
     private async Task UpdateExistingReviewAsync(PullRequest pr, dynamic reviewData, string reviewState)

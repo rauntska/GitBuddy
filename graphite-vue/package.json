@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@heroicons/vue": "^2.2.0",
+    "@microsoft/signalr": "^10.0.0",
     "@types/prismjs": "^1.26.5",
     "axios": "^1.13.2",
     "diff-match-patch": "^1.0.5",
