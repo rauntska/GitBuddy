@@ -159,31 +159,51 @@ public class PullRequestsController(ICacheService cacheService, AppDbContext con
     [Authorize]
     public async Task<IActionResult> AddComment(int id, [FromBody] AddCommentRequest request)
     {
+        var userIdClaim = User.FindFirst("UserId")?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized(new { message = "User not authenticated" });
+        }
+
+        var user = await context.Users
+            .FirstOrDefaultAsync(u => u.Id == userId);
+
+        if (user == null || string.IsNullOrEmpty(user.AccessToken))
+        {
+            return Unauthorized(new { message = "User token not available" });
+        }
+
         var pr = await context.PullRequests.FindAsync(id);
         if (pr == null)
         {
             return NotFound(new { message = "Pull request not found" });
         }
 
-        // In a real implementation, this would use GitHub API
-        // For now, we'll just create a mock comment
-        var comment = new Domain.Models.Comment
+        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
+        if (config == null)
         {
-            PullRequestId = id,
-            GitHubId = DateTime.UtcNow.Ticks, // Mock GitHub ID
-            Author = "Current User", // Would come from auth
-            AuthorAvatar = null,
-            Body = request.Body,
-            CreatedAt = DateTime.UtcNow,
-            Path = request.Path,
-            Line = request.Line,
-            IsOutdated = false
-        };
+            return BadRequest(new { message = "GitHub configuration not found" });
+        }
 
-        context.Comments.Add(comment);
-        await context.SaveChangesAsync();
+        try
+        {
+            var comment = await gitHubService.AddPullRequestCommentAsync(
+                config.Organization,
+                pr.Repository,
+                pr.GitHubId,
+                request.Body,
+                request.Path,
+                request.Line,
+                config,
+                user.AccessToken
+            );
 
-        return Ok(comment.ToDto());
+            return Ok(comment);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to add comment", error = ex.Message });
+        }
     }
 
     [HttpPost("{id}/comments/reply")]

@@ -14,6 +14,7 @@ public interface IGitHubGraphQLService
     Task<List<GitHubReviewThreadData>> GetReviewThreadsAsync(string organization, string repository, long pullRequestNumber, string accessToken);
     Task<List<GitHubCommentData>> GetCommentsAsync(string organization, string repository, long pullRequestNumber, string accessToken);
     Task<GitHubCommentData> AddPullRequestReviewThreadReplyAsync(string organization, string repository, long pullRequestNumber, string reviewThreadId, string body, string accessToken);
+    Task<GitHubCommentData> AddPullRequestCommentAsync(string organization, string repository, long pullRequestNumber, string body, string? path, int? line, string accessToken);
     Task<bool> ResolveReviewThreadAsync(string organization, string repository, string threadId, bool resolved, string accessToken);
     Task<bool> UnresolveReviewThreadAsync(string organization, string repository, string threadId, string accessToken);
     Task<(string? OverallStatus, List<GitHubCheckRunData> CheckRuns)> GetCheckStatusAsync(string organization, string repository, long pullRequestNumber, string accessToken);
@@ -87,6 +88,7 @@ public class GitHubGraphQLService : IGitHubGraphQLService
                     Comments = rt.Comments(100, null, null, null, null).Nodes.Select(c => new
                     {
                         DatabaseId = c.DatabaseId,
+                        FullDatabaseId = c.FullDatabaseId,
                         Author = c.Author.Login,
                         AuthorAvatar = c.Author.AvatarUrl(40),
                         Body = c.Body,
@@ -249,6 +251,41 @@ public class GitHubGraphQLService : IGitHubGraphQLService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error adding reply to thread {ThreadId} for PR {Organization}/{Repository}#{PullRequestNumber}", reviewThreadId, organization, repository, pullRequestNumber);
+            throw;
+        }
+    }
+
+    public async Task<GitHubCommentData> AddPullRequestCommentAsync(string organization, string repository, long pullRequestNumber, string body, string? path, int? line, string accessToken)
+    {
+        try
+        {
+            var restClient = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("Graphite-PR-Dashboard"))
+            {
+                Credentials = new Octokit.Credentials(accessToken)
+            };
+
+            var commentBody = !string.IsNullOrEmpty(path) && line.HasValue 
+                ? $"File: {path}:{line.Value}\n\n{body}"
+                : body;
+
+            var comment = await restClient.Issue.Comment.Create(organization, repository, (int)pullRequestNumber, commentBody);
+
+            return new GitHubCommentData(
+                comment.Id,
+                null,
+                comment.User.Login,
+                comment.User.AvatarUrl,
+                comment.Body,
+                path,
+                line,
+                false,
+                comment.CreatedAt.UtcDateTime,
+                comment.UpdatedAt.Value.UtcDateTime
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error adding comment to PR {Organization}/{Repository}#{PullRequestNumber}", organization, repository, pullRequestNumber);
             throw;
         }
     }

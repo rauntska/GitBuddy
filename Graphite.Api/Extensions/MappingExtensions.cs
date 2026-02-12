@@ -1,5 +1,6 @@
 using Graphite.Api.DTOs;
 using Graphite.Domain.Models;
+using Graphite.Api.Services;
 
 namespace Graphite.Api.Extensions;
 
@@ -157,6 +158,23 @@ public static class MappingExtensions
                 cr.StartedAt,
                 cr.CompletedAt
             )).ToList()
+        );
+    }
+
+    public static CommentDto ToDto(this GitHubCommentData comment)
+    {
+        return new CommentDto(
+            0,
+            comment.GitHubId,
+            null,
+            comment.Author,
+            comment.AuthorAvatar,
+            comment.Body,
+            comment.CreatedAt,
+            comment.UpdatedAt,
+            comment.Path,
+            comment.Line,
+            comment.IsOutdated
         );
     }
 }

@@ -368,6 +368,11 @@ public class GitHubService(
         return await graphQlService.AddPullRequestReviewThreadReplyAsync(organization, repository, pullRequestNumber, reviewThreadId, body, userAccessToken);
     }
 
+    public async Task<GitHubCommentData> AddPullRequestCommentAsync(string organization, string repository, long pullRequestNumber, string body, string? path, int? line, GitHubConfig config, string userAccessToken)
+    {
+        return await graphQlService.AddPullRequestCommentAsync(organization, repository, pullRequestNumber, body, path, line, userAccessToken);
+    }
+
     public async Task ResolveReviewThreadAsync(string organization, string repository, string threadId, bool resolved, GitHubConfig config, string userAccessToken)
     {
         await graphQlService.ResolveReviewThreadAsync(organization, repository, threadId, resolved, userAccessToken);

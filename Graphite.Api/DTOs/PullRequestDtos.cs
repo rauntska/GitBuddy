@@ -119,6 +119,12 @@ public record AddCommentRequest(
     int? Line
 );
 
+public record AddCommentRequestWithPath(
+    string Body,
+    string? Path,
+    int? Line
+);
+
 public record SubmitReviewRequest(
     string State,
     string? Body
