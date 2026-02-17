@@ -32,6 +32,15 @@
           </button>
 
           <button
+            v-if="prDetail?.draft"
+            @click="handlePublishDraft"
+            :disabled="publishingDraft"
+            class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-medium text-white transition-all duration-200 shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {{ publishingDraft ? 'Publishing...' : 'Publish' }}
+          </button>
+
+          <button
             @click="toggleCommentsPanel"
             :class="[
               'p-2 rounded-lg relative transition-all duration-200',
@@ -540,6 +549,7 @@ const {
   fetchPRDetail,
   addComment,
   submitReview,
+  publishDraftPR,
   toggleCommentsPanel,
   toggleFileTree,
 } = usePRDetail();
@@ -552,6 +562,7 @@ const showSettingsDropdown = ref(false);
 const reviewAction = ref<'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENT'>('COMMENT');
 const reviewComment = ref('');
 const submittingReview = ref(false);
+const publishingDraft = ref(false);
 const fileRefs = ref<Map<string, any>>(new Map());
 const refreshingViewStates = ref(false);
 
@@ -774,10 +785,22 @@ const handleSubmitReview = async () => {
     body: reviewComment.value || undefined,
   });
   submittingReview.value = false;
-  
+
   if (success) {
     showReviewModal.value = false;
     reviewComment.value = '';
+  }
+};
+
+const handlePublishDraft = async () => {
+  if (!prDetail.value?.draft) return;
+
+  publishingDraft.value = true;
+  const success = await publishDraftPR(props.id);
+  publishingDraft.value = false;
+
+  if (!success) {
+    alert('Failed to publish draft PR');
   }
 };
 

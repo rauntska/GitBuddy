@@ -57,7 +57,18 @@ public record CommentDto(
     DateTime? UpdatedAt,
     string? Path,
     int? Line,
-    bool IsOutdated
+    bool IsOutdated,
+    DateTime? EditedAt = null,
+    int EditCount = 0,
+    int? ReplyToCommentId = null,
+    List<CommentReactionDto>? Reactions = null
+);
+
+public record CommentReactionDto(
+    int Id,
+    string Username,
+    string Reaction,
+    DateTime CreatedAt
 );
 
 public record FileDiffDto(

@@ -22,6 +22,7 @@ public interface IGitHubService
     Task<GitHubCommentData> AddPullRequestCommentAsync(string organization, string repository, long pullRequestNumber, string body, string? path, int? line, GitHubConfig config, string userAccessToken);
     Task ResolveReviewThreadAsync(string organization, string repository, string threadId, bool resolved, GitHubConfig config, string userAccessToken);
     Task UnresolveReviewThreadAsync(string organization, string repository, string threadId, GitHubConfig config, string userAccessToken);
+    Task PublishDraftPullRequestAsync(string organization, string repository, long pullRequestNumber, GitHubConfig config, string userAccessToken);
 }
 
 public record GitHubPRData(

@@ -15,5 +15,15 @@ public class Comment
     public int? Line { get; set; }
     public bool IsOutdated { get; set; }
 
+    // Editing support
+    public DateTime? EditedAt { get; set; }
+    public int EditCount { get; set; }
+
+    // Reply chain support
+    public int? ReplyToCommentId { get; set; }
+    public Comment? ReplyToComment { get; set; }
+
     public ReviewThread? ReviewThread { get; set; }
+    public List<CommentReaction> Reactions { get; set; } = new();
+    public List<Comment> Replies { get; set; } = new();
 }

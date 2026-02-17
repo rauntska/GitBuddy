@@ -418,6 +418,64 @@ public class PullRequestsController(ICacheService cacheService, AppDbContext con
         return Ok(new { message = "Pull request merge initiated" });
     }
 
+    [HttpPost("{id}/publish")]
+    [Authorize]
+    public async Task<IActionResult> PublishDraftPR(int id)
+    {
+        var userIdClaim = User.FindFirst("UserId")?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized(new { message = "User not authenticated" });
+        }
+
+        var user = await context.Users
+            .FirstOrDefaultAsync(u => u.Id == userId);
+
+        if (user == null || string.IsNullOrEmpty(user.AccessToken))
+        {
+            return Unauthorized(new { message = "User token not available" });
+        }
+
+        var pr = await context.PullRequests.FindAsync(id);
+        if (pr == null)
+        {
+            return NotFound(new { message = "Pull request not found" });
+        }
+
+        if (!pr.Draft)
+        {
+            return BadRequest(new { message = "Pull request is not a draft" });
+        }
+
+        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
+        if (config == null)
+        {
+            return BadRequest(new { message = "GitHub configuration not found" });
+        }
+
+        try
+        {
+            await gitHubService.PublishDraftPullRequestAsync(
+                config.Organization,
+                pr.Repository,
+                pr.GitHubId,
+                config,
+                user.AccessToken
+            );
+
+            // Update local database
+            pr.Draft = false;
+            pr.Status = "AwaitingReview";
+            await context.SaveChangesAsync();
+
+            return Ok(new { message = "Draft PR published successfully", draft = false, status = "AwaitingReview" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to publish draft PR", error = ex.Message });
+        }
+    }
+
     [HttpPost("{id}/files/viewed")]
     [Authorize]
     public async Task<IActionResult> UpdateFileViewedState(int id, [FromBody] UpdateViewedStateRequest request)
@@ -489,6 +547,57 @@ public class PullRequestsController(ICacheService cacheService, AppDbContext con
         {
             return StatusCode(500, new { message = "Failed to update viewed state on GitHub", error = ex.Message });
         }
+    }
+
+    [HttpGet("{id}/mentionable-users")]
+    public async Task<IActionResult> GetMentionableUsers(int id)
+    {
+        var pr = await context.PullRequests
+            .Include(p => p.Reviews)
+            .Include(p => p.Comments)
+            .FirstOrDefaultAsync(p => p.Id == id);
+
+        if (pr == null)
+        {
+            return NotFound(new { message = "Pull request not found" });
+        }
+
+        // Collect unique users from reviews, comments, and the PR author
+        var users = new HashSet<string> { pr.Author };
+
+        foreach (var review in pr.Reviews)
+        {
+            users.Add(review.Reviewer);
+        }
+
+        foreach (var comment in pr.Comments)
+        {
+            users.Add(comment.Author);
+        }
+
+        // Add reviewers from the PR if available
+        if (!string.IsNullOrEmpty(pr.Reviews.FirstOrDefault()?.Reviewer))
+        {
+            foreach (var review in pr.Reviews)
+            {
+                users.Add(review.Reviewer);
+            }
+        }
+
+        // Also query for user avatars
+        var userAvatars = await context.Users
+            .Where(u => users.Contains(u.Username))
+            .Select(u => new { u.Username, u.AvatarUrl, u.Name })
+            .ToDictionaryAsync(u => u.Username);
+
+        var result = users.Select(username => new
+        {
+            Username = username,
+            AvatarUrl = userAvatars.GetValueOrDefault(username)?.AvatarUrl,
+            Name = userAvatars.GetValueOrDefault(username)?.Name
+        }).ToList();
+
+        return Ok(result);
     }
 
     [HttpPost("{id}/file-diffs/refresh-viewed-states")]

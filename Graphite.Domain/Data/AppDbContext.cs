@@ -17,6 +17,9 @@ public class AppDbContext : DbContext
     public DbSet<UserPreferences> UserPreferences { get; set; }
     public DbSet<UserFileViewedState> UserFileViewedStates { get; set; }
     public DbSet<CheckRun> CheckRuns { get; set; }
+    public DbSet<CommentReaction> CommentReactions { get; set; }
+    public DbSet<CommentDraft> CommentDrafts { get; set; }
+    public DbSet<CommentTemplate> CommentTemplates { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -83,6 +86,17 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => e.PullRequestId);
             entity.HasIndex(e => e.GitHubId).IsUnique();
             entity.HasIndex(e => e.ReviewThreadId);
+            entity.HasIndex(e => e.ReplyToCommentId);
+
+            entity.HasOne(e => e.ReplyToComment)
+                .WithMany(c => c.Replies)
+                .HasForeignKey(e => e.ReplyToCommentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasMany(e => e.Reactions)
+                .WithOne(r => r.Comment)
+                .HasForeignKey(r => r.CommentId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<FileDiff>(entity =>
@@ -140,6 +154,43 @@ public class AppDbContext : DbContext
             entity.HasOne(e => e.PullRequest)
                 .WithMany(pr => pr.CheckRuns)
                 .HasForeignKey(e => e.PullRequestId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CommentReaction>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.CommentId);
+            entity.HasIndex(e => new { e.CommentId, e.Username, e.Reaction }).IsUnique();
+
+            entity.HasOne(e => e.Comment)
+                .WithMany(c => c.Reactions)
+                .HasForeignKey(e => e.CommentId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CommentDraft>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.PullRequestId);
+            entity.HasIndex(e => new { e.UserId, e.PullRequestId, e.ReviewThreadId, e.FilePath, e.LineNumber }).IsUnique();
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CommentTemplate>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.IsOrganizationTemplate);
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

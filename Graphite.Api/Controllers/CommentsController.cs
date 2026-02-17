@@ -1,0 +1,207 @@
+using Graphite.Api.DTOs;
+using Graphite.Api.Services;
+using Graphite.Domain.Data;
+using Graphite.Domain.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+namespace Graphite.Api.Controllers;
+
+[ApiController]
+[Route("api/comments")]
+[Authorize]
+public class CommentsController : ControllerBase
+{
+    private readonly AppDbContext _context;
+    private readonly IUserService _userService;
+    private readonly INotificationService _notificationService;
+
+    public CommentsController(
+        AppDbContext context,
+        IUserService userService,
+        INotificationService notificationService)
+    {
+        _context = context;
+        _userService = userService;
+        _notificationService = notificationService;
+    }
+
+    [HttpPut("{commentId}")]
+    public async Task<ActionResult<ExtendedCommentDto>> UpdateComment(int commentId, [FromBody] UpdateCommentDto dto)
+    {
+        var currentUser = await _userService.GetCurrentUserAsync(User);
+        if (currentUser == null)
+            return Unauthorized();
+
+        var comment = await _context.Comments
+            .Include(c => c.Reactions)
+            .FirstOrDefaultAsync(c => c.Id == commentId);
+        if (comment == null)
+            return NotFound();
+
+        // Only allow author to edit
+        if (comment.Author != currentUser.Username)
+            return Forbid();
+
+        comment.Body = dto.Body;
+        comment.EditedAt = DateTime.UtcNow;
+        comment.EditCount++;
+        comment.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(MapToExtendedDto(comment, currentUser.Username));
+    }
+
+    [HttpDelete("{commentId}")]
+    public async Task<IActionResult> DeleteComment(int commentId)
+    {
+        var currentUser = await _userService.GetCurrentUserAsync(User);
+        if (currentUser == null)
+            return Unauthorized();
+
+        var comment = await _context.Comments.FindAsync(commentId);
+        if (comment == null)
+            return NotFound();
+
+        if (comment.Author != currentUser.Username)
+            return Forbid();
+
+        _context.Comments.Remove(comment);
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    [HttpPost("{commentId}/reactions")]
+    public async Task<ActionResult<CommentReactionDto>> AddReaction(int commentId, [FromBody] AddReactionDto dto)
+    {
+        var currentUser = await _userService.GetCurrentUserAsync(User);
+        if (currentUser == null)
+            return Unauthorized();
+
+        var validReactions = new[] { "thumbsup", "thumbsdown", "laugh", "hooray", "confused", "heart", "rocket", "eyes" };
+        if (!validReactions.Contains(dto.Reaction.ToLower()))
+            return BadRequest("Invalid reaction type");
+
+        var comment = await _context.Comments.FindAsync(commentId);
+        if (comment == null)
+            return NotFound();
+
+        // Check if reaction already exists
+        var existingReaction = await _context.CommentReactions
+            .FirstOrDefaultAsync(r => r.CommentId == commentId && r.Username == currentUser.Username && r.Reaction == dto.Reaction);
+
+        if (existingReaction != null)
+            return Ok(new CommentReactionDto(
+                existingReaction.Id,
+                existingReaction.Username,
+                existingReaction.Reaction,
+                existingReaction.CreatedAt
+            ));
+
+        var reaction = new CommentReaction
+        {
+            CommentId = commentId,
+            Username = currentUser.Username,
+            Reaction = dto.Reaction.ToLower(),
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.CommentReactions.Add(reaction);
+        await _context.SaveChangesAsync();
+
+        return Ok(new CommentReactionDto(
+            reaction.Id,
+            reaction.Username,
+            reaction.Reaction,
+            reaction.CreatedAt
+        ));
+    }
+
+    [HttpDelete("{commentId}/reactions/{reaction}")]
+    public async Task<IActionResult> RemoveReaction(int commentId, string reaction)
+    {
+        var currentUser = await _userService.GetCurrentUserAsync(User);
+        if (currentUser == null)
+            return Unauthorized();
+
+        var existingReaction = await _context.CommentReactions
+            .FirstOrDefaultAsync(r => r.CommentId == commentId && r.Username == currentUser.Username && r.Reaction == reaction);
+
+        if (existingReaction == null)
+            return NotFound();
+
+        _context.CommentReactions.Remove(existingReaction);
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    [HttpGet("{commentId}/reactions")]
+    public async Task<ActionResult<ReactionsSummaryDto>> GetReactions(int commentId)
+    {
+        var currentUser = await _userService.GetCurrentUserAsync(User);
+        var currentUsername = currentUser?.Username ?? "";
+
+        var reactions = await _context.CommentReactions
+            .Where(r => r.CommentId == commentId)
+            .ToListAsync();
+
+        var emojiMap = new Dictionary<string, string>
+        {
+            { "thumbsup", "👍" },
+            { "thumbsdown", "👎" },
+            { "laugh", "😄" },
+            { "hooray", "🎉" },
+            { "confused", "😕" },
+            { "heart", "❤️" },
+            { "rocket", "🚀" },
+            { "eyes", "👀" }
+        };
+
+        var groups = reactions
+            .GroupBy(r => r.Reaction)
+            .Select(g => new ReactionGroupDto
+            {
+                Reaction = g.Key,
+                Emoji = emojiMap.GetValueOrDefault(g.Key, "👍"),
+                Count = g.Count(),
+                Usernames = g.Select(r => r.Username).ToList(),
+                HasReacted = g.Any(r => r.Username == currentUsername)
+            })
+            .OrderByDescending(g => g.Count)
+            .ToList();
+
+        return Ok(new ReactionsSummaryDto { Groups = groups });
+    }
+
+    private ExtendedCommentDto MapToExtendedDto(Comment comment, string currentUsername)
+    {
+        return new ExtendedCommentDto
+        {
+            Id = comment.Id,
+            PullRequestId = comment.PullRequestId,
+            ReviewThreadId = comment.ReviewThreadId,
+            GitHubId = comment.GitHubId,
+            Author = comment.Author,
+            AuthorAvatar = comment.AuthorAvatar,
+            Body = comment.Body,
+            CreatedAt = comment.CreatedAt,
+            UpdatedAt = comment.UpdatedAt,
+            Path = comment.Path,
+            Line = comment.Line,
+            IsOutdated = comment.IsOutdated,
+            EditedAt = comment.EditedAt,
+            EditCount = comment.EditCount,
+            ReplyToCommentId = comment.ReplyToCommentId,
+            Reactions = comment.Reactions?.Select(r => new CommentReactionDto(
+                r.Id,
+                r.Username,
+                r.Reaction,
+                r.CreatedAt
+            )).ToList() ?? new()
+        };
+    }
+}

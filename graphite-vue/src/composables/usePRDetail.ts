@@ -71,6 +71,19 @@ export function usePRDetail() {
     }
   };
 
+  const publishDraftPR = async (prId: number) => {
+    try {
+      await apiService.publishDraftPR(prId);
+      // Refresh PR details after publishing
+      await fetchPRDetail(prId);
+      return true;
+    } catch (err: any) {
+      error.value = err.response?.data?.message || 'Failed to publish draft PR';
+      console.error('Error publishing draft PR:', err);
+      return false;
+    }
+  };
+
   const toggleCommentsPanel = () => {
     commentsPanel.value = !commentsPanel.value;
   };
@@ -89,6 +102,7 @@ export function usePRDetail() {
     addComment,
     submitReview,
     mergePR,
+    publishDraftPR,
     toggleCommentsPanel,
     toggleFileTree,
   };

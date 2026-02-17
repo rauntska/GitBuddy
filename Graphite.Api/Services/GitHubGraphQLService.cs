@@ -18,6 +18,7 @@ public interface IGitHubGraphQLService
     Task<bool> ResolveReviewThreadAsync(string organization, string repository, string threadId, bool resolved, string accessToken);
     Task<bool> UnresolveReviewThreadAsync(string organization, string repository, string threadId, string accessToken);
     Task<(string? OverallStatus, List<GitHubCheckRunData> CheckRuns)> GetCheckStatusAsync(string organization, string repository, long pullRequestNumber, string accessToken);
+    Task<bool> ConvertPullRequestToReadyForReviewAsync(string organization, string repository, long pullRequestNumber, string accessToken);
 }
 
 public class GitHubGraphQLService : IGitHubGraphQLService
@@ -434,6 +435,97 @@ public class GitHubGraphQLService : IGitHubGraphQLService
         {
             _logger.LogError(ex, "Error fetching check status for PR {Organization}/{Repository}#{PullRequestNumber}", organization, repository, pullRequestNumber);
             return (null, new List<GitHubCheckRunData>());
+        }
+    }
+
+    public async Task<bool> ConvertPullRequestToReadyForReviewAsync(string organization, string repository, long pullRequestNumber, string accessToken)
+    {
+        try
+        {
+            // First, get the PR node ID using GraphQL
+            var connection = CreateConnection(accessToken);
+
+            var prIdQuery = new Query()
+                .Repository(repository, organization)
+                .PullRequest((Arg<int>)pullRequestNumber)
+                .Select(pr => pr.Id.Value)
+                .Compile();
+
+            var prNodeId = await connection.Run(prIdQuery);
+
+            if (string.IsNullOrEmpty(prNodeId))
+            {
+                _logger.LogError("Could not find PR node ID for {Organization}/{Repository}#{PullRequestNumber}", organization, repository, pullRequestNumber);
+                return false;
+            }
+
+            _logger.LogInformation("Found PR node ID: {PrNodeId} for {Organization}/{Repository}#{PullRequestNumber}", prNodeId, organization, repository, pullRequestNumber);
+
+            // Now execute the convertPullRequestToReadyForReview mutation
+            using var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {accessToken}");
+            httpClient.DefaultRequestHeaders.Add("User-Agent", "Graphite-PR-Dashboard");
+
+            var query = new
+            {
+                query = $@"
+                    mutation {{
+                        markPullRequestReadyForReview(input: {{ pullRequestId: ""{prNodeId}"" }}) {{
+                            pullRequest {{
+                                id
+                                isDraft
+                            }}
+                        }}
+                    }}
+                "
+            };
+
+            var content = new StringContent(System.Text.Json.JsonSerializer.Serialize(query), Encoding.UTF8, "application/json");
+            var response = await httpClient.PostAsync("https://api.github.com/graphql", content);
+
+            var responseContent = await response.Content.ReadAsStringAsync();
+            _logger.LogInformation("GraphQL response: {Response}", responseContent);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError("GraphQL request failed with status {StatusCode}: {Response}", response.StatusCode, responseContent);
+                return false;
+            }
+
+            // Parse and validate the response
+            var jsonResponse = JsonDocument.Parse(responseContent);
+            var root = jsonResponse.RootElement;
+
+            // Check for GraphQL errors
+            if (root.TryGetProperty("errors", out var errors))
+            {
+                var errorMessage = errors[0].GetProperty("message").GetString();
+                _logger.LogError("GraphQL mutation error: {Error}", errorMessage);
+                throw new Exception($"GitHub GraphQL error: {errorMessage}");
+            }
+
+            // Verify the mutation succeeded by checking isDraft
+            if (root.TryGetProperty("data", out var data) &&
+                data.TryGetProperty("convertPullRequestToReadyForReview", out var mutationResult) &&
+                mutationResult.TryGetProperty("pullRequest", out var pr))
+            {
+                var isDraft = pr.GetProperty("isDraft").GetBoolean();
+                _logger.LogInformation("PR isDraft after mutation: {IsDraft}", isDraft);
+
+                if (isDraft)
+                {
+                    _logger.LogWarning("PR is still marked as draft after mutation");
+                    return false;
+                }
+            }
+
+            _logger.LogInformation("Successfully published draft PR {Organization}/{Repository}#{PullRequestNumber}", organization, repository, pullRequestNumber);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error publishing draft PR {Organization}/{Repository}#{PullRequestNumber}", organization, repository, pullRequestNumber);
+            throw;
         }
     }
 }

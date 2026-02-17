@@ -262,12 +262,13 @@
 
                                 <!-- Reply Form -->
                                 <div v-if="replyingToCommentId === comment.id" class="mt-3">
-                                  <textarea
+                                  <RichTextEditor
                                     v-model="replyText"
-                                    ref="replyTextarea"
+                                    ref="replyEditorRef"
                                     placeholder="Add your reply..."
-                                    class="w-full px-4 py-3 bg-slate-900/80 border border-slate-600/50 rounded-xl text-slate-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-200 placeholder:text-slate-500"
-                                    rows="3"
+                                    :min-height="80"
+                                    @save="submitReply"
+                                    @cancel="cancelReply"
                                   />
                                   <div v-if="replyErrors.get(comment.id)" class="mt-2 text-xs text-rose-400">{{ replyErrors.get(comment.id) }}</div>
                                   <div class="flex gap-2 justify-end mt-3">
@@ -310,12 +311,13 @@
                       </div>
                       <!-- New Comment Form for Left Side -->
                       <div v-if="commentingLine === line.oldLineNumber" class="p-4 border-t border-slate-700/20">
-                        <textarea
+                        <RichTextEditor
                           v-model="newCommentText"
-                          ref="newCommentTextarea"
+                          ref="newCommentEditorRef"
                           placeholder="Add your comment..."
-                          class="w-full px-4 py-3 bg-slate-900/80 border border-slate-600/50 rounded-xl text-slate-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-200 placeholder:text-slate-500"
-                          rows="3"
+                          :min-height="100"
+                          @save="submitNewComment"
+                          @cancel="cancelNewComment"
                         />
                         <div v-if="commentError" class="mt-2 text-xs text-rose-400">{{ commentError }}</div>
                         <div class="flex gap-2 justify-end mt-3">
@@ -442,12 +444,13 @@
 
                                 <!-- Reply Form -->
                                 <div v-if="replyingToCommentId === comment.id" class="mt-3">
-                                  <textarea
+                                  <RichTextEditor
                                     v-model="replyText"
-                                    ref="replyTextarea"
+                                    ref="replyEditorRef"
                                     placeholder="Add your reply..."
-                                    class="w-full px-4 py-3 bg-slate-900/80 border border-slate-600/50 rounded-xl text-slate-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-200 placeholder:text-slate-500"
-                                    rows="3"
+                                    :min-height="80"
+                                    @save="submitReply"
+                                    @cancel="cancelReply"
                                   />
                                   <div v-if="replyErrors.get(comment.id)" class="mt-2 text-xs text-rose-400">{{ replyErrors.get(comment.id) }}</div>
                                   <div class="flex gap-2 justify-end mt-3">
@@ -490,12 +493,13 @@
                       </div>
                       <!-- New Comment Form for Right Side -->
                       <div v-if="commentingLine === line.newLineNumber" class="p-4 border-t border-slate-700/20">
-                        <textarea
+                        <RichTextEditor
                           v-model="newCommentText"
-                          ref="newCommentTextarea"
+                          ref="newCommentEditorRef"
                           placeholder="Add your comment..."
-                          class="w-full px-4 py-3 bg-slate-900/80 border border-slate-600/50 rounded-xl text-slate-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-200 placeholder:text-slate-500"
-                          rows="3"
+                          :min-height="100"
+                          @save="submitNewComment"
+                          @cancel="cancelNewComment"
                         />
                         <div v-if="commentError" class="mt-2 text-xs text-rose-400">{{ commentError }}</div>
                         <div class="flex gap-2 justify-end mt-3">
@@ -543,6 +547,7 @@ import type { FileDiff, Comment, ReviewThread } from '../types';
 import { parsePatch } from '../utils/diffHelpers';
 import { highlightCode, detectLanguageFromPath } from '../utils/syntaxHighlight';
 import { useUserPreferences } from '../composables/useUserPreferences';
+import RichTextEditor from './RichTextEditor.vue';
 
 const props = defineProps<{
   file: FileDiff;
@@ -583,13 +588,13 @@ const highlightedLine = ref<number | null>(null);
 const replyingToCommentId = ref<number | null>(null);
 const replyingToThread = ref<string | null>(null);
 const replyText = ref('');
-const replyTextarea = ref<HTMLTextAreaElement | null>(null);
+const replyEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(null);
 const expandedThreads = ref<Set<string>>(new Set());
 const replyErrors = ref<Map<number, string>>(new Map());
 const resolvingThreads = ref<Set<string>>(new Set());
 const newCommentText = ref('');
 const commentError = ref('');
-const newCommentTextarea = ref<HTMLTextAreaElement | null>(null);
+const newCommentEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(null);
 
 
 const loadHunks = async () => {
@@ -705,7 +710,7 @@ const startComment = async (line: number) => {
   newCommentText.value = '';
   commentError.value = '';
   await nextTick();
-  newCommentTextarea.value?.focus();
+  newCommentEditorRef.value?.focus();
 };
 
 const cancelNewComment = () => {
@@ -856,7 +861,7 @@ const startReplyToComment = (commentId: number, threadId: number | null) => {
   replyingToThread.value = thread?.gitHubId || null;
   replyText.value = '';
   nextTick(() => {
-    replyTextarea.value?.focus();
+    replyEditorRef.value?.focus();
   });
 };
 

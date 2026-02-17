@@ -388,4 +388,9 @@ public class GitHubService(
         var accessToken = await tokenService.GetAccessTokenAsync(config);
         return await graphQlService.GetCheckStatusAsync(organization, repository, pullRequestNumber, accessToken);
     }
+
+    public async Task PublishDraftPullRequestAsync(string organization, string repository, long pullRequestNumber, GitHubConfig config, string userAccessToken)
+    {
+        await graphQlService.ConvertPullRequestToReadyForReviewAsync(organization, repository, pullRequestNumber, userAccessToken);
+    }
 }

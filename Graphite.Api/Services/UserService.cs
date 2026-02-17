@@ -12,6 +12,7 @@ public interface IUserService
     Task<User> GetOrCreateDefaultUserAsync();
     Task<User> GetOrCreateGitHubUserAsync(GitHubUserDto githubUser, string accessToken);
     Task UpdateUserLastLoginAsync(int userId);
+    Task<User?> GetCurrentUserAsync(System.Security.Claims.ClaimsPrincipal user);
 }
 
 public class UserService : IUserService
@@ -171,5 +172,16 @@ public class UserService : IUserService
             user.LastLoginAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
         }
+    }
+
+    public async Task<User?> GetCurrentUserAsync(System.Security.Claims.ClaimsPrincipal user)
+    {
+        var userIdClaim = user.FindFirst("UserId")?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+        {
+            return null;
+        }
+
+        return await _context.Users.FindAsync(userId);
     }
 }

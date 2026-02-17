@@ -1,0 +1,121 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+Graphite is a GitHub PR Dashboard built with .NET 9.0 Web API backend and Vue 3 frontend. It aggregates pull requests across repositories in an organization with real-time updates via SignalR.
+
+## Build and Run Commands
+
+### Backend (.NET API)
+```bash
+# Navigate to API project
+cd Graphite.Api
+
+# Run in development
+dotnet run
+
+# Build for release
+dotnet build -c Release
+
+# Run database migrations
+dotnet ef database update
+
+# Create a new migration
+dotnet ef migrations add <MigrationName>
+```
+
+The API runs on `http://localhost:5247` (development) and uses SQLite database (`graphite.db`).
+
+### Frontend (Vue 3)
+```bash
+# Navigate to frontend
+cd graphite-vue
+
+# Install dependencies
+npm install
+
+# Run development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+```
+
+The frontend runs on `http://localhost:5173` (development).
+
+## Architecture
+
+### Backend Structure
+
+- **Graphite.Api/** - Web API project
+  - `Controllers/` - API endpoints (PullRequests, Settings, Auth, Webhooks, UserPreferences)
+  - `Services/` - Business logic (GitHubService, CacheService, JwtService, GitHubGraphQLService, etc.)
+  - `BackgroundServices/` - Hosted services (PRRefreshService for auto-refresh)
+  - `Hubs/` - SignalR hub (PRHub for real-time updates)
+  - `Processors/` - GitHub webhook processing
+  - `DTOs/` - Data transfer objects
+  - `Program.cs` - Application entry point with DI configuration
+
+- **Graphite.Domain/** - Domain models and data layer
+  - `Models/` - Entity classes (PullRequest, Review, ReviewThread, Comment, User, CheckRun, FileDiff, etc.)
+  - `Data/` - EF Core DbContext (AppDbContext)
+  - `Migrations/` - EF Core migrations
+
+### Frontend Structure
+
+- `src/components/` - Vue components (PRRow, PRGroup, FileDiffViewer, CommentsPanel, etc.)
+- `src/views/` - Page views (Dashboard, PRDetail, SettingsModal, AuthCallback)
+- `src/composables/` - Vue composables (usePullRequests, usePRDetail, useAuth, useSettings, useSignalR)
+- `src/stores/` - Pinia stores (auth store)
+- `src/services/` - API client
+- `src/utils/` - Utility functions (prHelpers, diffHelpers, syntaxHighlight, api with axios interceptors)
+- `src/types/` - TypeScript type definitions
+- `src/router/` - Vue Router configuration
+
+## Key Concepts
+
+### Authentication
+- GitHub OAuth 2.0 with JWT tokens
+- All API endpoints require `[Authorize]` except `/api/auth/*`
+- JWT tokens stored in localStorage, injected via axios interceptors
+- SignalR hub auth via query string `access_token`
+
+### PR Status Determination (PullRequestStatusService)
+PRs are categorized based on reviews:
+- **Draft**: PR is marked as draft
+- **AwaitingReview**: No reviews yet
+- **Approved**: At least one approval, no changes requested
+- **ChangesRequested**: At least one changes requested review
+- **Reviewed**: Has comments but no approvals or changes requested
+
+### Real-time Updates
+- SignalR hub at `/hubs/pr` broadcasts PR updates, comments, and review thread changes
+- Frontend uses `useSignalR` composable for connection management
+- Notifications sent via `SignalRNotificationService`
+
+### Webhooks
+- GitHub webhooks received at `/api/webhooks/github`
+- Processed by `GitHubWebhookProcessor` to trigger cache updates
+
+### GitHub Integration
+- `GitHubService` - Octokit-based REST API calls
+- `GitHubGraphQLService` - GraphQL queries for complex data (PR details, file diffs, review threads)
+- User's OAuth token stored in `User.AccessToken` for authenticated GitHub requests
+
+## Database
+- SQLite with EF Core Migrations
+- Auto-applied migrations on startup via `dbContext.Database.Migrate()`
+- Key entities: PullRequest, Review, ReviewThread, Comment, User, CheckRun, FileDiff, UserFileViewedState
+
+## Configuration
+- `appsettings.json` - Production config
+- `appsettings.Development.json` - Development config
+- Required sections: `Jwt`, `GitHub` (ClientId, ClientSecret, WebhookSecret, RedirectUri)
+
+## CORS Policy
+The backend allows frontend at `http://localhost:5173` and `http://localhost:3000`. Update `AllowVueDev` policy in `Program.cs` for different origins.

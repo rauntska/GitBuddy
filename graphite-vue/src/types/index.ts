@@ -86,6 +86,53 @@ export interface Comment {
   path?: string;
   line?: number;
   isOutdated: boolean;
+  // Enhanced features
+  editedAt?: string;
+  editCount?: number;
+  replyToCommentId?: number;
+  reactions?: CommentReaction[];
+}
+
+export interface CommentReaction {
+  id: number;
+  username: string;
+  reaction: string;
+  createdAt: string;
+}
+
+export interface ReactionGroup {
+  reaction: string;
+  emoji: string;
+  count: number;
+  usernames: string[];
+  hasReacted: boolean;
+}
+
+export interface CommentTemplate {
+  id: number;
+  title: string;
+  body: string;
+  tags?: string;
+  usageCount: number;
+  createdAt: string;
+  lastUsedAt?: string;
+  isOrganizationTemplate: boolean;
+}
+
+export interface CommentDraft {
+  id: number;
+  pullRequestId: number;
+  reviewThreadId?: number;
+  filePath?: string;
+  lineNumber?: number;
+  body: string;
+  updatedAt: string;
+}
+
+export interface MentionableUser {
+  username: string;
+  avatarUrl?: string;
+  name?: string;
 }
 
 export interface FileDiff {

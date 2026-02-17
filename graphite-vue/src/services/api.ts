@@ -1,5 +1,5 @@
 import apiClient from '../utils/api';
-import type { GroupedPRs, PRStats, Settings, PRDetail, FileDiff, Comment, UserPreferences, PullRequest } from '../types';
+import type { GroupedPRs, PRStats, Settings, PRDetail, FileDiff, Comment, UserPreferences, PullRequest, CommentTemplate, CommentDraft, MentionableUser, ReactionGroup } from '../types';
 
 const api = apiClient;
 
@@ -89,6 +89,11 @@ export const apiService = {
     return response.data;
   },
 
+  publishDraftPR: async (prId: number): Promise<{ message: string; draft: boolean; status: string }> => {
+    const response = await api.post<{ message: string; draft: boolean; status: string }>(`/pullrequests/${prId}/publish`);
+    return response.data;
+  },
+
   // Refresh file viewed states from GitHub
   refreshFileViewStates: async (prId: number): Promise<FileDiff[]> => {
     const response = await api.post<FileDiff[]>(`/pullrequests/${prId}/file-diffs/refresh-viewed-states`);
@@ -107,6 +112,99 @@ export const apiService = {
 
   updateUserPreferences: async (preferences: Partial<UserPreferences>): Promise<UserPreferences> => {
     const response = await api.patch<UserPreferences>('/userpreferences', preferences);
+    return response.data;
+  },
+
+  // Enhanced Comment System
+
+  // Comment Reactions
+  addCommentReaction: async (commentId: number, reaction: string): Promise<void> => {
+    await api.post(`/comments/${commentId}/reactions`, { reaction });
+  },
+
+  removeCommentReaction: async (commentId: number, reaction: string): Promise<void> => {
+    await api.delete(`/comments/${commentId}/reactions/${reaction}`);
+  },
+
+  getCommentReactions: async (commentId: number): Promise<{ groups: ReactionGroup[] }> => {
+    const response = await api.get(`/comments/${commentId}/reactions`);
+    return response.data;
+  },
+
+  // Comment Editing
+  updateComment: async (commentId: number, body: string): Promise<Comment> => {
+    const response = await api.put<Comment>(`/comments/${commentId}`, { body });
+    return response.data;
+  },
+
+  deleteComment: async (commentId: number): Promise<void> => {
+    await api.delete(`/comments/${commentId}`);
+  },
+
+  // Comment Drafts
+  getCommentDrafts: async (pullRequestId: number): Promise<CommentDraft[]> => {
+    const response = await api.get<CommentDraft[]>(`/comment-drafts/prs/${pullRequestId}`);
+    return response.data;
+  },
+
+  saveCommentDraft: async (draft: {
+    pullRequestId: number;
+    reviewThreadId?: number;
+    filePath?: string;
+    lineNumber?: number;
+    body: string;
+  }): Promise<CommentDraft> => {
+    const response = await api.post<CommentDraft>('/comment-drafts', draft);
+    return response.data;
+  },
+
+  deleteCommentDraft: async (draftId: number): Promise<void> => {
+    await api.delete(`/comment-drafts/${draftId}`);
+  },
+
+  // Comment Templates
+  getCommentTemplates: async (search?: string, tag?: string): Promise<CommentTemplate[]> => {
+    const response = await api.get<CommentTemplate[]>('/comment-templates', {
+      params: { search, tag }
+    });
+    return response.data;
+  },
+
+  getCommentTemplateTags: async (): Promise<string[]> => {
+    const response = await api.get<string[]>('/comment-templates/tags');
+    return response.data;
+  },
+
+  createCommentTemplate: async (template: {
+    title: string;
+    body: string;
+    tags?: string;
+    isOrganizationTemplate?: boolean;
+  }): Promise<CommentTemplate> => {
+    const response = await api.post<CommentTemplate>('/comment-templates', template);
+    return response.data;
+  },
+
+  updateCommentTemplate: async (id: number, template: {
+    title: string;
+    body: string;
+    tags?: string;
+  }): Promise<CommentTemplate> => {
+    const response = await api.put<CommentTemplate>(`/comment-templates/${id}`, template);
+    return response.data;
+  },
+
+  deleteCommentTemplate: async (id: number): Promise<void> => {
+    await api.delete(`/comment-templates/${id}`);
+  },
+
+  recordTemplateUsage: async (id: number): Promise<void> => {
+    await api.post(`/comment-templates/${id}/use`);
+  },
+
+  // Mentionable Users
+  getMentionableUsers: async (pullRequestId: number): Promise<MentionableUser[]> => {
+    const response = await api.get<MentionableUser[]>(`/pullrequests/${pullRequestId}/mentionable-users`);
     return response.data;
   },
 };
