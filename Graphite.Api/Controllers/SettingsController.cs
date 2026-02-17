@@ -1,6 +1,7 @@
 using Graphite.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Graphite.Domain.Models;
 
 namespace Graphite.Api.Controllers;
 
@@ -17,6 +18,7 @@ public class SettingsController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Get()
     {
         var config = await _cacheService.GetConfigAsync();
@@ -52,6 +54,7 @@ public class SettingsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Save([FromBody] SaveSettingsRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Organization))

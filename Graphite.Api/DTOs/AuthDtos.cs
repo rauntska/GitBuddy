@@ -1,5 +1,8 @@
 namespace Graphite.Api.DTOs;
 
+using System.Text.Json.Serialization;
+using Graphite.Domain.Models;
+
 public record LoginResponseDto(
     string Token,
     string TokenType,
@@ -11,14 +14,15 @@ public record CurrentUserDto(
     int Id,
     string Username,
     string Email,
-    string? AvatarUrl
+    string? AvatarUrl,
+    UserRole Role
 );
 
 public record GitHubUserDto(
     long Id,
     string Login,
     string? Email,
-    string? AvatarUrl
+    [property: JsonPropertyName("avatar_url")] string? AvatarUrl
 );
 
 public record GitHubAccessTokenResponse(

@@ -38,6 +38,8 @@ public class JwtService : IJwtService
             new Claim("UserId", user.Id.ToString()),
             new Claim(ClaimTypes.NameIdentifier, user.Username),
             new Claim(ClaimTypes.Email, user.Email ?? ""),
+            new Claim(ClaimTypes.Role, user.Role.ToString()),
+            new Claim("Role", user.Role.ToString()),
             new Claim("Provider", user.Provider ?? ""),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };

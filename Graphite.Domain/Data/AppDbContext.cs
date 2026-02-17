@@ -16,6 +16,8 @@ public class AppDbContext : DbContext
     public DbSet<User> Users { get; set; }
     public DbSet<UserPreferences> UserPreferences { get; set; }
     public DbSet<UserFileViewedState> UserFileViewedStates { get; set; }
+    public DbSet<Invitation> Invitations { get; set; }
+    public DbSet<AllowedUser> AllowedUsers { get; set; }
     public DbSet<CheckRun> CheckRuns { get; set; }
     public DbSet<CommentReaction> CommentReactions { get; set; }
     public DbSet<CommentDraft> CommentDrafts { get; set; }
@@ -116,11 +118,17 @@ public class AppDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.Username).IsUnique();
             entity.HasIndex(e => e.Email).IsUnique();
+            entity.HasIndex(e => e.Role);
             
             entity.HasOne(e => e.Preferences)
                 .WithOne(p => p.User)
                 .HasForeignKey<UserPreferences>(p => p.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Invitation)
+                .WithOne()
+                .HasForeignKey<User>(e => e.InvitationId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<UserPreferences>(entity =>
@@ -191,6 +199,32 @@ public class AppDbContext : DbContext
             entity.HasOne(e => e.User)
                 .WithMany()
                 .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Invitation>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Token).IsUnique();
+            entity.HasIndex(e => e.Email);
+            entity.HasIndex(e => e.GitHubUsername);
+            entity.HasIndex(e => e.AcceptedAt);
+
+            entity.HasOne(e => e.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AllowedUser>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Email);
+            entity.HasIndex(e => e.GitHubUsername);
+
+            entity.HasOne(e => e.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.CreatedByUserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

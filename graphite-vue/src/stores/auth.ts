@@ -1,11 +1,14 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
+import { apiService } from '../services/api';
+import type { UserRole } from '../types';
 
 interface User {
   id: number;
   username: string;
   email: string;
   avatarUrl?: string;
+  role: UserRole;
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -15,6 +18,8 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => !!token.value);
   const username = computed(() => user.value?.username || '');
   const avatarUrl = computed(() => user.value?.avatarUrl || '');
+  const role = computed(() => user.value?.role || 'Developer');
+  const isAdmin = computed(() => user.value?.role === 'Admin');
 
   function setToken(newToken: string) {
     token.value = newToken;
@@ -33,13 +38,14 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('user');
   }
 
-  function updateFromQuery(queryToken: string, queryUsername: string, queryAvatar?: string) {
+  function updateFromQuery(queryToken: string, queryUsername: string, queryAvatar?: string, queryRole?: string) {
     setToken(queryToken);
     setUser({
       id: 0,
       username: queryUsername,
       email: '',
       avatarUrl: queryAvatar || undefined,
+      role: (queryRole as UserRole) || 'Developer',
     });
   }
 
@@ -48,16 +54,29 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.setItem('user', JSON.stringify(userData));
   }
 
+  async function refreshUserData() {
+    if (!token.value) return;
+    try {
+      const userData = await apiService.getCurrentUser();
+      setUser(userData);
+    } catch {
+      // Token might be invalid, clear auth
+    }
+  }
+
   return {
     token,
     user,
     isAuthenticated,
     username,
     avatarUrl,
+    role,
+    isAdmin,
     setToken,
     setUser,
     clearAuth,
     updateFromQuery,
     updateUser,
+    refreshUserData,
   };
 });

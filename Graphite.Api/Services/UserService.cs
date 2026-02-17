@@ -13,6 +13,11 @@ public interface IUserService
     Task<User> GetOrCreateGitHubUserAsync(GitHubUserDto githubUser, string accessToken);
     Task UpdateUserLastLoginAsync(int userId);
     Task<User?> GetCurrentUserAsync(System.Security.Claims.ClaimsPrincipal user);
+    Task<IEnumerable<User>> GetAllUsersAsync();
+    Task<bool> UpdateUserRoleAsync(int userId, UserRole role);
+    Task<bool> DeleteUserAsync(int userId);
+    Task<bool> HasAnyUsersAsync();
+    Task<int> GetUserCountAsync();
 }
 
 public class UserService : IUserService
@@ -183,5 +188,45 @@ public class UserService : IUserService
         }
 
         return await _context.Users.FindAsync(userId);
+    }
+
+    public async Task<IEnumerable<User>> GetAllUsersAsync()
+    {
+        return await _context.Users
+            .Include(u => u.Preferences)
+            .OrderBy(u => u.Username)
+            .ToListAsync();
+    }
+
+    public async Task<bool> UpdateUserRoleAsync(int userId, UserRole role)
+    {
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null)
+            return false;
+
+        user.Role = role;
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> DeleteUserAsync(int userId)
+    {
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null)
+            return false;
+
+        _context.Users.Remove(user);
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> HasAnyUsersAsync()
+    {
+        return await _context.Users.AnyAsync();
+    }
+
+    public async Task<int> GetUserCountAsync()
+    {
+        return await _context.Users.CountAsync();
     }
 }

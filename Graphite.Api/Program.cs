@@ -9,6 +9,7 @@ using Microsoft.IdentityModel.Tokens;
 using Octokit.Webhooks.AspNetCore;
 using System.Text;
 using Octokit.Webhooks;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -57,6 +58,8 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IWebhookService, WebhookService>();
 builder.Services.AddSingleton<INotificationService, SignalRNotificationService>();
+builder.Services.AddScoped<IInvitationService, InvitationService>();
+builder.Services.AddScoped<IAllowlistService, AllowlistService>();
 
 // GitHub-related services
 builder.Services.AddSingleton<IGitHubTokenService, GitHubTokenService>();
@@ -73,7 +76,11 @@ builder.Services.AddScoped<WebhookEventProcessor, GitHubWebhookProcessor>();
 // Background services
 builder.Services.AddHostedService<PRRefreshService>();
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowVueDev", policy =>

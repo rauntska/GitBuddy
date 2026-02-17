@@ -7,6 +7,58 @@ export interface Review {
   submittedAt?: string;
 }
 
+export type UserRole = 'Developer' | 'Admin';
+
+export interface User {
+  id: number;
+  username: string;
+  email: string;
+  avatarUrl?: string;
+  role: UserRole;
+  name?: string;
+  createdAt?: string;
+  lastLoginAt?: string;
+  provider?: string;
+}
+
+export interface Invitation {
+  id: number;
+  email: string;
+  gitHubUsername?: string;
+  token: string;
+  assignedRole: UserRole;
+  createdAt: string;
+  expiresAt?: string;
+  acceptedAt?: string;
+  acceptedByUserId?: number;
+  inviteUrl: string;
+  createdBy?: {
+    id: number;
+    username: string;
+  };
+  status: 'Pending' | 'Accepted' | 'Expired';
+}
+
+export interface AllowedUser {
+  id: number;
+  email?: string;
+  gitHubUsername?: string;
+  assignedRole: UserRole;
+  createdAt: string;
+  createdBy?: {
+    id: number;
+    username: string;
+  };
+}
+
+export interface AdminStats {
+  totalUsers: number;
+  adminCount: number;
+  developerCount: number;
+  pendingInvitations: number;
+  allowlistEntries: number;
+}
+
 export interface ReviewThread {
   id: number;
   gitHubId: string;

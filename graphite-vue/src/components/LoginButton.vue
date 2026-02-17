@@ -2,11 +2,15 @@
 import { useAuth } from '../composables/useAuth';
 
 const { login } = useAuth();
+
+const handleLogin = () => {
+  login();
+};
 </script>
 
 <template>
   <button
-    @click="login"
+    @click="handleLogin"
     class="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
   >
     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">

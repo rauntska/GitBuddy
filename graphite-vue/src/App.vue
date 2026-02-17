@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAuthStore } from './stores/auth';
 import LoginButton from './components/LoginButton.vue';
@@ -10,6 +10,12 @@ import { usePullRequests } from './composables/usePullRequests';
 const authStore = useAuthStore();
 const route = useRoute();
 const { loading, lastRefresh, refreshPullRequests } = usePullRequests();
+
+onMounted(() => {
+  if (authStore.isAuthenticated) {
+    authStore.refreshUserData();
+  }
+});
 
 const isDashboardRoute = computed(() => route.name === 'dashboard');
 const shouldShowDashboardControls = computed(() => 

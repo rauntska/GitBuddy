@@ -1,5 +1,5 @@
 import apiClient from '../utils/api';
-import type { GroupedPRs, PRStats, Settings, PRDetail, FileDiff, Comment, UserPreferences, PullRequest, CommentTemplate, CommentDraft, MentionableUser, ReactionGroup } from '../types';
+import type { GroupedPRs, PRStats, Settings, PRDetail, FileDiff, Comment, UserPreferences, PullRequest, CommentTemplate, CommentDraft, MentionableUser, ReactionGroup, User, UserRole, Invitation, AllowedUser, AdminStats } from '../types';
 
 const api = apiClient;
 
@@ -225,6 +225,75 @@ export const apiService = {
   // Mentionable Users
   getMentionableUsers: async (pullRequestId: number): Promise<MentionableUser[]> => {
     const response = await api.get<MentionableUser[]>(`/pullrequests/${pullRequestId}/mentionable-users`);
+    return response.data;
+  },
+
+  // Auth
+  getCurrentUser: async (): Promise<User> => {
+    const response = await api.get<User>('/auth/me');
+    return response.data;
+  },
+
+  // Admin - Users
+  getUsers: async (): Promise<User[]> => {
+    const response = await api.get<User[]>('/admin/users');
+    return response.data;
+  },
+
+  updateUserRole: async (userId: number, role: UserRole): Promise<{ message: string }> => {
+    const response = await api.put<{ message: string }>(`/admin/users/${userId}/role`, { role });
+    return response.data;
+  },
+
+  deleteUser: async (userId: number): Promise<{ message: string }> => {
+    const response = await api.delete<{ message: string }>(`/admin/users/${userId}`);
+    return response.data;
+  },
+
+  // Admin - Invitations
+  getInvitations: async (): Promise<Invitation[]> => {
+    const response = await api.get<Invitation[]>('/admin/invitations');
+    return response.data;
+  },
+
+  createInvitation: async (data: {
+    email: string;
+    gitHubUsername?: string;
+    assignedRole?: UserRole;
+    expiresInDays?: number;
+  }): Promise<Invitation> => {
+    const response = await api.post<Invitation>('/admin/invitations', data);
+    return response.data;
+  },
+
+  revokeInvitation: async (invitationId: number): Promise<{ message: string }> => {
+    const response = await api.delete<{ message: string }>(`/admin/invitations/${invitationId}`);
+    return response.data;
+  },
+
+  // Admin - Allowlist
+  getAllowlist: async (): Promise<AllowedUser[]> => {
+    const response = await api.get<AllowedUser[]>('/admin/allowlist');
+    return response.data;
+  },
+
+  addToAllowlist: async (data: {
+    email?: string;
+    gitHubUsername?: string;
+    assignedRole?: UserRole;
+  }): Promise<AllowedUser> => {
+    const response = await api.post<AllowedUser>('/admin/allowlist', data);
+    return response.data;
+  },
+
+  removeFromAllowlist: async (id: number): Promise<{ message: string }> => {
+    const response = await api.delete<{ message: string }>(`/admin/allowlist/${id}`);
+    return response.data;
+  },
+
+  // Admin - Stats
+  getAdminStats: async (): Promise<AdminStats> => {
+    const response = await api.get<AdminStats>('/admin/stats');
     return response.data;
   },
 };

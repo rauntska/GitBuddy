@@ -44,7 +44,6 @@
         <!-- Connection Status + Stats Summary (hide during initial load) -->
         <div v-if="!loading || hasPRData" class="flex items-center justify-between mb-4">
           <StatsSummary :stats="stats" />
-          <ConnectionStatus :state="signalR.connectionState.value" />
         </div>
 
         <!-- Loading State: Skeleton Screens -->
@@ -158,14 +157,13 @@
 <script setup lang="ts">
  import { ref, onMounted, onUnmounted, computed } from 'vue';
  import { usePullRequests } from '../composables/usePullRequests';
- import { useAuthStore } from '../stores/auth';
- import StatsSummary from '../components/StatsSummary.vue';
- import PRGroup from '../components/PRGroup.vue';
- import SkeletonPRRow from '../components/SkeletonPRRow.vue';
- import EmptyState from '../components/EmptyState.vue';
- import ConnectionStatus from '../components/ConnectionStatus.vue';
+  import { useAuthStore } from '../stores/auth';
+  import StatsSummary from '../components/StatsSummary.vue';
+  import PRGroup from '../components/PRGroup.vue';
+  import SkeletonPRRow from '../components/SkeletonPRRow.vue';
+  import EmptyState from '../components/EmptyState.vue';
 
- const authStore = useAuthStore();
+  const authStore = useAuthStore();
 
    const {
      pullRequests,

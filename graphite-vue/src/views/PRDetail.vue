@@ -21,7 +21,6 @@
         </div>
 
 <div class="flex items-center gap-3 text-xs">
-          <ConnectionStatus :state="signalR.connectionState.value" />
           <span class="text-slate-400 font-medium">{{ prDetail?.repository }} #{{ prDetail?.gitHubId }}</span>
 
           <button
@@ -608,16 +607,15 @@
  import { usePRDetail } from '../composables/usePRDetail';
  import { useUserPreferences } from '../composables/useUserPreferences';
  import { useSignalR, type CommentNotification, type ThreadNotification, type CheckRunsNotification } from '../composables/useSignalR';
- import { apiService } from '../services/api';
- import FileDiffViewer from '../components/FileDiffViewer.vue';
- import FileTree from '../components/FileTree.vue';
- import CommentsPanel from '../components/CommentsPanel.vue';
- import StatusBadge from '../components/StatusBadge.vue';
- import Breadcrumb from '../components/Breadcrumb.vue';
- import DescriptionRenderer from '../components/DescriptionRenderer.vue';
- import CIBadge from '../components/CIBadge.vue';
- import ConnectionStatus from '../components/ConnectionStatus.vue';
- import type { Comment, CheckRun } from '../types';
+  import { apiService } from '../services/api';
+  import FileDiffViewer from '../components/FileDiffViewer.vue';
+  import FileTree from '../components/FileTree.vue';
+  import CommentsPanel from '../components/CommentsPanel.vue';
+  import StatusBadge from '../components/StatusBadge.vue';
+  import Breadcrumb from '../components/Breadcrumb.vue';
+  import DescriptionRenderer from '../components/DescriptionRenderer.vue';
+  import CIBadge from '../components/CIBadge.vue';
+  import type { Comment, CheckRun } from '../types';
  import { CheckIcon, ChatBubbleLeftIcon, ArrowPathIcon } from '@heroicons/vue/24/outline';
  import { useAuthStore } from '../stores/auth';
 

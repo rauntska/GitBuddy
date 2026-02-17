@@ -80,9 +80,9 @@ export interface CheckRunsNotification {
 
 let connection: signalR.HubConnection | null = null;
 let connectionCount = 0;
+const connectionState: Ref<ConnectionState> = ref('disconnected');
 
 export function useSignalR() {
-  const connectionState: Ref<ConnectionState> = ref('disconnected');
   const error: Ref<string | null> = ref(null);
 
   const onPRCreated: Ref<((pr: PRListUpdate) => void) | null> = ref(null);

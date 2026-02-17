@@ -5,16 +5,19 @@ public class User
     public int Id { get; set; }
     public string Username { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
-    public string? Name { get; set; } // Display name from OAuth provider
+    public string? Name { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    // OAuth fields
+    public UserRole Role { get; set; } = UserRole.Developer;
+
     public string? Provider { get; set; }
     public string? ProviderUserId { get; set; }
     public string? AvatarUrl { get; set; }
     public DateTime? LastLoginAt { get; set; }
     public string? AccessToken { get; set; }
 
-    // Navigation property
+    public int? InvitationId { get; set; }
+    public Invitation? Invitation { get; set; }
+
     public UserPreferences? Preferences { get; set; }
 }

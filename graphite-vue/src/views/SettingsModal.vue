@@ -7,6 +7,7 @@
       <div class="flex items-center justify-between p-5 border-b border-slate-800">
         <div class="flex items-center gap-4">
           <button
+            v-if="isAdmin"
             type="button"
             @click="activeTab = 'github'"
             :class="[
@@ -326,6 +327,7 @@ MIIEpAIBAAKCAQEA...
 import { ref, watch, onMounted, computed } from 'vue';
 import { useSettings } from '../composables/useSettings';
 import { useUserPreferences } from '../composables/useUserPreferences';
+import { useAuthStore } from '../stores/auth';
 import type { KeyboardShortcuts } from '../types';
 
 const emit = defineEmits<{
@@ -335,8 +337,10 @@ const emit = defineEmits<{
 
 const { settings, loading, error, fetchSettings, saveSettings: saveSettingsAction } = useSettings();
 const { setKeyboardShortcut } = useUserPreferences();
+const authStore = useAuthStore();
 
-const activeTab = ref<'github' | 'preferences'>('github');
+const isAdmin = computed(() => authStore.isAdmin);
+const activeTab = ref<'github' | 'preferences'>(isAdmin.value ? 'github' : 'preferences');
 
 const isGitHubTab = computed(() => activeTab.value === 'github');
 const isPreferencesTab = computed(() => activeTab.value === 'preferences');
