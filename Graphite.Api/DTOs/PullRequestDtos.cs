@@ -117,6 +117,8 @@ public record PRDetailDto(
     string TargetBranch,
     string? MergeableState,
     string? ChecksStatus,
+    bool IsMerged,
+    DateTime? MergedAt,
     List<ReviewDto> Reviews,
     List<ReviewThreadDto> ReviewThreads,
     List<FileDiffDto> Files,
@@ -156,4 +158,10 @@ public record ResolveThreadRequest(
 );
 
 public record UnresolveThreadRequest(
+);
+
+public record MergePRRequest(
+    string? MergeMethod,
+    string? CommitTitle,
+    string? CommitMessage
 );

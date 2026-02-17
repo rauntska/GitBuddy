@@ -1,4 +1,5 @@
-import type { DiffHunk } from '../types';
+import type { DiffHunk, DiffLine, AlignedRow, InlineDiffSegment } from '../types';
+import DiffMatchPatch from 'diff-match-patch';
 
 export function parsePatch(patch: string): DiffHunk[] {
   if (!patch) return [];
@@ -166,7 +167,7 @@ export interface FileTreeNode {
 
 export function flattenFileTree(nodes: FileTreeNode[]): FileTreeNode[] {
   const result: FileTreeNode[] = [];
-  
+
   function traverse(nodes: FileTreeNode[], depth: number = 0) {
     nodes.forEach(node => {
       result.push({ ...node, depth } as any);
@@ -175,7 +176,173 @@ export function flattenFileTree(nodes: FileTreeNode[]): FileTreeNode[] {
       }
     });
   }
-  
+
   traverse(nodes);
+  return result;
+}
+
+/**
+ * Aligns diff lines for side-by-side view.
+ * Pairs delete lines with add lines on the same row,
+ * with spacers for unbalanced changes.
+ */
+export function alignDiffLines(lines: DiffLine[]): AlignedRow[] {
+  const result: AlignedRow[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    if (!line) {
+      i++;
+      continue;
+    }
+
+    if (line.type === 'context') {
+      // Context lines appear on both sides, perfectly aligned
+      result.push({
+        leftLine: {
+          type: 'context',
+          content: line.content,
+          lineNumber: line.oldLineNumber,
+        },
+        rightLine: {
+          type: 'context',
+          content: line.content,
+          lineNumber: line.newLineNumber,
+        },
+      });
+      i++;
+    } else if (line.type === 'delete') {
+      // Collect all consecutive delete lines
+      const deleteLines: DiffLine[] = [];
+      while (i < lines.length && lines[i] && lines[i]!.type === 'delete') {
+        deleteLines.push(lines[i]!);
+        i++;
+      }
+
+      // Collect all consecutive add lines that follow
+      const addLines: DiffLine[] = [];
+      while (i < lines.length && lines[i] && lines[i]!.type === 'add') {
+        addLines.push(lines[i]!);
+        i++;
+      }
+
+      // Pair them up
+      const maxLen = Math.max(deleteLines.length, addLines.length);
+      for (let j = 0; j < maxLen; j++) {
+        const delLine = deleteLines[j];
+        const addLine = addLines[j];
+
+        let inlineDiff: { oldSegments: InlineDiffSegment[]; newSegments: InlineDiffSegment[] } | null = null;
+
+        // Compute inline diff when we have both a delete and add line
+        if (delLine && addLine) {
+          inlineDiff = computeInlineDiff(delLine.content, addLine.content);
+        }
+
+        result.push({
+          leftLine: delLine
+            ? {
+                type: 'delete',
+                content: delLine.content,
+                lineNumber: delLine.oldLineNumber,
+                inlineDiff: inlineDiff?.oldSegments,
+              }
+            : {
+                type: 'spacer',
+                content: '',
+              },
+          rightLine: addLine
+            ? {
+                type: 'add',
+                content: addLine.content,
+                lineNumber: addLine.newLineNumber,
+                inlineDiff: inlineDiff?.newSegments,
+              }
+            : {
+                type: 'spacer',
+                content: '',
+              },
+        });
+      }
+    } else if (line.type === 'add') {
+      // Pure additions (no preceding deletes)
+      result.push({
+        leftLine: {
+          type: 'spacer',
+          content: '',
+        },
+        rightLine: {
+          type: 'add',
+          content: line.content,
+          lineNumber: line.newLineNumber,
+        },
+      });
+      i++;
+    } else {
+      i++;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Computes word-level inline diff between two lines
+ */
+export function computeInlineDiff(
+  oldLine: string,
+  newLine: string
+): { oldSegments: InlineDiffSegment[]; newSegments: InlineDiffSegment[] } {
+  const dmp = new DiffMatchPatch();
+  const diffs = dmp.diff_main(oldLine, newLine);
+  dmp.diff_cleanupSemantic(diffs);
+
+  const oldSegments: InlineDiffSegment[] = [];
+  const newSegments: InlineDiffSegment[] = [];
+
+  for (const [op, text] of diffs) {
+    // op: -1 = delete, 0 = equal, 1 = insert
+    if (op === -1) {
+      oldSegments.push({ type: 'delete', content: text });
+    } else if (op === 1) {
+      newSegments.push({ type: 'add', content: text });
+    } else {
+      // Equal - appears in both
+      oldSegments.push({ type: 'equal', content: text });
+      newSegments.push({ type: 'equal', content: text });
+    }
+  }
+
+  return { oldSegments, newSegments };
+}
+
+/**
+ * Escapes HTML special characters
+ */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+/**
+ * Renders inline diff segments as HTML
+ */
+export function renderInlineDiffSegments(segments: InlineDiffSegment[]): string {
+  let result = '';
+  for (const segment of segments) {
+    const escaped = escapeHtml(segment.content);
+    if (segment.type === 'delete') {
+      result += `<span class="inline-diff-delete">${escaped}</span>`;
+    } else if (segment.type === 'add') {
+      result += `<span class="inline-diff-add">${escaped}</span>`;
+    } else {
+      result += escaped;
+    }
+  }
   return result;
 }

@@ -84,8 +84,28 @@ export const apiService = {
     return response.data;
   },
 
-  mergePR: async (prId: number): Promise<{ message: string }> => {
-    const response = await api.post<{ message: string }>(`/pullrequests/${prId}/merge`);
+  mergePR: async (prId: number, options?: { 
+    mergeMethod?: 'merge' | 'squash' | 'rebase';
+    commitTitle?: string;
+    commitMessage?: string;
+  }): Promise<{ message: string; isMerged: boolean; mergedAt?: string }> => {
+    const response = await api.post<{ message: string; isMerged: boolean; mergedAt?: string }>(
+      `/pullrequests/${prId}/merge`, 
+      options || {}
+    );
+    return response.data;
+  },
+
+  getMergeOptions: async (prId: number): Promise<{
+    mergeCommitAllowed: boolean;
+    squashMergeAllowed: boolean;
+    rebaseMergeAllowed: boolean;
+    defaultMergeMethod: string;
+    mergeableState?: string;
+    isMerged: boolean;
+    isDraft: boolean;
+  }> => {
+    const response = await api.get(`/pullrequests/${prId}/merge-options`);
     return response.data;
   },
 

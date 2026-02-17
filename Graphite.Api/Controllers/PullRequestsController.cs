@@ -405,17 +405,137 @@ public class PullRequestsController(ICacheService cacheService, AppDbContext con
 
     [HttpPost("{id}/merge")]
     [Authorize]
-    public async Task<IActionResult> MergePR(int id)
+    public async Task<IActionResult> MergePR(int id, [FromBody] MergePRRequest? request = null)
     {
+        var userIdClaim = User.FindFirst("UserId")?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized(new { message = "User not authenticated" });
+        }
+
+        var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null || string.IsNullOrEmpty(user.AccessToken))
+        {
+            return Unauthorized(new { message = "User token not available" });
+        }
+
         var pr = await context.PullRequests.FindAsync(id);
         if (pr == null)
         {
             return NotFound(new { message = "Pull request not found" });
         }
 
-        // In a real implementation, this would use GitHub API
-        // For now, we'll just return a success message
-        return Ok(new { message = "Pull request merge initiated" });
+        if (pr.Draft)
+        {
+            return BadRequest(new { message = "Cannot merge a draft pull request. Please publish it first." });
+        }
+
+        if (pr.IsMerged)
+        {
+            return BadRequest(new { message = "Pull request has already been merged." });
+        }
+
+        if (pr.MergeableState == "CONFLICTING")
+        {
+            return BadRequest(new { message = "Pull request has merge conflicts that must be resolved before merging." });
+        }
+
+        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
+        if (config == null)
+        {
+            return BadRequest(new { message = "GitHub configuration not found" });
+        }
+
+        var mergeMethod = request?.MergeMethod ?? "merge";
+
+        try
+        {
+            await gitHubService.MergePullRequestAsync(
+                config.Organization,
+                pr.Repository,
+                pr.GitHubId,
+                request?.CommitTitle,
+                request?.CommitMessage,
+                mergeMethod,
+                user.AccessToken
+            );
+
+            pr.IsMerged = true;
+            pr.MergedAt = DateTime.UtcNow;
+            pr.Status = "Merged";
+            await context.SaveChangesAsync();
+
+            return Ok(new { message = "Pull request merged successfully", isMerged = true, mergedAt = pr.MergedAt });
+        }
+        catch (Octokit.ApiException ex)
+        {
+            var errorMessage = ex.StatusCode switch
+            {
+                System.Net.HttpStatusCode.Conflict => "Pull request has merge conflicts that must be resolved.",
+                System.Net.HttpStatusCode.MethodNotAllowed => "Merge method not allowed. Check repository settings.",
+                System.Net.HttpStatusCode.Forbidden => "You don't have permission to merge this pull request.",
+                System.Net.HttpStatusCode.UnprocessableEntity => "Pull request cannot be merged. It may be closed or have failing checks.",
+                _ => $"Failed to merge pull request: {ex.Message}"
+            };
+            return StatusCode((int)ex.StatusCode, new { message = errorMessage });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to merge pull request", error = ex.Message });
+        }
+    }
+
+    [HttpGet("{id}/merge-options")]
+    [Authorize]
+    public async Task<IActionResult> GetMergeOptions(int id)
+    {
+        var userIdClaim = User.FindFirst("UserId")?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized(new { message = "User not authenticated" });
+        }
+
+        var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null || string.IsNullOrEmpty(user.AccessToken))
+        {
+            return Unauthorized(new { message = "User token not available" });
+        }
+
+        var pr = await context.PullRequests.FindAsync(id);
+        if (pr == null)
+        {
+            return NotFound(new { message = "Pull request not found" });
+        }
+
+        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
+        if (config == null)
+        {
+            return BadRequest(new { message = "GitHub configuration not found" });
+        }
+
+        try
+        {
+            var mergeOptions = await gitHubService.GetRepositoryMergeOptionsAsync(
+                config.Organization,
+                pr.Repository,
+                user.AccessToken
+            );
+
+            return Ok(new
+            {
+                mergeCommitAllowed = mergeOptions.MergeCommitAllowed,
+                squashMergeAllowed = mergeOptions.SquashMergeAllowed,
+                rebaseMergeAllowed = mergeOptions.RebaseMergeAllowed,
+                defaultMergeMethod = mergeOptions.DefaultMergeMethod,
+                mergeableState = pr.MergeableState,
+                isMerged = pr.IsMerged,
+                isDraft = pr.Draft
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to get merge options", error = ex.Message });
+        }
     }
 
     [HttpPost("{id}/publish")]

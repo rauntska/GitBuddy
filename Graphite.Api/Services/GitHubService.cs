@@ -393,4 +393,80 @@ public class GitHubService(
     {
         await graphQlService.ConvertPullRequestToReadyForReviewAsync(organization, repository, pullRequestNumber, userAccessToken);
     }
+
+    public async Task<GitHubRepoMergeOptions> GetRepositoryMergeOptionsAsync(string organization, string repository, string userAccessToken)
+    {
+        var connection = new GraphQLConnection(new GraphQLProductHeaderValue("Graphite-PR-Dashboard"), userAccessToken);
+
+        var query = new GraphQLQuery()
+            .Repository(repository, organization)
+            .Select(repo => new
+            {
+                repo.MergeCommitAllowed,
+                repo.SquashMergeAllowed,
+                repo.RebaseMergeAllowed
+            })
+            .Compile();
+
+        var result = await connection.Run(query);
+
+        var defaultMethod = DetermineDefaultMergeMethod(
+            result.MergeCommitAllowed,
+            result.SquashMergeAllowed,
+            result.RebaseMergeAllowed);
+
+        return new GitHubRepoMergeOptions(
+            result.MergeCommitAllowed,
+            result.SquashMergeAllowed,
+            result.RebaseMergeAllowed,
+            defaultMethod
+        );
+    }
+
+    private static string DetermineDefaultMergeMethod(bool mergeCommitAllowed, bool squashMergeAllowed, bool rebaseMergeAllowed)
+    {
+        if (squashMergeAllowed)
+        {
+            return "squash";
+        }
+        if (mergeCommitAllowed)
+        {
+            return "merge";
+        }
+        if (rebaseMergeAllowed)
+        {
+            return "rebase";
+        }
+        return "merge";
+    }
+
+    public async Task MergePullRequestAsync(string organization, string repository, long pullRequestNumber, string? commitTitle, string? commitMessage, string mergeMethod, string userAccessToken)
+    {
+        var restClient = new GitHubClient(new Octokit.ProductHeaderValue("Graphite-PR-Dashboard"))
+        {
+            Credentials = new Octokit.Credentials(userAccessToken)
+        };
+
+        var mergeRequest = new MergePullRequest
+        {
+            CommitTitle = commitTitle,
+            CommitMessage = commitMessage,
+            MergeMethod = MapMergeMethod(mergeMethod)
+        };
+
+        await restClient.PullRequest.Merge(organization, repository, (int)pullRequestNumber, mergeRequest);
+
+        logger.LogInformation("Successfully merged PR {Organization}/{Repository}#{PullRequestNumber} using {MergeMethod}",
+            organization, repository, pullRequestNumber, mergeMethod);
+    }
+
+    private static Octokit.PullRequestMergeMethod? MapMergeMethod(string method)
+    {
+        return method.ToLower() switch
+        {
+            "squash" => Octokit.PullRequestMergeMethod.Squash,
+            "rebase" => Octokit.PullRequestMergeMethod.Rebase,
+            _ => Octokit.PullRequestMergeMethod.Merge
+        };
+    }
 }

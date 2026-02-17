@@ -167,6 +167,8 @@ public static class MappingExtensions
             pr.TargetBranch,
             pr.MergeableState,
             pr.ChecksStatus,
+            pr.IsMerged,
+            pr.MergedAt,
             GetLatestReviewsPerReviewer(pr.Reviews),
             pr.ReviewThreads.Select(rt => new ReviewThreadDto(
                 rt.Id,

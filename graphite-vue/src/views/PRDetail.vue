@@ -25,6 +25,7 @@
           <span class="text-slate-400 font-medium">{{ prDetail?.repository }} #{{ prDetail?.gitHubId }}</span>
 
           <button
+            v-if="!prDetail?.isMerged"
             @click="showReviewModal = true"
             class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-xs font-medium text-white transition-all duration-200 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30"
           >
@@ -32,13 +33,99 @@
           </button>
 
           <button
-            v-if="prDetail?.draft"
+            v-if="prDetail?.draft && !prDetail?.isMerged"
             @click="handlePublishDraft"
             :disabled="publishingDraft"
             class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-medium text-white transition-all duration-200 shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {{ publishingDraft ? 'Publishing...' : 'Publish' }}
           </button>
+
+          <!-- Merge Button with Dropdown -->
+          <div v-if="prDetail && !prDetail.draft && !prDetail.isMerged" class="relative">
+            <div class="flex items-center gap-0">
+              <button
+                @click="canMerge && handleMerge()"
+                :disabled="!canMerge || merging"
+                :class="[
+                  'px-4 py-2 rounded-l-lg text-xs font-medium text-white transition-all duration-200',
+                  canMerge && !merging
+                    ? 'bg-purple-600 hover:bg-purple-500 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30'
+                    : 'bg-slate-600 cursor-not-allowed',
+                ]"
+              >
+                <span v-if="merging">Merging...</span>
+                <span v-else-if="prDetail.isMerged">Merged</span>
+                <span v-else>Merge</span>
+              </button>
+              <button
+                @click="showMergeDropdown = !showMergeDropdown; loadMergeOptions()"
+                :disabled="!canMerge || merging"
+                :class="[
+                  'px-2 py-2 rounded-r-lg text-xs font-medium text-white border-l border-purple-400/30 transition-all duration-200',
+                  canMerge && !merging
+                    ? 'bg-purple-600 hover:bg-purple-500'
+                    : 'bg-slate-600 cursor-not-allowed',
+                ]"
+              >
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            </div>
+
+            <!-- Merge Dropdown -->
+            <div
+              v-if="showMergeDropdown"
+              class="absolute right-0 top-full mt-2 w-80 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-50"
+            >
+              <div class="p-3 border-b border-slate-700">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs text-slate-400">Merge Method</span>
+                  <span :class="['text-xs font-medium', mergeableStatusColor]">{{ mergeableStatusText }}</span>
+                </div>
+              </div>
+
+              <div class="p-2">
+                <label
+                  v-for="method in availableMergeMethods"
+                  :key="method.value"
+                  class="flex items-start gap-3 p-2 rounded-lg cursor-pointer hover:bg-slate-700/50 transition-colors"
+                >
+                  <input
+                    type="radio"
+                    :value="method.value"
+                    v-model="selectedMergeMethod"
+                    class="mt-1 accent-purple-500"
+                  />
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm text-slate-200">{{ method.label }}</div>
+                    <div class="text-xs text-slate-400 mt-0.5">{{ method.description }}</div>
+                  </div>
+                </label>
+              </div>
+
+              <div v-if="mergeError" class="px-3 py-2 border-t border-slate-700">
+                <p class="text-xs text-red-400">{{ mergeError }}</p>
+              </div>
+
+              <div class="p-3 border-t border-slate-700 flex justify-end gap-2">
+                <button
+                  @click="showMergeDropdown = false; mergeError = null"
+                  class="px-3 py-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  @click="handleMerge"
+                  :disabled="!canMerge || merging"
+                  class="px-4 py-1.5 bg-purple-600 hover:bg-purple-500 rounded text-xs font-medium text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {{ merging ? 'Merging...' : 'Confirm merge' }}
+                </button>
+              </div>
+            </div>
+          </div>
 
           <button
             @click="toggleCommentsPanel"
@@ -549,6 +636,8 @@ const {
   fetchPRDetail,
   addComment,
   submitReview,
+  mergePR,
+  getMergeOptions,
   publishDraftPR,
   toggleCommentsPanel,
   toggleFileTree,
@@ -563,6 +652,19 @@ const reviewAction = ref<'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENT'>('COMMENT'
 const reviewComment = ref('');
 const submittingReview = ref(false);
 const publishingDraft = ref(false);
+const merging = ref(false);
+const showMergeDropdown = ref(false);
+const mergeOptions = ref<{
+  mergeCommitAllowed: boolean;
+  squashMergeAllowed: boolean;
+  rebaseMergeAllowed: boolean;
+  defaultMergeMethod: string;
+  mergeableState?: string;
+  isMerged: boolean;
+  isDraft: boolean;
+} | null>(null);
+const selectedMergeMethod = ref<'merge' | 'squash' | 'rebase'>('squash');
+const mergeError = ref<string | null>(null);
 const fileRefs = ref<Map<string, any>>(new Map());
 const refreshingViewStates = ref(false);
 
@@ -740,6 +842,10 @@ const handleClickOutside = (e: MouseEvent) => {
   if (showSettingsDropdown.value && !target.closest('.relative')) {
     showSettingsDropdown.value = false;
   }
+  if (showMergeDropdown.value && !target.closest('.relative')) {
+    showMergeDropdown.value = false;
+    mergeError.value = null;
+  }
 };
 
   const handleAddComment = async (path: string, line: number, body: string) => {
@@ -803,6 +909,86 @@ const handlePublishDraft = async () => {
     alert('Failed to publish draft PR');
   }
 };
+
+const loadMergeOptions = async () => {
+  const options = await getMergeOptions(props.id);
+  if (options) {
+    mergeOptions.value = options;
+    selectedMergeMethod.value = options.defaultMergeMethod as 'merge' | 'squash' | 'rebase';
+  }
+};
+
+const canMerge = computed(() => {
+  if (!prDetail.value) return false;
+  if (prDetail.value.draft) return false;
+  if (prDetail.value.isMerged) return false;
+  if (prDetail.value.mergeableState === 'CONFLICTING') return false;
+  return true;
+});
+
+const mergeableStatusText = computed(() => {
+  if (!prDetail.value) return '';
+  if (prDetail.value.isMerged) return 'Already merged';
+  if (prDetail.value.draft) return 'Draft PR';
+  if (prDetail.value.mergeableState === 'CONFLICTING') return 'Has conflicts';
+  if (prDetail.value.mergeableState === 'UNKNOWN') return 'Checking...';
+  return 'Ready to merge';
+});
+
+const mergeableStatusColor = computed(() => {
+  if (!prDetail.value) return 'text-slate-400';
+  if (prDetail.value.isMerged) return 'text-emerald-400';
+  if (prDetail.value.draft) return 'text-amber-400';
+  if (prDetail.value.mergeableState === 'CONFLICTING') return 'text-red-400';
+  if (prDetail.value.mergeableState === 'UNKNOWN') return 'text-slate-400';
+  return 'text-emerald-400';
+});
+
+const handleMerge = async () => {
+  if (!canMerge.value) return;
+
+  merging.value = true;
+  mergeError.value = null;
+
+  const result = await mergePR(props.id, {
+    mergeMethod: selectedMergeMethod.value,
+  });
+
+  merging.value = false;
+  showMergeDropdown.value = false;
+
+  if (!result.success) {
+    mergeError.value = result.message || 'Failed to merge PR';
+  }
+};
+
+const availableMergeMethods = computed(() => {
+  if (!mergeOptions.value) return [];
+  const methods: { value: string; label: string; description: string }[] = [];
+  
+  if (mergeOptions.value.squashMergeAllowed) {
+    methods.push({
+      value: 'squash',
+      label: 'Squash and merge',
+      description: 'All commits from this branch will be combined into one commit in the base branch.',
+    });
+  }
+  if (mergeOptions.value.mergeCommitAllowed) {
+    methods.push({
+      value: 'merge',
+      label: 'Create a merge commit',
+      description: 'All commits from this branch will be added to the base branch via a merge commit.',
+    });
+  }
+  if (mergeOptions.value.rebaseMergeAllowed) {
+    methods.push({
+      value: 'rebase',
+      label: 'Rebase and merge',
+      description: 'All commits from this branch will be rebased and added to the base branch.',
+    });
+  }
+  return methods;
+});
 
 const scrollToFile = (path: string, line?: number) => {
   selectedFile.value = path;

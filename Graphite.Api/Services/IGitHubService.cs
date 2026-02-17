@@ -23,6 +23,8 @@ public interface IGitHubService
     Task ResolveReviewThreadAsync(string organization, string repository, string threadId, bool resolved, GitHubConfig config, string userAccessToken);
     Task UnresolveReviewThreadAsync(string organization, string repository, string threadId, GitHubConfig config, string userAccessToken);
     Task PublishDraftPullRequestAsync(string organization, string repository, long pullRequestNumber, GitHubConfig config, string userAccessToken);
+    Task<GitHubRepoMergeOptions> GetRepositoryMergeOptionsAsync(string organization, string repository, string userAccessToken);
+    Task MergePullRequestAsync(string organization, string repository, long pullRequestNumber, string? commitTitle, string? commitMessage, string mergeMethod, string userAccessToken);
 }
 
 public record GitHubPRData(
@@ -111,4 +113,11 @@ public record GitHubCheckRunData(
     string? Url,
     DateTime StartedAt,
     DateTime? CompletedAt
+);
+
+public record GitHubRepoMergeOptions(
+    bool MergeCommitAllowed,
+    bool SquashMergeAllowed,
+    bool RebaseMergeAllowed,
+    string? DefaultMergeMethod
 );

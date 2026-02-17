@@ -58,16 +58,32 @@ export function usePRDetail() {
     }
   };
 
-  const mergePR = async (prId: number) => {
+  const mergePR = async (
+    prId: number, 
+    options?: { 
+      mergeMethod?: 'merge' | 'squash' | 'rebase';
+      commitTitle?: string;
+      commitMessage?: string;
+    }
+  ) => {
     try {
-      await apiService.mergePR(prId);
-      // Refresh PR details after merging
+      const result = await apiService.mergePR(prId, options);
       await fetchPRDetail(prId);
-      return true;
+      return { success: true, message: result.message };
     } catch (err: any) {
-      error.value = err.response?.data?.message || 'Failed to merge PR';
+      const errorMessage = err.response?.data?.message || 'Failed to merge PR';
+      error.value = errorMessage;
       console.error('Error merging PR:', err);
-      return false;
+      return { success: false, message: errorMessage };
+    }
+  };
+
+  const getMergeOptions = async (prId: number) => {
+    try {
+      return await apiService.getMergeOptions(prId);
+    } catch (err: any) {
+      console.error('Error getting merge options:', err);
+      return null;
     }
   };
 
@@ -102,6 +118,7 @@ export function usePRDetail() {
     addComment,
     submitReview,
     mergePR,
+    getMergeOptions,
     publishDraftPR,
     toggleCommentsPanel,
     toggleFileTree,

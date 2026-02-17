@@ -92,47 +92,49 @@
                   </td>
                 </tr>
 
-                <template v-for="(line, lineIndex) in getVisibleLines(hunk.lines)" :key="`${hunkIndex}-${lineIndex}`">
+                <template v-for="(row, rowIndex) in getAlignedRows(hunk, hunkIndex)" :key="`${hunkIndex}-${rowIndex}`">
                   <tr
-                    :ref="el => setLineRef(line.newLineNumber || line.oldLineNumber, el)"
+                    :ref="el => setLineRef(row.rightLine?.lineNumber || row.leftLine?.lineNumber, el)"
                     :class="[
                       'hover:bg-slate-800/40 group transition-colors duration-150',
                       {
-                        'bg-emerald-500/5 border-l-2 border-emerald-500/50': line.type === 'add',
-                        'bg-rose-500/5 border-l-2 border-rose-500/50': line.type === 'delete',
-                        'bg-amber-500/10 border-l-2 border-amber-500/50': highlightedLine === line.newLineNumber || highlightedLine === line.oldLineNumber,
-                        'border-l-2 border-transparent': line.type !== 'add' && line.type !== 'delete' && highlightedLine !== line.newLineNumber && highlightedLine !== line.oldLineNumber
+                        'bg-emerald-500/5 border-l-2 border-emerald-500/50': row.rightLine?.type === 'add' && row.leftLine?.type !== 'delete',
+                        'bg-rose-500/5 border-l-2 border-rose-500/50': row.leftLine?.type === 'delete' && row.rightLine?.type !== 'add',
+                        'bg-gradient-to-r from-rose-500/5 to-emerald-500/5': row.leftLine?.type === 'delete' && row.rightLine?.type === 'add',
+                        'bg-amber-500/10 border-l-2 border-amber-500/50': highlightedLine === row.rightLine?.lineNumber || highlightedLine === row.leftLine?.lineNumber,
+                        'border-l-2 border-transparent': !((row.rightLine?.type === 'add') || (row.leftLine?.type === 'delete')) && highlightedLine !== row.rightLine?.lineNumber && highlightedLine !== row.leftLine?.lineNumber
                       }
                     ]"
                   >
-                    <!-- Old Side -->
+                    <!-- Old Side (Left) -->
                     <td class="px-3 py-1 text-slate-600 text-right select-none border-r border-slate-800 bg-slate-950/50">
-                      {{ line.type === 'delete' ? line.oldLineNumber : '' }}
+                      {{ row.leftLine?.type === 'delete' || row.leftLine?.type === 'context' ? row.leftLine.lineNumber : '' }}
                     </td>
                     <td
                       :class="[
                         'px-4 py-1 font-mono text-sm overflow-hidden',
-                        line.type === 'delete' ? 'bg-rose-950/10' : 'bg-slate-950/20'
+                        row.leftLine?.type === 'delete' ? 'bg-rose-950/10' : row.leftLine?.type === 'spacer' ? 'bg-slate-950/10 diff-spacer' : 'bg-slate-950/20'
                       ]"
                     >
-                      <span v-if="line.type === 'delete'" class="text-rose-400 select-none mr-1">-</span>
-                      <span v-else class="opacity-0 select-none mr-1">·</span>
+                      <span v-if="row.leftLine?.type === 'delete'" class="text-rose-400 select-none mr-1">-</span>
+                      <span v-else-if="row.leftLine?.type === 'context'" class="opacity-0 select-none mr-1">·</span>
+                      <span v-else class="select-none mr-1">&nbsp;</span>
                       <code
-                        v-if="line.type === 'delete'"
-                        :class="line.type === 'delete' ? 'diff-line-deleted' : 'diff-line-default'"
+                        v-if="row.leftLine && row.leftLine.type !== 'spacer'"
+                        :class="row.leftLine.type === 'delete' ? 'diff-line-deleted' : 'diff-line-default'"
                         style="white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;"
-                        v-html="highlightSyntax(line.content)"
+                        v-html="renderAlignedLineContent(row.leftLine)"
                       />
                     </td>
 
-                    <!-- New Side -->
+                    <!-- New Side (Right) -->
                     <td class="px-3 py-1 text-slate-600 text-right select-none border-x border-slate-800 bg-slate-950/50">
-                      {{ line.type !== 'delete' ? line.newLineNumber : '' }}
+                      {{ row.rightLine?.type === 'add' || row.rightLine?.type === 'context' ? row.rightLine.lineNumber : '' }}
                     </td>
                     <td class="px-1.5 bg-slate-950/50">
                       <button
-                        v-if="line.newLineNumber && line.type !== 'delete'"
-                        @click="startComment(line.newLineNumber!)"
+                        v-if="row.rightLine?.lineNumber && row.rightLine.type !== 'spacer'"
+                        @click="startComment(row.rightLine.lineNumber!)"
                         class="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-700 rounded-md transition-all duration-200"
                         title="Add comment"
                       >
@@ -144,27 +146,28 @@
                     <td
                       :class="[
                         'px-4 py-1 font-mono text-sm overflow-hidden',
-                        line.type === 'add' ? 'bg-emerald-950/10' : 'bg-slate-950/30'
+                        row.rightLine?.type === 'add' ? 'bg-emerald-950/10' : row.rightLine?.type === 'spacer' ? 'bg-slate-950/10 diff-spacer' : 'bg-slate-950/30'
                       ]"
                     >
-                      <span v-if="line.type === 'add'" class="text-emerald-400 select-none mr-1">+</span>
-                      <span v-else class="opacity-0 select-none mr-1">·</span>
+                      <span v-if="row.rightLine?.type === 'add'" class="text-emerald-400 select-none mr-1">+</span>
+                      <span v-else-if="row.rightLine?.type === 'context'" class="opacity-0 select-none mr-1">·</span>
+                      <span v-else class="select-none mr-1">&nbsp;</span>
                       <code
-                        v-if="line.type !== 'delete'"
-                        :class="line.type === 'add' ? 'diff-line-added' : 'diff-line-default'"
+                        v-if="row.rightLine && row.rightLine.type !== 'spacer'"
+                        :class="row.rightLine.type === 'add' ? 'diff-line-added' : 'diff-line-default'"
                         style="white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;"
-                        v-html="highlightSyntax(line.content)"
+                        v-html="renderAlignedLineContent(row.rightLine)"
                       />
                     </td>
                   </tr>
 
                   <!-- Comments for Left Side (Old Code) -->
-                  <tr v-if="line.type === 'delete' && (getCommentsForLine(line.oldLineNumber, 'left').length > 0 || (commentingLine === line.oldLineNumber && getCommentsForLine(line.oldLineNumber, 'left').length >= 0))">
+                  <tr v-if="row.leftLine?.type === 'delete' && (getCommentsForLine(row.leftLine.lineNumber, 'left').length > 0 || (commentingLine === row.leftLine.lineNumber && getCommentsForLine(row.leftLine.lineNumber, 'left').length >= 0))">
                     <td colspan="2" class="p-0 bg-gradient-to-b from-slate-900/50 to-slate-950/30 border-t border-slate-700/20">
-                      <div v-if="getCommentsForLine(line.oldLineNumber, 'left').length > 0" class="p-4 space-y-4">
+                      <div v-if="getCommentsForLine(row.leftLine.lineNumber, 'left').length > 0" class="p-4 space-y-4">
                          <!-- Comment Threads -->
                         <div
-                          v-for="[threadId, comments] in getCommentsGroupedByThread(line.oldLineNumber, 'left')"
+                          v-for="[threadId, comments] in getCommentsGroupedByThread(row.leftLine.lineNumber, 'left')"
                           :key="threadId || 'standalone-' + comments[0]?.id"
                           class="border border-slate-700/30 rounded-xl overflow-hidden"
                           :class="{ 'opacity-50': threadId && getThreadInfo(threadId)?.isResolved && !expandedThreads.has(getThreadInfo(threadId)?.gitHubId || '') }"
@@ -310,7 +313,7 @@
                         </div>
                       </div>
                       <!-- New Comment Form for Left Side -->
-                      <div v-if="commentingLine === line.oldLineNumber" class="p-4 border-t border-slate-700/20">
+                      <div v-if="commentingLine === row.leftLine.lineNumber" class="p-4 border-t border-slate-700/20">
                         <RichTextEditor
                           v-model="newCommentText"
                           ref="newCommentEditorRef"
@@ -341,13 +344,13 @@
                   </tr>
 
                   <!-- Comments for Right Side (New Code) -->
-                  <tr v-if="line.type !== 'delete' && (getCommentsForLine(line.newLineNumber, 'right').length > 0 || (commentingLine === line.newLineNumber))">
+                  <tr v-if="row.rightLine && row.rightLine.type !== 'spacer' && (getCommentsForLine(row.rightLine.lineNumber, 'right').length > 0 || (commentingLine === row.rightLine.lineNumber))">
                     <td colspan="3" class="p-0 bg-slate-950/30"></td>
                     <td colspan="2" class="p-0 bg-gradient-to-b from-slate-900/50 to-slate-950/30 border-t border-slate-700/20">
-                      <div v-if="getCommentsForLine(line.newLineNumber, 'right').length > 0" class="p-4 space-y-4">
+                      <div v-if="getCommentsForLine(row.rightLine.lineNumber, 'right').length > 0" class="p-4 space-y-4">
                          <!-- Comment Threads -->
                         <div
-                          v-for="[threadId, comments] in getCommentsGroupedByThread(line.newLineNumber, 'right')"
+                          v-for="[threadId, comments] in getCommentsGroupedByThread(row.rightLine.lineNumber, 'right')"
                           :key="threadId || 'standalone-' + comments[0]?.id"
                           class="border border-slate-700/30 rounded-xl overflow-hidden"
                           :class="{ 'opacity-50': threadId && getThreadInfo(threadId)?.isResolved && !expandedThreads.has(getThreadInfo(threadId)?.gitHubId || '') }"
@@ -492,7 +495,7 @@
                         </div>
                       </div>
                       <!-- New Comment Form for Right Side -->
-                      <div v-if="commentingLine === line.newLineNumber" class="p-4 border-t border-slate-700/20">
+                      <div v-if="commentingLine === row.rightLine.lineNumber" class="p-4 border-t border-slate-700/20">
                         <RichTextEditor
                           v-model="newCommentText"
                           ref="newCommentEditorRef"
@@ -543,8 +546,8 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, watch } from 'vue';
-import type { FileDiff, Comment, ReviewThread } from '../types';
-import { parsePatch } from '../utils/diffHelpers';
+import type { FileDiff, Comment, ReviewThread, DiffHunk, AlignedRow, AlignedLine } from '../types';
+import { parsePatch, alignDiffLines, renderInlineDiffSegments } from '../utils/diffHelpers';
 import { highlightCode, detectLanguageFromPath } from '../utils/syntaxHighlight';
 import { useUserPreferences } from '../composables/useUserPreferences';
 import RichTextEditor from './RichTextEditor.vue';
@@ -580,7 +583,7 @@ watch(() => [props.file.viewedState, props.file.viewed] as const, ([newViewedSta
   expanded.value = newViewedState !== 'VIEWED' && newViewed !== true;
 }, { deep: true, immediate: true });
  const loading = ref(false);
-const hunks = ref<any[]>([]);
+const hunks = ref<DiffHunk[]>([]);
 const commentingLine = ref<number | null>(null);
 const lineRefs = ref<Map<number, HTMLElement>>(new Map());
 const language = ref(props.file.path ? detectLanguageFromPath(props.file.path) : 'text');
@@ -595,6 +598,30 @@ const resolvingThreads = ref<Set<string>>(new Set());
 const newCommentText = ref('');
 const commentError = ref('');
 const newCommentEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(null);
+
+// Cache for aligned rows per hunk
+const alignedRowsCache = ref<Map<number, AlignedRow[]>>(new Map());
+
+// Get aligned rows for a hunk (with caching)
+const getAlignedRows = (hunk: DiffHunk, hunkIndex: number): AlignedRow[] => {
+  if (alignedRowsCache.value.has(hunkIndex)) {
+    return alignedRowsCache.value.get(hunkIndex)!;
+  }
+  const rows = alignDiffLines(hunk.lines);
+  alignedRowsCache.value.set(hunkIndex, rows);
+  return rows;
+};
+
+// Render line content with inline diff highlighting when available
+const renderAlignedLineContent = (line: AlignedLine | undefined): string => {
+  if (!line || line.type === 'spacer') {
+    return '';
+  }
+  if (line.inlineDiff && line.inlineDiff.length > 0) {
+    return renderInlineDiffSegments(line.inlineDiff);
+  }
+  return highlightSyntax(line.content);
+};
 
 
 const loadHunks = async () => {
@@ -623,6 +650,11 @@ watch(expanded, (newValue) => {
   }
 });
 
+// Clear cache when hunks change
+watch(hunks, () => {
+  alignedRowsCache.value.clear();
+}, { deep: true });
+
 const viewMode = computed(() => preferences.value.diffViewMode);
 
 const fileComments = computed(() =>
@@ -646,39 +678,6 @@ const toggleViewed = (event: Event) => {
       props.onToggleViewed(props.file.path, newViewed);
     }
   }
-};
-
-const getVisibleLines = (lines: any[]) => {
-  if (preferences.value.showContext) return lines;
-
-  const result: any[] = [];
-  const contextLines = 5;
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const isEmptyLine = !line.content || line.content.trim() === '';
-
-    if (line.type !== 'context') {
-      if (!isEmptyLine) {
-        result.push(line);
-      }
-      continue;
-    }
-
-    let hasNearbyChange = false;
-    for (let j = Math.max(0, i - contextLines); j <= Math.min(lines.length - 1, i + contextLines); j++) {
-      if (lines[j].type !== 'context') {
-        hasNearbyChange = true;
-        break;
-      }
-    }
-
-    if (hasNearbyChange && !isEmptyLine) {
-      result.push(line);
-    }
-  }
-
-  return result;
 };
 
 const highlightSyntax = (code: string): string => {

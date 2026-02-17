@@ -165,6 +165,23 @@ export interface DiffLine {
   hasComment?: boolean;
 }
 
+export interface InlineDiffSegment {
+  type: 'add' | 'delete' | 'equal';
+  content: string;
+}
+
+export interface AlignedLine {
+  type: 'delete' | 'add' | 'context' | 'spacer';
+  content: string;
+  lineNumber?: number;
+  inlineDiff?: InlineDiffSegment[];
+}
+
+export interface AlignedRow {
+  leftLine?: AlignedLine;
+  rightLine?: AlignedLine;
+}
+
 export interface CheckRun {
   id: number;
   gitHubId: string;
@@ -185,6 +202,8 @@ export interface PRDetail extends PullRequest {
   mergeableState?: string;
   checkRuns?: CheckRun[];
   viewedFiles?: string[];
+  isMerged: boolean;
+  mergedAt?: string;
 }
 
 export interface UserPreferences {
