@@ -19,7 +19,10 @@ public interface IGitHubGraphQLService
     Task<bool> UnresolveReviewThreadAsync(string organization, string repository, string threadId, string accessToken);
     Task<(string? OverallStatus, List<GitHubCheckRunData> CheckRuns)> GetCheckStatusAsync(string organization, string repository, long pullRequestNumber, string accessToken);
     Task<bool> ConvertPullRequestToReadyForReviewAsync(string organization, string repository, long pullRequestNumber, string accessToken);
+    Task<string?> GetFileContentAsync(string organization, string repository, string branch, string path, string accessToken);
 }
+
+public record FileLineContent(int LineNumber, string Content);
 
 public class GitHubGraphQLService : IGitHubGraphQLService
 {
@@ -526,6 +529,69 @@ public class GitHubGraphQLService : IGitHubGraphQLService
         {
             _logger.LogError(ex, "Error publishing draft PR {Organization}/{Repository}#{PullRequestNumber}", organization, repository, pullRequestNumber);
             throw;
+        }
+    }
+
+    public async Task<string?> GetFileContentAsync(string organization, string repository, string branch, string path, string accessToken)
+    {
+        try
+        {
+            using var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {accessToken}");
+            httpClient.DefaultRequestHeaders.Add("User-Agent", "Graphite-PR-Dashboard");
+
+            var escapedPath = path.Replace("\\", "\\\\").Replace("\"", "\\\"");
+            var expression = $"{branch}:{escapedPath}";
+
+            var query = new
+            {
+                query = $@"
+                    query {{
+                        repository(owner: ""{organization}"", name: ""{repository}"") {{
+                            object(expression: ""{expression}"") {{
+                                ... on Blob {{
+                                    text
+                                }}
+                            }}
+                        }}
+                    }}
+                "
+            };
+
+            var content = new StringContent(System.Text.Json.JsonSerializer.Serialize(query), Encoding.UTF8, "application/json");
+            var response = await httpClient.PostAsync("https://api.github.com/graphql", content);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                _logger.LogError("GraphQL request failed with status {StatusCode}: {Response}", response.StatusCode, errorContent);
+                return null;
+            }
+
+            var responseContent = await response.Content.ReadAsStringAsync();
+            var jsonResponse = JsonDocument.Parse(responseContent);
+
+            if (jsonResponse.RootElement.TryGetProperty("errors", out var errors))
+            {
+                var errorMessage = errors[0].GetProperty("message").GetString();
+                _logger.LogError("GraphQL query error: {Error}", errorMessage);
+                return null;
+            }
+
+            if (jsonResponse.RootElement.TryGetProperty("data", out var data) &&
+                data.TryGetProperty("repository", out var repoData) &&
+                repoData.TryGetProperty("object", out var objectData) &&
+                objectData.ValueKind != JsonValueKind.Null)
+            {
+                return objectData.GetProperty("text").GetString();
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching file content for {Organization}/{Repository}/{Path}@{Branch}", organization, repository, path, branch);
+            return null;
         }
     }
 }

@@ -84,6 +84,28 @@
               <col style="width: calc(50% - 59px);">
             </colgroup>
             <tbody>
+              <template v-if="hunks.length > 0">
+                <!-- Expand Before First Hunk -->
+                <tr v-if="canExpandBefore && fileContent" class="bg-slate-900/50">
+                  <td colspan="5" class="px-4 py-2">
+                    <button
+                      @click="handleExpand('before')"
+                      :disabled="expandingPositions.has('before-0')"
+                      class="flex items-center justify-center gap-2 w-full py-1.5 text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 rounded transition-colors disabled:opacity-50"
+                    >
+                      <svg v-if="!expandingPositions.has('before-0')" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                      </svg>
+                      <svg v-else class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                      </svg>
+                      <span>Expand up to 25 lines</span>
+                    </button>
+                  </td>
+                </tr>
+              </template>
+
               <template v-for="(hunk, hunkIndex) in hunks" :key="hunkIndex">
                 <!-- Hunk Header -->
                 <tr class="bg-gradient-to-r from-slate-800/40 to-slate-800/30 border-y border-slate-700/30">
@@ -524,6 +546,50 @@
                     </td>
                   </tr>
                 </template>
+
+                <!-- Expand Between Hunks -->
+                <template v-if="hunkIndex < hunks.length - 1 && getGapInfo(hunkIndex) && fileContent">
+                  <tr class="bg-slate-900/50">
+                    <td colspan="5" class="px-4 py-2">
+                      <button
+                        @click="handleExpand('between', hunkIndex)"
+                        :disabled="expandingPositions.has(`between-${hunkIndex}`)"
+                        class="flex items-center justify-center gap-2 w-full py-1.5 text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 rounded transition-colors disabled:opacity-50"
+                      >
+                        <svg v-if="!expandingPositions.has(`between-${hunkIndex}`)" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                        </svg>
+                        <svg v-else class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                        <span>Expand {{ getGapInfo(hunkIndex)?.oldLineCount ?? getGapInfo(hunkIndex)?.newLineCount ?? 0 }} lines</span>
+                      </button>
+                    </td>
+                  </tr>
+                </template>
+              </template>
+
+              <!-- Expand After Last Hunk -->
+              <template v-if="hunks.length > 0 && canExpandAfter && fileContent">
+                <tr class="bg-slate-900/50">
+                  <td colspan="5" class="px-4 py-2">
+                    <button
+                      @click="handleExpand('after')"
+                      :disabled="expandingPositions.has('after-0')"
+                      class="flex items-center justify-center gap-2 w-full py-1.5 text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 rounded transition-colors disabled:opacity-50"
+                    >
+                      <svg v-if="!expandingPositions.has('after-0')" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                      <svg v-else class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                      </svg>
+                      <span>Expand up to 25 lines</span>
+                    </button>
+                  </td>
+                </tr>
               </template>
             </tbody>
           </table>
@@ -546,10 +612,11 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, watch } from 'vue';
-import type { FileDiff, Comment, ReviewThread, DiffHunk, AlignedRow, AlignedLine } from '../types';
-import { parsePatch, alignDiffLines, renderInlineDiffSegments } from '../utils/diffHelpers';
+import type { FileDiff, Comment, ReviewThread, DiffHunk, AlignedRow, AlignedLine, ExpandPosition } from '../types';
+import { parsePatch, alignDiffLines, renderInlineDiffSegments, calculateExpandRange, getGapBetweenHunks, mergeExpandedLines } from '../utils/diffHelpers';
 import { highlightCode, detectLanguageFromPath } from '../utils/syntaxHighlight';
 import { useUserPreferences } from '../composables/useUserPreferences';
+import { useFileContent } from '../composables/useFileContent';
 import RichTextEditor from './RichTextEditor.vue';
 
 const props = defineProps<{
@@ -562,6 +629,7 @@ const props = defineProps<{
   initialExpanded?: boolean;
   viewed?: boolean;
   onToggleViewed?: (path: string, viewed: boolean) => void;
+  prId?: number;
 }>();
 
 const emit = defineEmits<{
@@ -584,6 +652,9 @@ watch(() => [props.file.viewedState, props.file.viewed] as const, ([newViewedSta
 }, { deep: true, immediate: true });
  const loading = ref(false);
 const hunks = ref<DiffHunk[]>([]);
+const expandedBefore = ref(false);
+const expandedAfter = ref(false);
+const expandingPositions = ref<Set<string>>(new Set());
 const commentingLine = ref<number | null>(null);
 const lineRefs = ref<Map<number, HTMLElement>>(new Map());
 const language = ref(props.file.path ? detectLanguageFromPath(props.file.path) : 'text');
@@ -598,6 +669,19 @@ const resolvingThreads = ref<Set<string>>(new Set());
 const newCommentText = ref('');
 const commentError = ref('');
 const newCommentEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(null);
+
+const fileContent = props.prId ? useFileContent(props.prId) : null;
+
+const canExpandBefore = computed(() => {
+  if (hunks.value.length === 0 || expandedBefore.value) return false;
+  const firstHunk = hunks.value[0];
+  return firstHunk.oldStart > 1 || firstHunk.newStart > 1;
+});
+
+const canExpandAfter = computed(() => {
+  if (hunks.value.length === 0 || expandedAfter.value) return false;
+  return true;
+});
 
 // Cache for aligned rows per hunk
 const alignedRowsCache = ref<Map<number, AlignedRow[]>>(new Map());
@@ -918,6 +1002,56 @@ const toggleThreadExpanded = (threadId: number | null) => {
   } else {
     expandedThreads.value.add(threadNodeId);
   }
+};
+
+const handleExpand = async (position: ExpandPosition, hunkIndex?: number) => {
+  if (!fileContent || !props.file.path) return;
+
+  const index = hunkIndex ?? 0;
+  const positionKey = `${position}-${index}`;
+  
+  if (expandingPositions.value.has(positionKey)) return;
+  expandingPositions.value.add(positionKey);
+
+  try {
+    const range = calculateExpandRange(hunks.value, position, index, 25);
+    
+    if (!range.oldStart && !range.newStart) {
+      return;
+    }
+
+    const response = await fileContent.fetchFileContent(
+      props.file.path,
+      range.oldStart,
+      range.oldEnd,
+      range.newStart,
+      range.newEnd
+    );
+
+    if (response) {
+      hunks.value = mergeExpandedLines(
+        hunks.value,
+        response.oldLines,
+        response.newLines,
+        position,
+        index
+      );
+
+      if (position === 'before') {
+        expandedBefore.value = true;
+      } else if (position === 'after') {
+        expandedAfter.value = true;
+      }
+
+      alignedRowsCache.value.clear();
+    }
+  } finally {
+    expandingPositions.value.delete(positionKey);
+  }
+};
+
+const getGapInfo = (hunkIndex: number) => {
+  return getGapBetweenHunks(hunks.value, hunkIndex);
 };
 
 

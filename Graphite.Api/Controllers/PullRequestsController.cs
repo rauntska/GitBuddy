@@ -12,7 +12,11 @@ namespace Graphite.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class PullRequestsController(ICacheService cacheService, AppDbContext context, IGitHubService gitHubService)
+public class PullRequestsController(
+    ICacheService cacheService, 
+    AppDbContext context, 
+    IGitHubService gitHubService,
+    IGitHubGraphQLService gitHubGraphQLService)
     : ControllerBase
 {
     [HttpGet]
@@ -820,5 +824,105 @@ public class PullRequestsController(ICacheService cacheService, AppDbContext con
         {
             return StatusCode(500, new { message = "Failed to fetch file viewed states", error = ex.Message });
         }
+    }
+
+    [HttpGet("{id}/files/content")]
+    [Authorize]
+    public async Task<IActionResult> GetFileContent(
+        int id,
+        [FromQuery] string path,
+        [FromQuery] int? oldStartLine,
+        [FromQuery] int? oldEndLine,
+        [FromQuery] int? newStartLine,
+        [FromQuery] int? newEndLine)
+    {
+        var userIdClaim = User.FindFirst("UserId")?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized(new { message = "User not authenticated" });
+        }
+
+        var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null || string.IsNullOrEmpty(user.AccessToken))
+        {
+            return Unauthorized(new { message = "User token not available" });
+        }
+
+        var pr = await context.PullRequests.FindAsync(id);
+        if (pr == null)
+        {
+            return NotFound(new { message = "Pull request not found" });
+        }
+
+        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
+        if (config == null)
+        {
+            return BadRequest(new { message = "GitHub configuration not found" });
+        }
+
+        try
+        {
+            var oldLines = new List<FileLineContent>();
+            var newLines = new List<FileLineContent>();
+
+            if (oldStartLine.HasValue && oldEndLine.HasValue && !string.IsNullOrEmpty(pr.TargetBranch))
+            {
+                var oldContent = await gitHubGraphQLService.GetFileContentAsync(
+                    config.Organization,
+                    pr.Repository,
+                    pr.TargetBranch,
+                    path,
+                    user.AccessToken
+                );
+
+                if (oldContent != null)
+                {
+                    oldLines = ExtractLines(oldContent, oldStartLine.Value, oldEndLine.Value);
+                }
+            }
+
+            if (newStartLine.HasValue && newEndLine.HasValue && !string.IsNullOrEmpty(pr.SourceBranch))
+            {
+                var newContent = await gitHubGraphQLService.GetFileContentAsync(
+                    config.Organization,
+                    pr.Repository,
+                    pr.SourceBranch,
+                    path,
+                    user.AccessToken
+                );
+
+                if (newContent != null)
+                {
+                    newLines = ExtractLines(newContent, newStartLine.Value, newEndLine.Value);
+                }
+            }
+
+            return Ok(new
+            {
+                oldLines = oldLines.Select(l => new { lineNumber = l.LineNumber, content = l.Content }),
+                newLines = newLines.Select(l => new { lineNumber = l.LineNumber, content = l.Content })
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to fetch file content", error = ex.Message });
+        }
+    }
+
+    private static List<FileLineContent> ExtractLines(string content, int startLine, int endLine)
+    {
+        var lines = content.Split('\n');
+        var result = new List<FileLineContent>();
+
+        for (int i = startLine; i <= endLine && i <= lines.Length; i++)
+        {
+            var lineIndex = i - 1;
+            if (lineIndex >= 0 && lineIndex < lines.Length)
+            {
+                result.Add(new FileLineContent(i, lines[lineIndex].TrimEnd('\r')));
+            }
+        }
+
+        return result;
     }
 }

@@ -276,3 +276,22 @@ export interface KeyboardShortcuts {
   nextComment: string;
   previousComment: string;
 }
+
+export interface FileLineContent {
+  lineNumber: number;
+  content: string;
+}
+
+export interface FileContentResponse {
+  oldLines: FileLineContent[];
+  newLines: FileLineContent[];
+}
+
+export interface ExpandRange {
+  oldStart: number;
+  oldEnd: number;
+  newStart: number;
+  newEnd: number;
+}
+
+export type ExpandPosition = 'before' | 'after' | 'between';

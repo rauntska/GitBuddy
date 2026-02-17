@@ -472,6 +472,7 @@
                   :on-resolve-thread="(threadId: string, resolved: boolean) => handleResolveThread(threadId, resolved)"
                   :on-toggle-viewed="handleToggleViewed"
                   :initial-expanded="!isFileViewed(file.path!)"
+                  :pr-id="prDetail.id"
                   class="mb-4"
                 />
           </div>
