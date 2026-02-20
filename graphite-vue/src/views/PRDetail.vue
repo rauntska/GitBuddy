@@ -479,10 +479,13 @@
                   :comments="prDetail.allComments"
                   :review-threads="prDetail.reviewThreads"
                   :pending-review-comments="prDetail.pendingReview?.comments"
+                  :current-username="authStore.username"
                   :on-add-comment="(line: number, body: string) => handleAddComment(file.path!, line, body)"
                   :on-delete-pending-comment="handleDeletePendingComment"
                   :on-reply-to-thread="(threadId: string, line: number, body: string) => handleReplyToThread(threadId, line, body)"
                   :on-resolve-thread="(threadId: string, resolved: boolean) => handleResolveThread(threadId, resolved)"
+                  :on-edit-comment="editComment"
+                  :on-delete-comment="deleteComment"
                   :on-toggle-viewed="handleToggleViewed"
                   :initial-expanded="!isFileViewed(file.path!)"
                   :pr-id="prDetail.id"
@@ -706,6 +709,8 @@ const {
   publishDraftPR,
   toggleCommentsPanel,
   toggleFileTree,
+  editComment,
+  deleteComment,
 } = usePRDetail();
 
 const { preferences, loadPreferences, setFileTreeWidth, setCommentsPanelWidth, updatePreferences, setDiffViewMode, setShowContext } = useUserPreferences();

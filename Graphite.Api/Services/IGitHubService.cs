@@ -30,6 +30,8 @@ public interface IGitHubService
     Task<bool> DeletePendingReviewCommentAsync(string organization, string repository, string commentId, string userAccessToken);
     Task<bool> SubmitPendingReviewAsync(string organization, string repository, string reviewId, string state, string? body, string userAccessToken);
     Task<bool> DeletePendingReviewAsync(string organization, string repository, string reviewId, string userAccessToken);
+    Task<bool> UpdateReviewCommentAsync(string organization, string repository, long commentId, string body, string userAccessToken);
+    Task<bool> DeleteReviewCommentAsync(string organization, string repository, long commentId, string userAccessToken);
 }
 
 public record GitHubPRData(

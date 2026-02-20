@@ -494,4 +494,14 @@ public class GitHubService(
     {
         return await graphQlService.DeletePendingReviewAsync(organization, repository, reviewId, userAccessToken);
     }
+
+    public async Task<bool> UpdateReviewCommentAsync(string organization, string repository, long commentId, string body, string userAccessToken)
+    {
+        return await graphQlService.UpdateReviewCommentAsync(organization, repository, commentId, body, userAccessToken);
+    }
+
+    public async Task<bool> DeleteReviewCommentAsync(string organization, string repository, long commentId, string userAccessToken)
+    {
+        return await graphQlService.DeleteReviewCommentAsync(organization, repository, commentId, userAccessToken);
+    }
 }

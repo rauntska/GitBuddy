@@ -16,15 +16,18 @@ public class CommentsController : ControllerBase
     private readonly AppDbContext _context;
     private readonly IUserService _userService;
     private readonly INotificationService _notificationService;
+    private readonly IGitHubService _gitHubService;
 
     public CommentsController(
         AppDbContext context,
         IUserService userService,
-        INotificationService notificationService)
+        INotificationService notificationService,
+        IGitHubService gitHubService)
     {
         _context = context;
         _userService = userService;
         _notificationService = notificationService;
+        _gitHubService = gitHubService;
     }
 
     [HttpPut("{commentId}")]
@@ -43,6 +46,35 @@ public class CommentsController : ControllerBase
         // Only allow author to edit
         if (comment.Author != currentUser.Username)
             return Forbid();
+
+        // Update on GitHub if we have the GitHub ID and user's access token
+        if (comment.GitHubId > 0 && !string.IsNullOrEmpty(currentUser.AccessToken))
+        {
+            var pr = await _context.PullRequests
+                .FirstOrDefaultAsync(p => p.Id == comment.PullRequestId);
+            
+            if (pr != null)
+            {
+                var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
+                if (config != null)
+                {
+                    try
+                    {
+                        await _gitHubService.UpdateReviewCommentAsync(
+                            config.Organization,
+                            pr.Repository,
+                            comment.GitHubId,
+                            dto.Body,
+                            currentUser.AccessToken
+                        );
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Warning: Failed to update comment on GitHub: {ex.Message}");
+                    }
+                }
+            }
+        }
 
         comment.Body = dto.Body;
         comment.EditedAt = DateTime.UtcNow;
@@ -67,6 +99,34 @@ public class CommentsController : ControllerBase
 
         if (comment.Author != currentUser.Username)
             return Forbid();
+
+        // Delete from GitHub if we have the GitHub ID and user's access token
+        if (comment.GitHubId > 0 && !string.IsNullOrEmpty(currentUser.AccessToken))
+        {
+            var pr = await _context.PullRequests
+                .FirstOrDefaultAsync(p => p.Id == comment.PullRequestId);
+            
+            if (pr != null)
+            {
+                var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
+                if (config != null)
+                {
+                    try
+                    {
+                        await _gitHubService.DeleteReviewCommentAsync(
+                            config.Organization,
+                            pr.Repository,
+                            comment.GitHubId,
+                            currentUser.AccessToken
+                        );
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Warning: Failed to delete comment from GitHub: {ex.Message}");
+                    }
+                }
+            }
+        }
 
         _context.Comments.Remove(comment);
         await _context.SaveChangesAsync();

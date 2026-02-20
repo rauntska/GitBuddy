@@ -531,8 +531,59 @@
                                 <div class="flex items-center gap-2 mb-1">
                                   <span class="font-medium text-slate-200">{{ comment.author }}</span>
                                   <span class="text-xs text-slate-500">{{ formatRelativeTime(comment.createdAt) }}</span>
+                                  <!-- Edit/Delete buttons for own comments -->
+                                  <template v-if="isOwnComment(comment) && editingCommentId !== comment.id && replyingToCommentId !== comment.id">
+                                    <button
+                                      @click="startEditComment(comment.id, comment.body)"
+                                      class="p-1 text-slate-500 hover:text-slate-300 hover:bg-slate-700/50 rounded transition-colors"
+                                      title="Edit comment"
+                                    >
+                                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                      </svg>
+                                    </button>
+                                    <button
+                                      @click="handleDeleteComment(comment.id)"
+                                      :disabled="deletingCommentId === comment.id"
+                                      class="p-1 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-colors disabled:opacity-50"
+                                      title="Delete comment"
+                                    >
+                                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                      </svg>
+                                    </button>
+                                  </template>
                                 </div>
-                                <p class="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{{ comment.body }}</p>
+
+                                <!-- Edit Form -->
+                                <div v-if="editingCommentId === comment.id" class="mt-2">
+                                  <RichTextEditor
+                                    v-model="editText"
+                                    ref="editEditorRef"
+                                    placeholder="Edit your comment..."
+                                    :min-height="80"
+                                    @save="submitEdit"
+                                    @cancel="cancelEdit"
+                                  />
+                                  <div class="flex gap-2 justify-end mt-3">
+                                    <button
+                                      @click="cancelEdit"
+                                      class="px-4 py-2 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-xs text-slate-200 transition-all duration-200 border border-slate-600/50 hover:border-slate-500/50"
+                                    >
+                                      Cancel
+                                    </button>
+                                    <button
+                                      @click="submitEdit"
+                                      :disabled="!editText.trim()"
+                                      class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-xs text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30"
+                                    >
+                                      Save
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <!-- Comment Body (when not editing) -->
+                                <p v-else class="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{{ comment.body }}</p>
 
                                 <!-- Reply Form -->
                                 <div v-if="replyingToCommentId === comment.id" class="mt-3">
@@ -564,7 +615,7 @@
 
                                 <!-- Reply Button (only on last comment) -->
                                 <div
-                                  v-if="isLastCommentInThread(threadId, comments.map(c => c.id)) && index === comments.length - 1 && replyingToCommentId !== comment.id"
+                                  v-if="isLastCommentInThread(threadId, comments.map(c => c.id)) && index === comments.length - 1 && replyingToCommentId !== comment.id && editingCommentId !== comment.id"
                                   class="flex-shrink-0 mt-2"
                                 >
                                   <button

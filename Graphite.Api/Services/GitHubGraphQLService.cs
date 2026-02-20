@@ -26,6 +26,8 @@ public interface IGitHubGraphQLService
     Task<bool> DeletePendingReviewCommentAsync(string organization, string repository, string commentId, string accessToken);
     Task<bool> SubmitPendingReviewAsync(string organization, string repository, string reviewId, string state, string? body, string accessToken);
     Task<bool> DeletePendingReviewAsync(string organization, string repository, string reviewId, string accessToken);
+    Task<bool> UpdateReviewCommentAsync(string organization, string repository, long commentId, string body, string accessToken);
+    Task<bool> DeleteReviewCommentAsync(string organization, string repository, long commentId, string accessToken);
 }
 
 public record FileLineContent(int LineNumber, string Content);
@@ -1196,6 +1198,65 @@ public class GitHubGraphQLService : IGitHubGraphQLService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error deleting pending review {ReviewId} for {Organization}/{Repository}", reviewId, organization, repository);
+            throw;
+        }
+    }
+
+    public async Task<bool> UpdateReviewCommentAsync(string organization, string repository, long commentId, string body, string accessToken)
+    {
+        try
+        {
+            using var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {accessToken}");
+            httpClient.DefaultRequestHeaders.Add("User-Agent", "Graphite-PR-Dashboard");
+            httpClient.DefaultRequestHeaders.Add("Accept", "application/vnd.github+json");
+
+            var payload = new { body };
+            var content = new StringContent(System.Text.Json.JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+            
+            var response = await httpClient.PatchAsync($"https://api.github.com/repos/{organization}/{repository}/pulls/comments/{commentId}", content);
+            var responseString = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError("GitHub REST API error updating comment: {StatusCode} - {Response}", response.StatusCode, responseString);
+                throw new Exception($"GitHub API error: {response.StatusCode}");
+            }
+
+            _logger.LogInformation("Successfully updated review comment {CommentId} for {Organization}/{Repository}", commentId, organization, repository);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating review comment {CommentId} for {Organization}/{Repository}", commentId, organization, repository);
+            throw;
+        }
+    }
+
+    public async Task<bool> DeleteReviewCommentAsync(string organization, string repository, long commentId, string accessToken)
+    {
+        try
+        {
+            using var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {accessToken}");
+            httpClient.DefaultRequestHeaders.Add("User-Agent", "Graphite-PR-Dashboard");
+            httpClient.DefaultRequestHeaders.Add("Accept", "application/vnd.github+json");
+
+            var response = await httpClient.DeleteAsync($"https://api.github.com/repos/{organization}/{repository}/pulls/comments/{commentId}");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var responseString = await response.Content.ReadAsStringAsync();
+                _logger.LogError("GitHub REST API error deleting comment: {StatusCode} - {Response}", response.StatusCode, responseString);
+                throw new Exception($"GitHub API error: {response.StatusCode}");
+            }
+
+            _logger.LogInformation("Successfully deleted review comment {CommentId} for {Organization}/{Repository}", commentId, organization, repository);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting review comment {CommentId} for {Organization}/{Repository}", commentId, organization, repository);
             throw;
         }
     }

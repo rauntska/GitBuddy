@@ -292,6 +292,42 @@ export function usePRDetail() {
     await setFileTreeVisible(!preferences.value.fileTreeVisible);
   };
 
+  const editComment = async (commentId: number, body: string): Promise<boolean> => {
+    try {
+      await apiService.updateComment(commentId, body);
+      
+      if (prDetail.value) {
+        const comment = prDetail.value.allComments.find(c => c.id === commentId);
+        if (comment) {
+          comment.body = body;
+          comment.updatedAt = new Date().toISOString();
+        }
+      }
+      
+      return true;
+    } catch (err: any) {
+      error.value = err.response?.data?.message || 'Failed to edit comment';
+      console.error('Error editing comment:', err);
+      return false;
+    }
+  };
+
+  const deleteComment = async (commentId: number): Promise<boolean> => {
+    try {
+      await apiService.deleteComment(commentId);
+      
+      if (prDetail.value) {
+        prDetail.value.allComments = prDetail.value.allComments.filter(c => c.id !== commentId);
+      }
+      
+      return true;
+    } catch (err: any) {
+      error.value = err.response?.data?.message || 'Failed to delete comment';
+      console.error('Error deleting comment:', err);
+      return false;
+    }
+  };
+
   return {
     prDetail,
     loading,
@@ -311,5 +347,7 @@ export function usePRDetail() {
     publishDraftPR,
     toggleCommentsPanel,
     toggleFileTree,
+    editComment,
+    deleteComment,
   };
 }
