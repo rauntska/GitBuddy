@@ -22,6 +22,8 @@ public class AppDbContext : DbContext
     public DbSet<CommentReaction> CommentReactions { get; set; }
     public DbSet<CommentDraft> CommentDrafts { get; set; }
     public DbSet<CommentTemplate> CommentTemplates { get; set; }
+    public DbSet<PendingReview> PendingReviews { get; set; }
+    public DbSet<PendingComment> PendingComments { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -226,6 +228,35 @@ public class AppDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.CreatedByUserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PendingReview>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.PullRequestId, e.UserId }).IsUnique();
+            entity.HasIndex(e => e.GitHubReviewId);
+
+            entity.HasOne(e => e.PullRequest)
+                .WithMany()
+                .HasForeignKey(e => e.PullRequestId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(e => e.PendingComments)
+                .WithOne(pc => pc.PendingReview)
+                .HasForeignKey(pc => pc.PendingReviewId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PendingComment>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.PendingReviewId);
+            entity.HasIndex(e => new { e.PendingReviewId, e.Path, e.Line });
         });
     }
 }

@@ -270,9 +270,9 @@
                                 :class="{ 'w-6 h-6': index > 0 }"
                               />
                               <div class="flex-1 min-w-0">
-                                <div class="flex items-center gap-2 mb-2">
-                                  <span class="text-sm font-semibold text-slate-100">{{ comment.author }}</span>
-                                  <span class="text-xs text-slate-500">{{ formatRelativeTime(comment.createdAt) }}</span>
+                                <div class="flex items-center gap-2 mb-1">
+                                  <span class="text-sm font-medium text-slate-200">{{ comment.author }}</span>
+                                  <span class="text-xs text-slate-500">{{ formatTimeAgo(comment.createdAt) }}</span>
                                   <!-- Outdated Badge -->
                                   <span
                                     v-if="comment.isOutdated && !threadId"
@@ -280,10 +280,59 @@
                                   >
                                     Outdated
                                   </span>
+                                  <!-- Edit/Delete buttons for own comments -->
+                                  <template v-if="isOwnComment(comment) && editingCommentId !== comment.id && replyingToCommentId !== comment.id">
+                                    <button
+                                      @click="startEditComment(comment.id, comment.body)"
+                                      class="p-1 text-slate-500 hover:text-slate-300 hover:bg-slate-700/50 rounded transition-colors"
+                                      title="Edit comment"
+                                    >
+                                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                      </svg>
+                                    </button>
+                                    <button
+                                      @click="handleDeleteComment(comment.id)"
+                                      :disabled="deletingCommentId === comment.id"
+                                      class="p-1 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-colors disabled:opacity-50"
+                                      title="Delete comment"
+                                    >
+                                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                      </svg>
+                                    </button>
+                                  </template>
                                 </div>
 
-                                <!-- Comment Body -->
-                                <p class="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{{ comment.body }}</p>
+                                <!-- Edit Form -->
+                                <div v-if="editingCommentId === comment.id" class="mt-2">
+                                  <RichTextEditor
+                                    v-model="editText"
+                                    ref="editEditorRef"
+                                    placeholder="Edit your comment..."
+                                    :min-height="80"
+                                    @save="submitEdit"
+                                    @cancel="cancelEdit"
+                                  />
+                                  <div class="flex gap-2 justify-end mt-3">
+                                    <button
+                                      @click="cancelEdit"
+                                      class="px-4 py-2 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-xs text-slate-200 transition-all duration-200 border border-slate-600/50 hover:border-slate-500/50"
+                                    >
+                                      Cancel
+                                    </button>
+                                    <button
+                                      @click="submitEdit"
+                                      :disabled="!editText.trim()"
+                                      class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-xs text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30"
+                                    >
+                                      Save
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <!-- Comment Body (when not editing) -->
+                                <p v-else class="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{{ comment.body }}</p>
 
                                 <!-- Reply Form -->
                                 <div v-if="replyingToCommentId === comment.id" class="mt-3">
@@ -315,8 +364,8 @@
 
                                 <!-- Reply Button (only on last comment) -->
                                 <div
-                                  v-if="isLastCommentInThread(threadId, comments.map(c => c.id)) && index === comments.length - 1 && replyingToCommentId !== comment.id"
-                                  class="flex-shrink-0"
+                                  v-if="isLastCommentInThread(threadId, comments.map(c => c.id)) && index === comments.length - 1 && replyingToCommentId !== comment.id && editingCommentId !== comment.id"
+                                  class="flex-shrink-0 mt-2"
                                 >
                                   <button
                                     @click="startReplyToComment(comment.id, threadId)"
@@ -331,10 +380,44 @@
 
                               </div>
                             </div>
+                            
+                            <!-- Pending Replies for this thread -->
+                            <template v-if="threadId && getPendingRepliesForThread(getThreadInfo(threadId)?.gitHubId).length > 0">
+                              <div
+                                v-for="pendingReply in getPendingRepliesForThread(getThreadInfo(threadId)?.gitHubId)"
+                                :key="pendingReply.gitHubId"
+                                class="flex gap-3 relative ml-8 group"
+                              >
+                                <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-amber-500/30" style="margin-left: -2px;"></div>
+                                <img
+                                  v-if="pendingReply.authorAvatar"
+                                  :src="pendingReply.authorAvatar"
+                                  :alt="pendingReply.author"
+                                  class="w-6 h-6 rounded-full flex-shrink-0 ring-2 ring-amber-500/30 z-10 relative"
+                                />
+                                <div class="flex-1 min-w-0 bg-amber-500/5 border border-amber-500/20 rounded-lg p-3">
+                                  <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-sm font-medium text-amber-300">{{ pendingReply.author }}</span>
+                                    <span class="text-xs text-amber-500/60">{{ formatTimeAgo(pendingReply.createdAt) }}</span>
+                                    <span class="px-1.5 py-0.5 text-[10px] bg-amber-500/20 text-amber-400 rounded border border-amber-500/30">Pending</span>
+                                  </div>
+                                  <p class="text-sm text-slate-300 whitespace-pre-wrap">{{ pendingReply.body }}</p>
+                                </div>
+                                <button
+                                  @click="handleDeletePendingComment(pendingReply.gitHubId)"
+                                  class="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-rose-500/20 rounded-lg transition-all self-start"
+                                  title="Delete pending reply"
+                                >
+                                  <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </template>
                           </div>
                         </div>
                       </div>
-                      <!-- New Comment Form for Left Side -->
+                      <!-- New Comment Form for Left Side (deleted lines) -->
                       <div v-if="commentingLine === row.leftLine.lineNumber" class="p-4 border-t border-slate-700/20">
                         <RichTextEditor
                           v-model="newCommentText"
@@ -362,15 +445,14 @@
                         </div>
                       </div>
                     </td>
-                    <td colspan="3" class="p-0 bg-slate-950/30"></td>
                   </tr>
 
-                  <!-- Comments for Right Side (New Code) -->
-                  <tr v-if="row.rightLine && row.rightLine.type !== 'spacer' && (getCommentsForLine(row.rightLine.lineNumber, 'right').length > 0 || (commentingLine === row.rightLine.lineNumber))">
-                    <td colspan="3" class="p-0 bg-slate-950/30"></td>
-                    <td colspan="2" class="p-0 bg-gradient-to-b from-slate-900/50 to-slate-950/30 border-t border-slate-700/20">
+                  <!-- Comments for Right Side (New Code - Add/Context lines) -->
+                  <tr v-if="row.rightLine?.lineNumber && row.leftLine?.type !== 'delete' && (getCommentsForLine(row.rightLine.lineNumber, 'right').length > 0 || commentingLine === row.rightLine.lineNumber || getPendingCommentsForLine(row.rightLine.lineNumber).length > 0)">
+                    <td colspan="2" class="p-0"></td>
+                    <td colspan="3" class="p-0 bg-gradient-to-b from-slate-900/50 to-slate-950/30 border-t border-slate-700/20">
+                      <!-- Existing Comments -->
                       <div v-if="getCommentsForLine(row.rightLine.lineNumber, 'right').length > 0" class="p-4 space-y-4">
-                         <!-- Comment Threads -->
                         <div
                           v-for="[threadId, comments] in getCommentsGroupedByThread(row.rightLine.lineNumber, 'right')"
                           :key="threadId || 'standalone-' + comments[0]?.id"
@@ -428,43 +510,28 @@
                             </div>
                           </div>
 
-                           <!-- Comments in Thread -->
-                           <div v-if="!threadId || expandedThreads.has(getThreadInfo(threadId)?.gitHubId || '')" class="p-4 space-y-4">
-
+                            <!-- Comments in Thread -->
+                          <div v-if="!threadId || expandedThreads.has(getThreadInfo(threadId)?.gitHubId || '')" class="p-4 space-y-4">
                             <div
                               v-for="(comment, index) in comments"
                               :key="comment.id"
                               class="flex gap-3 relative"
                               :class="{ 'ml-8': index > 0 }"
                             >
-                              <!-- Thread Connector Line -->
-                              <div
-                                v-if="index > 0"
-                                class="absolute left-4 top-0 bottom-0 w-0.5 bg-slate-700/30"
-                                style="margin-left: -2px;"
-                              ></div>
-
                               <img
                                 v-if="comment.authorAvatar"
                                 :src="comment.authorAvatar"
                                 :alt="comment.author"
-                                class="w-8 h-8 rounded-full flex-shrink-0 ring-2 ring-slate-700/50 z-10 relative"
-                                :class="{ 'w-6 h-6': index > 0 }"
+                                class="w-8 h-8 rounded-full flex-shrink-0 ring-2 ring-slate-700"
                               />
+                              <div v-else class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center flex-shrink-0">
+                                <span class="text-sm font-medium text-slate-300">{{ comment.author?.charAt(0)?.toUpperCase() }}</span>
+                              </div>
                               <div class="flex-1 min-w-0">
-                                <div class="flex items-center gap-2 mb-2">
-                                  <span class="text-sm font-semibold text-slate-100">{{ comment.author }}</span>
+                                <div class="flex items-center gap-2 mb-1">
+                                  <span class="font-medium text-slate-200">{{ comment.author }}</span>
                                   <span class="text-xs text-slate-500">{{ formatRelativeTime(comment.createdAt) }}</span>
-                                  <!-- Outdated Badge -->
-                                  <span
-                                    v-if="comment.isOutdated && !threadId"
-                                    class="px-2 py-0.5 text-xs bg-amber-900/30 text-amber-400 rounded-full border border-amber-700/50"
-                                  >
-                                    Outdated
-                                  </span>
                                 </div>
-
-                                <!-- Comment Body -->
                                 <p class="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{{ comment.body }}</p>
 
                                 <!-- Reply Form -->
@@ -498,25 +565,57 @@
                                 <!-- Reply Button (only on last comment) -->
                                 <div
                                   v-if="isLastCommentInThread(threadId, comments.map(c => c.id)) && index === comments.length - 1 && replyingToCommentId !== comment.id"
-                                  class="flex-shrink-0"
+                                  class="flex-shrink-0 mt-2"
                                 >
                                   <button
                                     @click="startReplyToComment(comment.id, threadId)"
                                     class="flex items-center gap-1 px-3 py-1 text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition-all duration-200"
                                   >
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v10M3 10l6 6m-6-6v6" />
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                                     </svg>
                                     Reply
                                   </button>
                                 </div>
-
                               </div>
                             </div>
                           </div>
                         </div>
                       </div>
-                      <!-- New Comment Form for Right Side -->
+
+                      <!-- Pending Comments for this line -->
+                      <div v-if="getPendingCommentsForLine(row.rightLine.lineNumber).length > 0" class="p-4 space-y-3 border-t border-slate-700/20">
+                        <div
+                          v-for="pendingComment in getPendingCommentsForLine(row.rightLine.lineNumber)"
+                          :key="pendingComment.gitHubId"
+                          class="flex gap-3 p-3 bg-amber-900/10 border border-amber-700/30 rounded-lg"
+                        >
+                          <img
+                            v-if="pendingComment.authorAvatar"
+                            :src="pendingComment.authorAvatar"
+                            :alt="pendingComment.author"
+                            class="w-7 h-7 rounded-full flex-shrink-0 ring-2 ring-amber-700/50"
+                          />
+                          <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-1">
+                              <span class="font-medium text-slate-200 text-sm">{{ pendingComment.author }}</span>
+                              <span class="px-1.5 py-0.5 text-xs bg-amber-900/30 text-amber-400 rounded">Pending</span>
+                            </div>
+                            <div class="text-sm text-slate-300 whitespace-pre-wrap">{{ pendingComment.body }}</div>
+                          </div>
+                          <button
+                            @click="handleDeletePendingComment(pendingComment.gitHubId)"
+                            class="p-1 hover:bg-slate-700/50 rounded transition-colors"
+                            title="Delete pending comment"
+                          >
+                            <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- New Comment Form -->
                       <div v-if="commentingLine === row.rightLine.lineNumber" class="p-4 border-t border-slate-700/20">
                         <RichTextEditor
                           v-model="newCommentText"
@@ -612,7 +711,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, watch } from 'vue';
-import type { FileDiff, Comment, ReviewThread, DiffHunk, AlignedRow, AlignedLine, ExpandPosition } from '../types';
+import type { FileDiff, Comment, ReviewThread, DiffHunk, AlignedRow, AlignedLine, ExpandPosition, PendingReviewComment } from '../types';
 import { parsePatch, alignDiffLines, renderInlineDiffSegments, calculateExpandRange, getGapBetweenHunks, mergeExpandedLines } from '../utils/diffHelpers';
 import { highlightCode, detectLanguageFromPath } from '../utils/syntaxHighlight';
 import { useUserPreferences } from '../composables/useUserPreferences';
@@ -623,9 +722,14 @@ const props = defineProps<{
   file: FileDiff;
   comments: Comment[];
   reviewThreads: ReviewThread[];
+  pendingReviewComments?: PendingReviewComment[];
+  currentUsername?: string;
   onAddComment: (line: number, body: string) => Promise<void>;
+  onDeletePendingComment?: (commentId: string) => Promise<void>;
   onReplyToThread?: (threadId: string, line: number, body: string) => Promise<void>;
   onResolveThread?: (threadId: string, resolved: boolean) => Promise<void>;
+  onEditComment?: (commentId: number, body: string) => Promise<void>;
+  onDeleteComment?: (commentId: number) => Promise<void>;
   initialExpanded?: boolean;
   viewed?: boolean;
   onToggleViewed?: (path: string, viewed: boolean) => void;
@@ -669,6 +773,10 @@ const resolvingThreads = ref<Set<string>>(new Set());
 const newCommentText = ref('');
 const commentError = ref('');
 const newCommentEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(null);
+const editingCommentId = ref<number | null>(null);
+const editText = ref('');
+const editEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(null);
+const deletingCommentId = ref<number | null>(null);
 
 const fileContent = props.prId ? useFileContent(props.prId) : null;
 
@@ -743,6 +851,10 @@ const viewMode = computed(() => preferences.value.diffViewMode);
 
 const fileComments = computed(() =>
   props.comments.filter(c => c.path === props.file.path && c.line)
+);
+
+const filePendingComments = computed(() =>
+  (props.pendingReviewComments || []).filter(c => c.path === props.file.path && c.line)
 );
 
 const fileReviewThreads = computed(() =>
@@ -854,6 +966,37 @@ const getCommentsForLine = (line: number | undefined, side?: 'left' | 'right'): 
   });
 };
 
+const getPendingCommentsForLine = (line: number | undefined): PendingReviewComment[] => {
+  if (!line) return [];
+  return filePendingComments.value.filter(c => c.line === line);
+};
+
+const getPendingRepliesForThread = (threadGitId: string | undefined): PendingReviewComment[] => {
+  if (!threadGitId || !props.pendingReviewComments) return [];
+  return props.pendingReviewComments.filter(c => c.threadId === threadGitId);
+};
+
+const handleDeletePendingComment = async (commentId: string) => {
+  if (props.onDeletePendingComment) {
+    await props.onDeletePendingComment(commentId);
+  }
+};
+
+const formatTimeAgo = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return date.toLocaleDateString();
+};
+
 const getCommentsGroupedByThread = (line: number | undefined, side?: 'left' | 'right') => {
   const comments = getCommentsForLine(line, side);
 
@@ -956,7 +1099,11 @@ const cancelReply = () => {
 };
 
 const submitReply = async () => {
-  if (!replyText.value.trim() || !replyingToCommentId.value || !replyingToThread.value) return;
+  if (!replyText.value.trim() || !replyingToCommentId.value) return;
+  if (!replyingToThread.value) {
+    console.error('No thread ID for reply');
+    return;
+  }
 
   try {
     if (props.onReplyToThread) {
@@ -964,13 +1111,60 @@ const submitReply = async () => {
       replyText.value = '';
       replyingToCommentId.value = null;
       replyingToThread.value = null;
-      replyErrors.value.delete(replyingToCommentId.value ?? 0);
     }
   } catch (error) {
+    console.error('Failed to add reply:', error);
     if (replyingToCommentId.value !== null) {
       replyErrors.value.set(replyingToCommentId.value, 'Failed to add reply');
     }
   }
+};
+
+const startEditComment = (commentId: number, body: string) => {
+  editingCommentId.value = commentId;
+  editText.value = body;
+  nextTick(() => {
+    editEditorRef.value?.focus();
+  });
+};
+
+const cancelEdit = () => {
+  editingCommentId.value = null;
+  editText.value = '';
+};
+
+const submitEdit = async () => {
+  if (!editText.value.trim() || editingCommentId.value === null) return;
+
+  try {
+    if (props.onEditComment) {
+      await props.onEditComment(editingCommentId.value, editText.value);
+      editingCommentId.value = null;
+      editText.value = '';
+    }
+  } catch (error) {
+    console.error('Failed to edit comment:', error);
+  }
+};
+
+const handleDeleteComment = async (commentId: number) => {
+  if (!confirm('Are you sure you want to delete this comment?')) return;
+
+  try {
+    if (props.onDeleteComment) {
+      deletingCommentId.value = commentId;
+      await props.onDeleteComment(commentId);
+      deletingCommentId.value = null;
+    }
+  } catch (error) {
+    console.error('Failed to delete comment:', error);
+    deletingCommentId.value = null;
+  }
+};
+
+const isOwnComment = (comment: Comment): boolean => {
+  return props.currentUsername !== undefined && 
+         comment.author.toLowerCase() === props.currentUsername.toLowerCase();
 };
 
   const handleResolveThread = async (threadId: number | null, resolved: boolean) => {

@@ -123,7 +123,8 @@ public record PRDetailDto(
     List<ReviewThreadDto> ReviewThreads,
     List<FileDiffDto> Files,
     List<CommentDto> AllComments,
-    List<CheckRunDto> CheckRuns
+    List<CheckRunDto> CheckRuns,
+    PendingReviewDto? PendingReview = null
 );
 
 public record AddCommentRequest(
@@ -164,4 +165,37 @@ public record MergePRRequest(
     string? MergeMethod,
     string? CommitTitle,
     string? CommitMessage
+);
+
+public record PendingReviewDto(
+    string GitHubId,
+    string State,
+    List<PendingReviewCommentDto> Comments
+);
+
+public record PendingReviewCommentDto(
+    string GitHubId,
+    string Path,
+    int? Line,
+    string Body,
+    string Author,
+    string? AuthorAvatar,
+    DateTime CreatedAt,
+    DateTime? UpdatedAt,
+    string? ThreadId = null
+);
+
+public record CreatePendingReviewCommentRequest(
+    string Body,
+    string Path,
+    int Line
+);
+
+public record SubmitPendingReviewRequest(
+    string State,
+    string? Body
+);
+
+public record DeletePendingReviewCommentRequest(
+    string CommentId
 );

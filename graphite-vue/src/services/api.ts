@@ -1,5 +1,5 @@
 import apiClient from '../utils/api';
-import type { GroupedPRs, PRStats, Settings, PRDetail, FileDiff, Comment, UserPreferences, PullRequest, CommentTemplate, CommentDraft, MentionableUser, ReactionGroup, User, UserRole, Invitation, AllowedUser, AdminStats } from '../types';
+import type { GroupedPRs, PRStats, Settings, PRDetail, FileDiff, Comment, UserPreferences, PullRequest, CommentTemplate, CommentDraft, MentionableUser, ReactionGroup, User, UserRole, Invitation, AllowedUser, AdminStats, PendingReview } from '../types';
 
 const api = apiClient;
 
@@ -43,7 +43,6 @@ export const apiService = {
     return response.data;
   },
 
-  // PR Detail endpoints
   getPRDetail: async (id: number): Promise<PRDetail> => {
     const response = await api.get<PRDetail>(`/pullrequests/${id}`);
     return response.data;
@@ -64,8 +63,8 @@ export const apiService = {
     return response.data;
   },
 
-  addCommentReply: async (prId: number, reply: { reviewThreadId: string; body: string }): Promise<Comment> => {
-    const response = await api.post<Comment>(`/pullrequests/${prId}/comments/reply`, reply);
+  addCommentReply: async (prId: number, reply: { reviewThreadId: string; body: string }): Promise<Comment | { isPending: true; pendingReviewId: string; commentNodeId: string; reviewThreadId: string; author: string; authorAvatar?: string; body: string; createdAt: string; updatedAt?: string }> => {
+    const response = await api.post(`/pullrequests/${prId}/comments/reply`, reply);
     return response.data;
   },
 
@@ -114,7 +113,6 @@ export const apiService = {
     return response.data;
   },
 
-  // Refresh file viewed states from GitHub
   refreshFileViewStates: async (prId: number): Promise<FileDiff[]> => {
     const response = await api.post<FileDiff[]>(`/pullrequests/${prId}/file-diffs/refresh-viewed-states`);
     return response.data;
@@ -122,6 +120,40 @@ export const apiService = {
 
   updateFileViewedState: async (prId: number, path: string, viewed: boolean): Promise<void> => {
     await api.post(`/pullrequests/${prId}/files/viewed`, { path, viewed });
+  },
+
+  getPendingReview: async (prId: number): Promise<PendingReview> => {
+    const response = await api.get<PendingReview>(`/pullrequests/${prId}/pending-review`);
+    return response.data;
+  },
+
+  addPendingReviewComment: async (prId: number, comment: { body: string; path: string; line: number }): Promise<{
+    commentId: string;
+    reviewId: string;
+    path: string;
+    line: number;
+    body: string;
+    author: string;
+    authorAvatar?: string;
+    createdAt: string;
+  }> => {
+    const response = await api.post(`/pullrequests/${prId}/pending-review/comments`, comment);
+    return response.data;
+  },
+
+  deletePendingReviewComment: async (prId: number, commentId: string): Promise<{ message: string }> => {
+    const response = await api.delete<{ message: string }>(`/pullrequests/${prId}/pending-review/comments/${commentId}`);
+    return response.data;
+  },
+
+  submitPendingReview: async (prId: number, review: { state: 'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENT'; body?: string }): Promise<{ message: string }> => {
+    const response = await api.post<{ message: string }>(`/pullrequests/${prId}/pending-review/submit`, review);
+    return response.data;
+  },
+
+  deletePendingReview: async (prId: number): Promise<{ message: string }> => {
+    const response = await api.delete<{ message: string }>(`/pullrequests/${prId}/pending-review`);
+    return response.data;
   },
 
   // User Preferences endpoints

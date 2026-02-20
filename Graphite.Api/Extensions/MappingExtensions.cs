@@ -137,9 +137,8 @@ public static class MappingExtensions
         );
     }
 
-    public static PRDetailDto ToDetailDto(this PullRequest pr, List<FileDiff> files, List<Comment> comments, List<UserFileViewedState>? viewedStates = null)
+    public static PRDetailDto ToDetailDto(this PullRequest pr, List<FileDiff> files, List<Comment> comments, List<UserFileViewedState>? viewedStates = null, PendingReviewDto? pendingReview = null)
     {
-        // Build file diffs with viewed states
         var fileDtos = files.Select(f =>
         {
             var viewedState = viewedStates?.FirstOrDefault(vs => vs.FileDiffId == f.Id);
@@ -196,7 +195,8 @@ public static class MappingExtensions
                 cr.Url,
                 cr.StartedAt,
                 cr.CompletedAt
-            )).ToList()
+            )).ToList(),
+            pendingReview
         );
     }
 

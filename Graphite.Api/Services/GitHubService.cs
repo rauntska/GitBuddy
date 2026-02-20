@@ -469,4 +469,29 @@ public class GitHubService(
             _ => Octokit.PullRequestMergeMethod.Merge
         };
     }
+
+    public async Task<GitHubPendingReviewData?> GetPendingReviewAsync(string organization, string repository, long pullRequestNumber, string userLogin, string userAccessToken)
+    {
+        return await graphQlService.GetPendingReviewAsync(organization, repository, pullRequestNumber, userLogin, userAccessToken);
+    }
+
+    public async Task<GitHubPendingReviewCommentData> AddPendingReviewCommentAsync(string organization, string repository, long pullRequestNumber, string body, string path, int line, GitHubConfig config, string userAccessToken)
+    {
+        return await graphQlService.AddPendingReviewCommentAsync(organization, repository, pullRequestNumber, body, path, line, userAccessToken);
+    }
+
+    public async Task<bool> DeletePendingReviewCommentAsync(string organization, string repository, string commentId, string userAccessToken)
+    {
+        return await graphQlService.DeletePendingReviewCommentAsync(organization, repository, commentId, userAccessToken);
+    }
+
+    public async Task<bool> SubmitPendingReviewAsync(string organization, string repository, string reviewId, string state, string? body, string userAccessToken)
+    {
+        return await graphQlService.SubmitPendingReviewAsync(organization, repository, reviewId, state, body, userAccessToken);
+    }
+
+    public async Task<bool> DeletePendingReviewAsync(string organization, string repository, string reviewId, string userAccessToken)
+    {
+        return await graphQlService.DeletePendingReviewAsync(organization, repository, reviewId, userAccessToken);
+    }
 }

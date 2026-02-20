@@ -26,9 +26,20 @@
           <button
             v-if="!prDetail?.isMerged"
             @click="showReviewModal = true"
-            class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-xs font-medium text-white transition-all duration-200 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30"
+            :class="[
+              'px-4 py-2 rounded-lg text-xs font-medium text-white transition-all duration-200 shadow-lg relative',
+              prDetail?.pendingReview?.comments?.length 
+                ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-500/20 hover:shadow-amber-500/30' 
+                : 'bg-blue-600 hover:bg-blue-500 shadow-blue-500/20 hover:shadow-blue-500/30'
+            ]"
           >
-            Review
+            {{ prDetail?.pendingReview?.comments?.length ? 'Finish Review' : 'Review' }}
+            <span
+              v-if="prDetail?.pendingReview?.comments?.length"
+              class="absolute -top-1.5 -right-1.5 bg-amber-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-0.5 shadow-lg"
+            >
+              {{ prDetail.pendingReview.comments.length }}
+            </span>
           </button>
 
           <button
@@ -467,7 +478,9 @@
                   :viewed="isFileViewed(file.path!)"
                   :comments="prDetail.allComments"
                   :review-threads="prDetail.reviewThreads"
+                  :pending-review-comments="prDetail.pendingReview?.comments"
                   :on-add-comment="(line: number, body: string) => handleAddComment(file.path!, line, body)"
+                  :on-delete-pending-comment="handleDeletePendingComment"
                   :on-reply-to-thread="(threadId: string, line: number, body: string) => handleReplyToThread(threadId, line, body)"
                   :on-resolve-thread="(threadId: string, resolved: boolean) => handleResolveThread(threadId, resolved)"
                   :on-toggle-viewed="handleToggleViewed"
@@ -523,8 +536,48 @@
         class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
         @click.self="showReviewModal = false"
       >
-        <div class="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-700/40 rounded-2xl p-6 max-w-lg w-full shadow-2xl shadow-black/50">
-          <h3 class="text-lg font-semibold text-slate-100 mb-4">Review PR</h3>
+        <div class="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-700/40 rounded-2xl p-6 max-w-lg w-full shadow-2xl shadow-black/50 max-h-[90vh] overflow-y-auto">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-slate-100">Review PR</h3>
+            <div v-if="prDetail?.pendingReview?.comments?.length" class="flex items-center gap-2">
+              <span class="px-2 py-1 text-xs font-medium bg-amber-500/20 text-amber-400 rounded-full border border-amber-500/30">
+                {{ prDetail.pendingReview.comments.length }} pending comment{{ prDetail.pendingReview.comments.length !== 1 ? 's' : '' }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Pending Review Comments -->
+          <div v-if="prDetail?.pendingReview?.comments?.length" class="mb-4 border border-slate-700/40 rounded-xl overflow-hidden">
+            <div class="px-4 py-2 bg-slate-800/60 border-b border-slate-700/40">
+              <span class="text-xs font-medium text-slate-400">Your Draft Comments</span>
+            </div>
+            <div class="divide-y divide-slate-700/30 max-h-48 overflow-y-auto">
+              <div
+                v-for="comment in prDetail.pendingReview.comments"
+                :key="comment.gitHubId"
+                class="p-3 hover:bg-slate-800/40 group"
+              >
+                <div class="flex items-start justify-between gap-2">
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 text-xs text-slate-400 mb-1">
+                      <span class="font-mono truncate">{{ comment.path }}</span>
+                      <span v-if="comment.line" class="text-slate-500">:{{ comment.line }}</span>
+                    </div>
+                    <p class="text-sm text-slate-200 line-clamp-2">{{ comment.body }}</p>
+                  </div>
+                  <button
+                    @click="handleDeletePendingComment(comment.gitHubId)"
+                    class="opacity-0 group-hover:opacity-100 p-1 hover:bg-rose-500/20 rounded transition-all"
+                    title="Delete comment"
+                  >
+                    <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
 
           <div class="grid grid-cols-3 gap-2 mb-4">
             <button
@@ -578,6 +631,14 @@
           </div>
           <div class="flex gap-3 justify-end">
             <button
+              v-if="prDetail?.pendingReview?.comments?.length"
+              @click="handleDiscardPendingReview"
+              class="px-4 py-2 bg-rose-600/20 hover:bg-rose-600/30 rounded-lg text-sm text-rose-400 transition-all duration-200 border border-rose-500/30"
+            >
+              Discard Draft
+            </button>
+            <div class="flex-1"></div>
+            <button
               @click="showReviewModal = false"
               class="px-4 py-2 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-sm text-slate-200 transition-all duration-200 border border-slate-600/50 hover:border-slate-500/50"
             >
@@ -594,7 +655,7 @@
                 { 'opacity-50 cursor-not-allowed shadow-none': submittingReview || (reviewAction === 'CHANGES_REQUESTED' && !reviewComment.trim()) }
               ]"
             >
-              {{ submittingReview ? 'Submitting...' : 'Submit' }}
+              {{ submittingReview ? 'Submitting...' : (prDetail?.pendingReview?.comments?.length ? 'Submit Review' : 'Submit') }}
             </button>
           </div>
         </div>
@@ -634,7 +695,12 @@ const {
   commentsPanel,
   fetchPRDetail,
   addComment,
+  addPendingReviewComment,
+  deletePendingReviewComment,
+  addReply,
   submitReview,
+  submitPendingReview,
+  deletePendingReview,
   mergePR,
   getMergeOptions,
   publishDraftPR,
@@ -848,17 +914,16 @@ const handleClickOutside = (e: MouseEvent) => {
 };
 
   const handleAddComment = async (path: string, line: number, body: string) => {
-    const comment = await addComment(props.id, { path, line, body });
+    const comment = await addPendingReviewComment(props.id, { path, line, body });
     if (comment) {
-      console.log('Comment added successfully');
+      console.log('Pending review comment added successfully');
     }
   };
 
   const handleReplyToThread = async (threadId: string, _line: number, body: string) => {
-    const reply = await apiService.addCommentReply(props.id, { reviewThreadId: threadId, body });
+    const reply = await addReply(props.id, { reviewThreadId: threadId, body });
     if (reply) {
       console.log('Reply added successfully');
-      await fetchPRDetail(props.id);
     }
   };
 
@@ -885,16 +950,44 @@ const handleSubmitReview = async () => {
   }
 
   submittingReview.value = true;
-  const success = await submitReview(props.id, {
-    state: reviewAction.value,
-    body: reviewComment.value || undefined,
-  });
+  
+  let success: boolean;
+  if (prDetail.value?.pendingReview && prDetail.value.pendingReview.comments.length > 0) {
+    success = await submitPendingReview(props.id, {
+      state: reviewAction.value,
+      body: reviewComment.value || undefined,
+    });
+  } else {
+    success = await submitReview(props.id, {
+      state: reviewAction.value,
+      body: reviewComment.value || undefined,
+    });
+  }
+  
   submittingReview.value = false;
 
   if (success) {
     showReviewModal.value = false;
     reviewComment.value = '';
   }
+};
+
+const handleDiscardPendingReview = async () => {
+  if (!prDetail.value?.pendingReview) return;
+  
+  if (!confirm('Are you sure you want to discard your pending review? All draft comments will be deleted.')) {
+    return;
+  }
+  
+  const success = await deletePendingReview(props.id);
+  if (success) {
+    showReviewModal.value = false;
+    reviewComment.value = '';
+  }
+};
+
+const handleDeletePendingComment = async (commentId: string) => {
+  await deletePendingReviewComment(props.id, commentId);
 };
 
 const handlePublishDraft = async () => {

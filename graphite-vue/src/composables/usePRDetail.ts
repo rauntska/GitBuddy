@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import type { PRDetail, Comment } from '../types';
+import type { PRDetail, Comment, ReviewThread, PendingReviewComment } from '../types';
 import { apiService } from '../services/api';
 import { useUserPreferences } from './useUserPreferences';
 
@@ -11,8 +11,10 @@ export function usePRDetail() {
   
   const { preferences, setFileTreeVisible } = useUserPreferences();
 
-  const fetchPRDetail = async (id: number) => {
-    loading.value = true;
+  const fetchPRDetail = async (id: number, silent = false) => {
+    if (!silent) {
+      loading.value = true;
+    }
     error.value = null;
     try {
       prDetail.value = await apiService.getPRDetail(id);
@@ -20,7 +22,9 @@ export function usePRDetail() {
       error.value = err.response?.data?.message || 'Failed to fetch PR details';
       console.error('Error fetching PR details:', err);
     } finally {
-      loading.value = false;
+      if (!silent) {
+        loading.value = false;
+      }
     }
   };
 
@@ -31,13 +35,164 @@ export function usePRDetail() {
     try {
       const newComment = await apiService.addComment(prId, comment);
       
-      // Refresh PR details to get review threads from backend
-      await fetchPRDetail(prId);
+      if (newComment && newComment.reviewThreadId && prDetail.value) {
+        const existingThread = prDetail.value.reviewThreads.find(
+          rt => rt.id === newComment.reviewThreadId
+        );
+        
+        if (!existingThread && comment.path && comment.line) {
+          const newThread: ReviewThread = {
+            id: newComment.reviewThreadId,
+            gitHubId: String(newComment.gitHubId),
+            path: comment.path,
+            line: comment.line,
+            diffSide: 'RIGHT',
+            state: 'UNRESOLVED',
+            isResolved: false,
+            isOutdated: false,
+            createdAt: newComment.createdAt,
+            updatedAt: newComment.updatedAt,
+            firstCommentAuthor: newComment.author,
+            firstCommentBody: newComment.body,
+            commentCount: 1
+          };
+          prDetail.value.reviewThreads.push(newThread);
+        }
+        
+        prDetail.value.allComments.push(newComment);
+      }
       
       return newComment;
     } catch (err: any) {
       error.value = err.response?.data?.message || 'Failed to add comment';
       console.error('Error adding comment:', err);
+      return null;
+    }
+  };
+
+  const addPendingReviewComment = async (
+    prId: number,
+    comment: { body: string; path: string; line: number }
+  ): Promise<PendingReviewComment | null> => {
+    try {
+      const result = await apiService.addPendingReviewComment(prId, comment);
+      
+      if (prDetail.value) {
+        if (!prDetail.value.pendingReview) {
+          prDetail.value.pendingReview = {
+            gitHubId: result.reviewId,
+            state: 'PENDING',
+            comments: []
+          };
+        }
+        
+        const newComment: PendingReviewComment = {
+          gitHubId: result.commentId,
+          path: result.path,
+          line: result.line,
+          body: result.body,
+          author: result.author,
+          authorAvatar: result.authorAvatar,
+          createdAt: result.createdAt
+        };
+        
+        prDetail.value.pendingReview.comments.push(newComment);
+      }
+      
+      return {
+        gitHubId: result.commentId,
+        path: result.path,
+        line: result.line,
+        body: result.body,
+        author: result.author,
+        authorAvatar: result.authorAvatar,
+        createdAt: result.createdAt
+      };
+    } catch (err: any) {
+      error.value = err.response?.data?.message || 'Failed to add pending review comment';
+      console.error('Error adding pending review comment:', err);
+      return null;
+    }
+  };
+
+  const deletePendingReviewComment = async (prId: number, commentId: string): Promise<boolean> => {
+    try {
+      await apiService.deletePendingReviewComment(prId, commentId);
+      
+      if (prDetail.value?.pendingReview) {
+        prDetail.value.pendingReview.comments = prDetail.value.pendingReview.comments.filter(
+          c => c.gitHubId !== commentId
+        );
+        
+        if (prDetail.value.pendingReview.comments.length === 0) {
+          prDetail.value.pendingReview = undefined;
+        }
+      }
+      
+      return true;
+    } catch (err: any) {
+      error.value = err.response?.data?.message || 'Failed to delete pending review comment';
+      console.error('Error deleting pending review comment:', err);
+      return false;
+    }
+  };
+
+  const addReply = async (
+    prId: number,
+    reply: { reviewThreadId: string; body: string }
+  ): Promise<Comment | null> => {
+    try {
+      const result = await apiService.addCommentReply(prId, reply);
+      
+      if (!result) return null;
+      
+      // Handle pending reply
+      if ('isPending' in result && result.isPending) {
+        if (prDetail.value) {
+          // Initialize pending review if needed
+          if (!prDetail.value.pendingReview) {
+            prDetail.value.pendingReview = {
+              gitHubId: result.pendingReviewId || '',
+              state: 'PENDING',
+              comments: []
+            };
+          }
+          
+          // Add the pending reply to pending review comments
+          const pendingComment: PendingReviewComment = {
+            gitHubId: result.commentNodeId || '',
+            path: '',
+            line: undefined,
+            body: result.body,
+            author: result.author,
+            authorAvatar: result.authorAvatar,
+            createdAt: result.createdAt,
+            updatedAt: result.updatedAt
+          };
+          prDetail.value.pendingReview.comments.push(pendingComment);
+        }
+        return null;
+      }
+      
+      // Handle regular reply
+      const newReply = result as Comment;
+      if (newReply && prDetail.value) {
+        const thread = prDetail.value.reviewThreads.find(
+          rt => rt.gitHubId === reply.reviewThreadId || String(rt.id) === reply.reviewThreadId
+        );
+        
+        if (thread) {
+          thread.commentCount++;
+          thread.updatedAt = newReply.updatedAt;
+        }
+        
+        prDetail.value.allComments.push(newReply);
+      }
+      
+      return newReply;
+    } catch (err: any) {
+      error.value = err.response?.data?.message || 'Failed to add reply';
+      console.error('Error adding reply:', err);
       return null;
     }
   };
@@ -48,12 +203,42 @@ export function usePRDetail() {
   ) => {
     try {
       await apiService.submitReview(prId, review);
-      // Refresh PR details after submitting review
       await fetchPRDetail(prId);
       return true;
     } catch (err: any) {
       error.value = err.response?.data?.message || 'Failed to submit review';
       console.error('Error submitting review:', err);
+      return false;
+    }
+  };
+
+  const submitPendingReview = async (
+    prId: number,
+    review: { state: 'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENT'; body?: string }
+  ) => {
+    try {
+      await apiService.submitPendingReview(prId, review);
+      await fetchPRDetail(prId);
+      return true;
+    } catch (err: any) {
+      error.value = err.response?.data?.message || 'Failed to submit pending review';
+      console.error('Error submitting pending review:', err);
+      return false;
+    }
+  };
+
+  const deletePendingReview = async (prId: number) => {
+    try {
+      await apiService.deletePendingReview(prId);
+      
+      if (prDetail.value) {
+        prDetail.value.pendingReview = undefined;
+      }
+      
+      return true;
+    } catch (err: any) {
+      error.value = err.response?.data?.message || 'Failed to delete pending review';
+      console.error('Error deleting pending review:', err);
       return false;
     }
   };
@@ -90,7 +275,6 @@ export function usePRDetail() {
   const publishDraftPR = async (prId: number) => {
     try {
       await apiService.publishDraftPR(prId);
-      // Refresh PR details after publishing
       await fetchPRDetail(prId);
       return true;
     } catch (err: any) {
@@ -116,7 +300,12 @@ export function usePRDetail() {
     fileTreeVisible: preferences,
     fetchPRDetail,
     addComment,
+    addPendingReviewComment,
+    deletePendingReviewComment,
+    addReply,
     submitReview,
+    submitPendingReview,
+    deletePendingReview,
     mergePR,
     getMergeOptions,
     publishDraftPR,

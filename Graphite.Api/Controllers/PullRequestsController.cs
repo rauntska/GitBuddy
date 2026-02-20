@@ -55,15 +55,13 @@ public class PullRequestsController(
             .Where(c => c.PullRequestId == id)
             .ToListAsync();
 
-        // Get user ID if authenticated
         int? userId = null;
-        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var userIdClaim = User.FindFirst("UserId")?.Value;
         if (!string.IsNullOrEmpty(userIdClaim) && int.TryParse(userIdClaim, out var parsedUserId))
         {
             userId = parsedUserId;
         }
 
-        // Fetch user's viewed states if authenticated
         List<UserFileViewedState>? viewedStates = null;
         if (userId.HasValue)
         {
@@ -72,7 +70,53 @@ public class PullRequestsController(
                 .ToListAsync();
         }
 
-        return Ok(pr.ToDetailDto(files, comments, viewedStates));
+        PendingReviewDto? pendingReviewDto = null;
+        if (userId.HasValue)
+        {
+            var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId.Value);
+            if (user != null && !string.IsNullOrEmpty(user.AccessToken))
+            {
+                var config = await context.GitHubConfigs.FirstOrDefaultAsync();
+                if (config != null)
+                {
+                    try
+                    {
+                        var pendingReview = await gitHubService.GetPendingReviewAsync(
+                            config.Organization,
+                            pr.Repository,
+                            pr.GitHubId,
+                            user.Username,
+                            user.AccessToken
+                        );
+
+                        if (pendingReview != null)
+                        {
+                            pendingReviewDto = new PendingReviewDto(
+                                pendingReview.GitHubId,
+                                pendingReview.State,
+                                pendingReview.Comments.Select(c => new PendingReviewCommentDto(
+                                    c.GitHubId,
+                                    c.Path ?? string.Empty,
+                                    c.Line,
+                                    c.Body,
+                                    c.Author,
+                                    c.AuthorAvatar,
+                                    c.CreatedAt,
+                                    c.UpdatedAt,
+                                    c.ThreadId
+                                )).ToList()
+                            );
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error fetching pending review: {ex.Message}");
+                    }
+                }
+            }
+        }
+
+        return Ok(pr.ToDetailDto(files, comments, viewedStates, pendingReviewDto));
     }
 
     [HttpGet("stats")]
@@ -177,7 +221,9 @@ public class PullRequestsController(
             return Unauthorized(new { message = "User token not available" });
         }
 
-        var pr = await context.PullRequests.FindAsync(id);
+        var pr = await context.PullRequests
+            .Include(p => p.ReviewThreads)
+            .FirstOrDefaultAsync(p => p.Id == id);
         if (pr == null)
         {
             return NotFound(new { message = "Pull request not found" });
@@ -191,18 +237,110 @@ public class PullRequestsController(
 
         try
         {
+            if (!string.IsNullOrEmpty(request.Path) && request.Line.HasValue)
+            {
+                var pendingComment = await gitHubService.AddPendingReviewCommentAsync(
+                    config.Organization,
+                    pr.Repository,
+                    pr.GitHubId,
+                    request.Body,
+                    request.Path,
+                    request.Line.Value,
+                    config,
+                    user.AccessToken
+                );
+
+                var pendingReview = await context.PendingReviews
+                    .FirstOrDefaultAsync(pr => pr.PullRequestId == id && pr.UserId == userId);
+
+                if (pendingReview == null && !string.IsNullOrEmpty(pendingComment.ReviewId))
+                {
+                    pendingReview = new PendingReview
+                    {
+                        PullRequestId = id,
+                        UserId = userId,
+                        GitHubReviewId = pendingComment.ReviewId,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    context.PendingReviews.Add(pendingReview);
+                    await context.SaveChangesAsync();
+                }
+
+                if (pendingReview != null)
+                {
+                    var dbPendingComment = new PendingComment
+                    {
+                        PendingReviewId = pendingReview.Id,
+                        Body = pendingComment.Body,
+                        Path = pendingComment.Path ?? request.Path,
+                        Line = pendingComment.Line ?? request.Line.Value,
+                        CreatedAt = pendingComment.CreatedAt
+                    };
+                    context.PendingComments.Add(dbPendingComment);
+                    await context.SaveChangesAsync();
+
+                    return Ok(new
+                    {
+                        isPending = true,
+                        id = dbPendingComment.Id,
+                        gitHubId = pendingComment.GitHubId,
+                        pendingReviewId = pendingComment.ReviewId,
+                        reviewThreadId = pendingComment.ThreadId,
+                        path = pendingComment.Path,
+                        line = pendingComment.Line,
+                        body = pendingComment.Body,
+                        author = pendingComment.Author,
+                        authorAvatar = pendingComment.AuthorAvatar,
+                        createdAt = pendingComment.CreatedAt,
+                        updatedAt = pendingComment.UpdatedAt
+                    });
+                }
+
+                return Ok(new
+                {
+                    isPending = true,
+                    id = 0,
+                    gitHubId = pendingComment.GitHubId,
+                    pendingReviewId = pendingComment.ReviewId,
+                    reviewThreadId = pendingComment.ThreadId,
+                    path = pendingComment.Path,
+                    line = pendingComment.Line,
+                    body = pendingComment.Body,
+                    author = pendingComment.Author,
+                    authorAvatar = pendingComment.AuthorAvatar,
+                    createdAt = pendingComment.CreatedAt,
+                    updatedAt = pendingComment.UpdatedAt
+                });
+            }
+
             var comment = await gitHubService.AddPullRequestCommentAsync(
                 config.Organization,
                 pr.Repository,
                 pr.GitHubId,
                 request.Body,
-                request.Path,
-                request.Line,
+                null,
+                null,
                 config,
                 user.AccessToken
             );
 
-            return Ok(comment);
+            return Ok(new CommentDto(
+                0,
+                comment.GitHubId,
+                null,
+                comment.Author,
+                comment.AuthorAvatar,
+                comment.Body,
+                comment.CreatedAt,
+                comment.UpdatedAt,
+                comment.Path,
+                comment.Line,
+                comment.IsOutdated,
+                null,
+                0,
+                null,
+                null
+            ));
         }
         catch (Exception ex)
         {
@@ -228,7 +366,9 @@ public class PullRequestsController(
             return Unauthorized(new { message = "User token not available" });
         }
 
-        var pr = await context.PullRequests.FindAsync(id);
+        var pr = await context.PullRequests
+            .Include(p => p.ReviewThreads)
+            .FirstOrDefaultAsync(p => p.Id == id);
         if (pr == null)
         {
             return NotFound(new { message = "Pull request not found" });
@@ -252,7 +392,83 @@ public class PullRequestsController(
                 user.AccessToken
             );
 
-            return Ok(comment);
+            // If the reply is part of a pending review, don't save to database
+            // Instead return it with pending review info
+            if (comment.IsPending)
+            {
+                return Ok(new
+                {
+                    isPending = true,
+                    pendingReviewId = comment.PendingReviewId,
+                    commentNodeId = comment.CommentNodeId,
+                    reviewThreadId = request.ReviewThreadId,
+                    author = comment.Author,
+                    authorAvatar = comment.AuthorAvatar,
+                    body = comment.Body,
+                    createdAt = comment.CreatedAt,
+                    updatedAt = comment.UpdatedAt
+                });
+            }
+
+            var reviewThread = pr.ReviewThreads.FirstOrDefault(rt => rt.GitHubId == request.ReviewThreadId);
+            if (reviewThread != null)
+            {
+                reviewThread.CommentCount++;
+                reviewThread.UpdatedAt = comment.UpdatedAt;
+
+                var dbComment = new Comment
+                {
+                    PullRequestId = id,
+                    ReviewThreadId = reviewThread.Id,
+                    GitHubId = comment.GitHubId,
+                    Author = comment.Author,
+                    AuthorAvatar = comment.AuthorAvatar,
+                    Body = comment.Body,
+                    Path = comment.Path,
+                    Line = comment.Line,
+                    IsOutdated = false,
+                    CreatedAt = comment.CreatedAt,
+                    UpdatedAt = comment.UpdatedAt
+                };
+                context.Comments.Add(dbComment);
+                await context.SaveChangesAsync();
+
+                return Ok(new CommentDto(
+                    dbComment.Id,
+                    dbComment.GitHubId,
+                    dbComment.ReviewThreadId,
+                    dbComment.Author,
+                    dbComment.AuthorAvatar,
+                    dbComment.Body,
+                    dbComment.CreatedAt,
+                    dbComment.UpdatedAt,
+                    dbComment.Path,
+                    dbComment.Line,
+                    dbComment.IsOutdated,
+                    dbComment.EditedAt,
+                    dbComment.EditCount,
+                    dbComment.ReplyToCommentId,
+                    null
+                ));
+            }
+
+            return Ok(new CommentDto(
+                0,
+                comment.GitHubId,
+                null,
+                comment.Author,
+                comment.AuthorAvatar,
+                comment.Body,
+                comment.CreatedAt,
+                comment.UpdatedAt,
+                comment.Path,
+                comment.Line,
+                comment.IsOutdated,
+                null,
+                0,
+                null,
+                null
+            ));
         }
         catch (Exception ex)
         {
@@ -924,5 +1140,305 @@ public class PullRequestsController(
         }
 
         return result;
+    }
+
+    [HttpGet("{id}/pending-review")]
+    [Authorize]
+    public async Task<IActionResult> GetPendingReview(int id)
+    {
+        var userIdClaim = User.FindFirst("UserId")?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized(new { message = "User not authenticated" });
+        }
+
+        var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null || string.IsNullOrEmpty(user.AccessToken))
+        {
+            return Unauthorized(new { message = "User token not available" });
+        }
+
+        var pr = await context.PullRequests.FindAsync(id);
+        if (pr == null)
+        {
+            return NotFound(new { message = "Pull request not found" });
+        }
+
+        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
+        if (config == null)
+        {
+            return BadRequest(new { message = "GitHub configuration not found" });
+        }
+
+        try
+        {
+            var pendingReview = await gitHubService.GetPendingReviewAsync(
+                config.Organization,
+                pr.Repository,
+                pr.GitHubId,
+                user.Username,
+                user.AccessToken
+            );
+
+            if (pendingReview == null)
+            {
+                return Ok(new PendingReviewDto(string.Empty, "NONE", new List<PendingReviewCommentDto>()));
+            }
+
+            var dto = new PendingReviewDto(
+                pendingReview.GitHubId,
+                pendingReview.State,
+                pendingReview.Comments.Select(c => new PendingReviewCommentDto(
+                    c.GitHubId,
+                    c.Path ?? string.Empty,
+                    c.Line,
+                    c.Body,
+                    c.Author,
+                    c.AuthorAvatar,
+                    c.CreatedAt,
+                    c.UpdatedAt
+                )).ToList()
+            );
+
+            return Ok(dto);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to get pending review", error = ex.Message });
+        }
+    }
+
+    [HttpPost("{id}/pending-review/comments")]
+    [Authorize]
+    public async Task<IActionResult> AddPendingReviewComment(int id, [FromBody] CreatePendingReviewCommentRequest request)
+    {
+        var userIdClaim = User.FindFirst("UserId")?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized(new { message = "User not authenticated" });
+        }
+
+        var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null || string.IsNullOrEmpty(user.AccessToken))
+        {
+            return Unauthorized(new { message = "User token not available" });
+        }
+
+        var pr = await context.PullRequests.FindAsync(id);
+        if (pr == null)
+        {
+            return NotFound(new { message = "Pull request not found" });
+        }
+
+        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
+        if (config == null)
+        {
+            return BadRequest(new { message = "GitHub configuration not found" });
+        }
+
+        try
+        {
+            var comment = await gitHubService.AddPendingReviewCommentAsync(
+                config.Organization,
+                pr.Repository,
+                pr.GitHubId,
+                request.Body,
+                request.Path,
+                request.Line,
+                config,
+                user.AccessToken
+            );
+
+            return Ok(new
+            {
+                commentId = comment.GitHubId,
+                reviewId = comment.ReviewId,
+                path = comment.Path,
+                line = comment.Line,
+                body = comment.Body,
+                author = comment.Author,
+                authorAvatar = comment.AuthorAvatar,
+                createdAt = comment.CreatedAt
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to add pending review comment", error = ex.Message });
+        }
+    }
+
+    [HttpDelete("{id}/pending-review/comments/{commentId}")]
+    [Authorize]
+    public async Task<IActionResult> DeletePendingReviewComment(int id, string commentId)
+    {
+        var userIdClaim = User.FindFirst("UserId")?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized(new { message = "User not authenticated" });
+        }
+
+        var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null || string.IsNullOrEmpty(user.AccessToken))
+        {
+            return Unauthorized(new { message = "User token not available" });
+        }
+
+        var pr = await context.PullRequests.FindAsync(id);
+        if (pr == null)
+        {
+            return NotFound(new { message = "Pull request not found" });
+        }
+
+        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
+        if (config == null)
+        {
+            return BadRequest(new { message = "GitHub configuration not found" });
+        }
+
+        try
+        {
+            var success = await gitHubService.DeletePendingReviewCommentAsync(
+                config.Organization,
+                pr.Repository,
+                commentId,
+                user.AccessToken
+            );
+
+            if (success)
+            {
+                var pendingComment = await context.PendingComments
+                    .FirstOrDefaultAsync(c => c.PendingReview.PullRequestId == id && c.PendingReview.UserId == userId);
+                if (pendingComment != null)
+                {
+                    context.PendingComments.Remove(pendingComment);
+                    await context.SaveChangesAsync();
+                }
+                return Ok(new { message = "Comment deleted successfully" });
+            }
+
+            return BadRequest(new { message = "Failed to delete comment" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to delete pending review comment", error = ex.Message });
+        }
+    }
+
+    [HttpPost("{id}/pending-review/submit")]
+    [Authorize]
+    public async Task<IActionResult> SubmitPendingReview(int id, [FromBody] SubmitPendingReviewRequest request)
+    {
+        var userIdClaim = User.FindFirst("UserId")?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized(new { message = "User not authenticated" });
+        }
+
+        var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null || string.IsNullOrEmpty(user.AccessToken))
+        {
+            return Unauthorized(new { message = "User token not available" });
+        }
+
+        var pr = await context.PullRequests.FindAsync(id);
+        if (pr == null)
+        {
+            return NotFound(new { message = "Pull request not found" });
+        }
+
+        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
+        if (config == null)
+        {
+            return BadRequest(new { message = "GitHub configuration not found" });
+        }
+
+        try
+        {
+            var pendingReview = await gitHubService.GetPendingReviewAsync(
+                config.Organization,
+                pr.Repository,
+                pr.GitHubId,
+                user.Username,
+                user.AccessToken
+            );
+
+            if (pendingReview == null)
+            {
+                return BadRequest(new { message = "No pending review found to submit" });
+            }
+
+            await gitHubService.SubmitPendingReviewAsync(
+                config.Organization,
+                pr.Repository,
+                pendingReview.GitHubId,
+                request.State,
+                request.Body,
+                user.AccessToken
+            );
+
+            return Ok(new { message = "Pending review submitted successfully" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to submit pending review", error = ex.Message });
+        }
+    }
+
+    [HttpDelete("{id}/pending-review")]
+    [Authorize]
+    public async Task<IActionResult> DeletePendingReview(int id)
+    {
+        var userIdClaim = User.FindFirst("UserId")?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized(new { message = "User not authenticated" });
+        }
+
+        var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null || string.IsNullOrEmpty(user.AccessToken))
+        {
+            return Unauthorized(new { message = "User token not available" });
+        }
+
+        var pr = await context.PullRequests.FindAsync(id);
+        if (pr == null)
+        {
+            return NotFound(new { message = "Pull request not found" });
+        }
+
+        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
+        if (config == null)
+        {
+            return BadRequest(new { message = "GitHub configuration not found" });
+        }
+
+        try
+        {
+            var pendingReview = await gitHubService.GetPendingReviewAsync(
+                config.Organization,
+                pr.Repository,
+                pr.GitHubId,
+                user.Username,
+                user.AccessToken
+            );
+
+            if (pendingReview == null)
+            {
+                return BadRequest(new { message = "No pending review found to delete" });
+            }
+
+            await gitHubService.DeletePendingReviewAsync(
+                config.Organization,
+                pr.Repository,
+                pendingReview.GitHubId,
+                user.AccessToken
+            );
+
+            return Ok(new { message = "Pending review deleted successfully" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to delete pending review", error = ex.Message });
+        }
     }
 }

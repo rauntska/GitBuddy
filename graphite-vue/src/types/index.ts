@@ -256,6 +256,25 @@ export interface PRDetail extends PullRequest {
   viewedFiles?: string[];
   isMerged: boolean;
   mergedAt?: string;
+  pendingReview?: PendingReview;
+}
+
+export interface PendingReview {
+  gitHubId: string;
+  state: string;
+  comments: PendingReviewComment[];
+}
+
+export interface PendingReviewComment {
+  gitHubId: string;
+  path: string;
+  line?: number;
+  body: string;
+  author: string;
+  authorAvatar?: string;
+  createdAt: string;
+  updatedAt?: string;
+  threadId?: string;
 }
 
 export interface UserPreferences {

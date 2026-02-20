@@ -25,6 +25,11 @@ public interface IGitHubService
     Task PublishDraftPullRequestAsync(string organization, string repository, long pullRequestNumber, GitHubConfig config, string userAccessToken);
     Task<GitHubRepoMergeOptions> GetRepositoryMergeOptionsAsync(string organization, string repository, string userAccessToken);
     Task MergePullRequestAsync(string organization, string repository, long pullRequestNumber, string? commitTitle, string? commitMessage, string mergeMethod, string userAccessToken);
+    Task<GitHubPendingReviewData?> GetPendingReviewAsync(string organization, string repository, long pullRequestNumber, string userLogin, string userAccessToken);
+    Task<GitHubPendingReviewCommentData> AddPendingReviewCommentAsync(string organization, string repository, long pullRequestNumber, string body, string path, int line, GitHubConfig config, string userAccessToken);
+    Task<bool> DeletePendingReviewCommentAsync(string organization, string repository, string commentId, string userAccessToken);
+    Task<bool> SubmitPendingReviewAsync(string organization, string repository, string reviewId, string state, string? body, string userAccessToken);
+    Task<bool> DeletePendingReviewAsync(string organization, string repository, string reviewId, string userAccessToken);
 }
 
 public record GitHubPRData(
@@ -94,7 +99,10 @@ public record GitHubCommentData(
     int? Line,
     bool IsOutdated,
     DateTime CreatedAt,
-    DateTime? UpdatedAt
+    DateTime? UpdatedAt,
+    bool IsPending = false,
+    string? PendingReviewId = null,
+    string? CommentNodeId = null
 );
 
 public record GitHubPRStatusData(
