@@ -504,4 +504,221 @@ public class GitHubService(
     {
         return await graphQlService.DeleteReviewCommentAsync(organization, repository, commentId, userAccessToken);
     }
+
+    public async Task<Dictionary<string, GitHubBranchProtectionData?>> GetRepositoryRulesetsAsync(string organization, string repository, GitHubConfig config)
+    {
+        var result = new Dictionary<string, GitHubBranchProtectionData?>();
+        
+        try
+        {
+            var accessToken = await tokenService.GetAccessTokenAsync(config);
+
+            using var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {accessToken}");
+            httpClient.DefaultRequestHeaders.Add("User-Agent", "Graphite-PR-Dashboard");
+            httpClient.DefaultRequestHeaders.Add("Accept", "application/vnd.github+json");
+
+            var rulesetsResponse = await httpClient.GetAsync($"https://api.github.com/repos/{organization}/{repository}/rulesets");
+            
+            if (!rulesetsResponse.IsSuccessStatusCode)
+            {
+                logger.LogWarning("Failed to fetch rulesets for {Organization}/{Repository}: {StatusCode}", 
+                    organization, repository, rulesetsResponse.StatusCode);
+                return result;
+            }
+
+            var rulesetsContent = await rulesetsResponse.Content.ReadAsStringAsync();
+            var rulesets = System.Text.Json.JsonSerializer.Deserialize<List<GitHubRuleset>>(rulesetsContent, 
+                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            if (rulesets == null || !rulesets.Any())
+            {
+                logger.LogInformation("No rulesets found for {Organization}/{Repository}", organization, repository);
+                return result;
+            }
+
+            foreach (var ruleset in rulesets)
+            {
+                if (ruleset.Enforcement != "active" && ruleset.Enforcement != "enabled")
+                    continue;
+
+                try
+                {
+                    var rulesetDetailResponse = await httpClient.GetAsync($"https://api.github.com/repos/{organization}/{repository}/rulesets/{ruleset.Id}");
+                    
+                    if (!rulesetDetailResponse.IsSuccessStatusCode)
+                        continue;
+
+                    var rulesetDetailContent = await rulesetDetailResponse.Content.ReadAsStringAsync();
+                    var rulesetDetail = System.Text.Json.JsonSerializer.Deserialize<GitHubRulesetDetail>(rulesetDetailContent);
+
+                    if (rulesetDetail == null)
+                    {
+                        logger.LogWarning("Failed to deserialize ruleset detail for {RulesetId}", ruleset.Id);
+                        continue;
+                    }
+
+                    logger.LogDebug("Deserialized ruleset '{Name}' with {RuleCount} rules", 
+                        rulesetDetail.Name, rulesetDetail.Rules?.Count ?? 0);
+
+                    var pullRequestRule = rulesetDetail.Rules?.FirstOrDefault(r => r.Type == "pull_request");
+                    var requiredApprovals = 0;
+                    var requiresApprovingReviews = false;
+
+                    if (pullRequestRule?.Parameters != null)
+                    {
+                        requiredApprovals = pullRequestRule.Parameters.RequiredApprovingReviewCount;
+                        requiresApprovingReviews = requiredApprovals > 0;
+                        
+                        logger.LogDebug("Found pull_request rule: required_approving_review_count = {Count}, requiresApprovingReviews = {Requires}", 
+                            requiredApprovals, requiresApprovingReviews);
+                    }
+                    else
+                    {
+                        logger.LogWarning("No pull_request rule found in ruleset '{RulesetName}'", rulesetDetail.Name);
+                    }
+
+                    var branchPatterns = new List<string>();
+                    if (rulesetDetail.Conditions?.RefName?.Include != null && 
+                        rulesetDetail.Conditions.RefName.Include.Count > 0)
+                    {
+                        branchPatterns.AddRange(rulesetDetail.Conditions.RefName.Include);
+                    }
+
+                    if (branchPatterns.Count == 0)
+                    {
+                        branchPatterns.Add("*");
+                    }
+
+                    var requiresStatusChecks = rulesetDetail.Rules?.Any(r => r.Type == "required_status_checks") ?? false;
+
+                    foreach (var pattern in branchPatterns)
+                    {
+                        var normalizedPattern = NormalizeBranchPattern(pattern);
+                        result[normalizedPattern] = new GitHubBranchProtectionData(
+                            requiresApprovingReviews,
+                            requiresApprovingReviews ? requiredApprovals : null,
+                            requiresStatusChecks,
+                            new List<string>()
+                        );
+                    }
+
+                    logger.LogInformation("Processed ruleset '{RulesetName}' for {Organization}/{Repository}: requires {RequiredApprovals} approvals, patterns: {Patterns}",
+                        rulesetDetail.Name, organization, repository, requiredApprovals, string.Join(", ", branchPatterns));
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Error fetching ruleset details for {RulesetId} in {Organization}/{Repository}", ruleset.Id, organization, repository);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error fetching repository rulesets for {Organization}/{Repository}", organization, repository);
+        }
+
+        return result;
+    }
+
+    private static string NormalizeBranchPattern(string pattern)
+    {
+        if (string.IsNullOrEmpty(pattern))
+            return "*";
+
+        if (pattern.StartsWith("refs/heads/"))
+        {
+            pattern = pattern.Substring(11);
+        }
+
+        if (pattern.StartsWith("~"))
+        {
+            pattern = pattern.Substring(1);
+        }
+
+        return pattern;
+    }
+
+    private class GitHubRuleset
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public int Id { get; set; }
+        
+        [System.Text.Json.Serialization.JsonPropertyName("name")]
+        public string Name { get; set; } = string.Empty;
+        
+        [System.Text.Json.Serialization.JsonPropertyName("enforcement")]
+        public string? Enforcement { get; set; }
+    }
+
+    private class GitHubRulesetDetail
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public long Id { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("name")]
+        public string Name { get; set; } = string.Empty;
+
+        [System.Text.Json.Serialization.JsonPropertyName("target")]
+        public string? Target { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("source_type")]
+        public string? SourceType { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("source")]
+        public string? Source { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("enforcement")]
+        public string Enforcement { get; set; } = string.Empty;
+
+        [System.Text.Json.Serialization.JsonPropertyName("conditions")]
+        public GitHubRulesetConditions? Conditions { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("rules")]
+        public List<GitHubRule>? Rules { get; set; }
+    }
+
+    private class GitHubRulesetConditions
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("ref_name")]
+        public GitHubRefNameCondition? RefName { get; set; }
+    }
+
+    private class GitHubRefNameCondition
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("include")]
+        public List<string>? Include { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("exclude")]
+        public List<string>? Exclude { get; set; }
+    }
+
+    private class GitHubRule
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("type")]
+        public string? Type { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("parameters")]
+        public GitHubPullRequestRuleParameters? Parameters { get; set; }
+    }
+
+    private class GitHubPullRequestRuleParameters
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("required_approving_review_count")]
+        public int RequiredApprovingReviewCount { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("dismiss_stale_reviews_on_push")]
+        public bool DismissStaleReviewsOnPush { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("require_code_owner_review")]
+        public bool RequireCodeOwnerReview { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("require_last_push_approval")]
+        public bool RequireLastPushApproval { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("required_review_thread_resolution")]
+        public bool RequiredReviewThreadResolution { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("allowed_merge_methods")]
+        public List<string>? AllowedMergeMethods { get; set; }
+    }
 }

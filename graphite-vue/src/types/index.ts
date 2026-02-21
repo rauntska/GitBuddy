@@ -97,6 +97,11 @@ export interface PullRequest {
   totalCheckRuns?: number;
   isMerged?: boolean;
   mergedAt?: string;
+  isMergeReady?: boolean;
+  requiredApprovingReviews?: number;
+  currentApprovingReviews?: number;
+  hasUnresolvedThreads?: boolean;
+  mergeBlockReason?: string;
 }
 
 export interface PRStats {
@@ -257,6 +262,11 @@ export interface PRDetail extends PullRequest {
   isMerged: boolean;
   mergedAt?: string;
   pendingReview?: PendingReview;
+  requiredApprovingReviews?: number;
+  currentApprovingReviews: number;
+  hasUnresolvedThreads: boolean;
+  isMergeReady: boolean;
+  mergeBlockReason?: string;
 }
 
 export interface PendingReview {

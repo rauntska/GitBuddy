@@ -56,7 +56,12 @@ public static class MappingExtensions
                 rt.FirstCommentBody,
                 rt.CommentCount
             )).ToList(),
-            pr.ChecksStatus
+            pr.ChecksStatus,
+            pr.IsMergeReady,
+            pr.RequiredApprovingReviews,
+            pr.CurrentApprovingReviews,
+            pr.HasUnresolvedThreads,
+            pr.MergeBlockReason
         );
 
     }
@@ -137,7 +142,7 @@ public static class MappingExtensions
         );
     }
 
-    public static PRDetailDto ToDetailDto(this PullRequest pr, List<FileDiff> files, List<Comment> comments, List<UserFileViewedState>? viewedStates = null, PendingReviewDto? pendingReview = null)
+    public static PRDetailDto ToDetailDto(this PullRequest pr, List<FileDiff> files, List<Comment> comments, List<UserFileViewedState>? viewedStates = null, PendingReviewDto? pendingReview = null, int? requiredApprovingReviews = null, int currentApprovingReviews = 0, bool hasUnresolvedThreads = false, bool isMergeReady = false, string? mergeBlockReason = null)
     {
         var fileDtos = files.Select(f =>
         {
@@ -196,7 +201,12 @@ public static class MappingExtensions
                 cr.StartedAt,
                 cr.CompletedAt
             )).ToList(),
-            pendingReview
+            pendingReview,
+            requiredApprovingReviews,
+            currentApprovingReviews,
+            hasUnresolvedThreads,
+            isMergeReady,
+            mergeBlockReason
         );
     }
 

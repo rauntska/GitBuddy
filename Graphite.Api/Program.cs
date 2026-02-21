@@ -65,6 +65,7 @@ builder.Services.AddScoped<IAllowlistService, AllowlistService>();
 builder.Services.AddSingleton<IGitHubTokenService, GitHubTokenService>();
 builder.Services.AddScoped<IGitHubGraphQLService, GitHubGraphQLService>();
 builder.Services.AddScoped<IPullRequestStatusService, PullRequestStatusService>();
+builder.Services.AddScoped<IRepositoryRuleService, RepositoryRuleService>();
 
 // Utility services
 builder.Services.AddScoped<ILanguageDetectionService, LanguageDetectionService>();
@@ -75,6 +76,7 @@ builder.Services.AddScoped<WebhookEventProcessor, GitHubWebhookProcessor>();
 
 // Background services
 builder.Services.AddHostedService<PRRefreshService>();
+builder.Services.AddHostedService<RepositoryRuleSyncWorker>();
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>

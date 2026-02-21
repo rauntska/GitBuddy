@@ -35,7 +35,7 @@
     </div>
 
      <!-- Metadata Section (Compact) -->
-     <div class="flex items-center gap-3 flex-shrink-0 w-[480px] justify-end">
+     <div class="flex items-center gap-3 flex-shrink-0 w-[550px] justify-end">
       <!-- PR Size Badge -->
       <div class="w-[60px] flex justify-center">
         <PRSizeBadge :additions="pr.additions" :deletions="pr.deletions" />
@@ -45,6 +45,19 @@
       <div class="w-[40px] flex justify-center">
         <CIBadge 
           :status="pr.checksStatus" 
+          :compact="true"
+        />
+      </div>
+
+      <!-- Merge Ready Badge -->
+      <div class="w-[70px] flex justify-center">
+        <MergeReadyBadge
+          v-if="!pr.draft && !pr.isMerged && pr.status !== 'Merged' && pr.status !== 'Closed'"
+          :is-merge-ready="pr.isMergeReady"
+          :required-approving-reviews="pr.requiredApprovingReviews"
+          :current-approving-reviews="pr.currentApprovingReviews"
+          :has-unresolved-threads="pr.hasUnresolvedThreads"
+          :merge-block-reason="pr.mergeBlockReason"
           :compact="true"
         />
       </div>
@@ -140,6 +153,7 @@ import type { PullRequest } from '../types';
 import ReviewerAvatars from './ReviewerAvatars.vue';
 import PRSizeBadge from './PRSizeBadge.vue';
 import CIBadge from './CIBadge.vue';
+import MergeReadyBadge from './MergeReadyBadge.vue';
 import {
   isStale,
   formatAge,

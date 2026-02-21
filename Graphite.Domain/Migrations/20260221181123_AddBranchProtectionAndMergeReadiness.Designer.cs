@@ -3,6 +3,7 @@ using System;
 using Graphite.Domain.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Graphite.Domain.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260221181123_AddBranchProtectionAndMergeReadiness")]
+    partial class AddBranchProtectionAndMergeReadiness
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.0");
@@ -47,6 +50,42 @@ namespace Graphite.Domain.Migrations
                     b.HasIndex("GitHubUsername");
 
                     b.ToTable("AllowedUsers");
+                });
+
+            modelBuilder.Entity("Graphite.Domain.Models.BranchProtectionRule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("BranchPattern")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("LastSyncedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Repository")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("RequiredApprovingReviewCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("RequiresApprovingReviews")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("RequiresStatusChecks")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LastSyncedAt");
+
+                    b.HasIndex("Repository", "BranchPattern")
+                        .IsUnique();
+
+                    b.ToTable("BranchProtectionRules");
                 });
 
             modelBuilder.Entity("Graphite.Domain.Models.CheckRun", b =>
@@ -577,44 +616,6 @@ namespace Graphite.Domain.Migrations
                     b.HasIndex("UpdatedAt");
 
                     b.ToTable("PullRequests");
-                });
-
-            modelBuilder.Entity("Graphite.Domain.Models.RepositoryRule", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("BranchPattern")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("LastSyncedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Repository")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<int?>("RequiredApprovingReviewCount")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("RequiresApprovingReviews")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("RequiresStatusChecks")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("RulesetName")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("LastSyncedAt");
-
-                    b.HasIndex("Repository", "BranchPattern")
-                        .IsUnique();
-
-                    b.ToTable("RepositoryRules");
                 });
 
             modelBuilder.Entity("Graphite.Domain.Models.Review", b =>

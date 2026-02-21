@@ -8,6 +8,7 @@ public class CacheService(
     AppDbContext context,
     IGitHubService gitHubService,
     ILanguageDetectionService languageDetectionService,
+    IRepositoryRuleService repositoryRuleService,
     ILogger<CacheService> logger)
     : ICacheService
 {
@@ -271,6 +272,16 @@ public class CacheService(
             catch (Exception ex)
             {
                 logger.LogError(ex, "Error fetching file diffs for PR {PrId}", prData.Id);
+            }
+
+            // Calculate merge readiness
+            try
+            {
+                await repositoryRuleService.CalculateMergeReadinessAsync(existingPR);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error calculating merge readiness for PR {PrId}", prData.Id);
             }
         }
 

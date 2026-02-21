@@ -62,21 +62,21 @@ public class PullRequestsController(
             userId = parsedUserId;
         }
 
+        PendingReviewDto? pendingReviewDto = null;
+        User? user = null;
+        GitHubConfig? config = null;
         List<UserFileViewedState>? viewedStates = null;
+        
         if (userId.HasValue)
         {
+            user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId.Value);
             viewedStates = await context.UserFileViewedStates
                 .Where(uvs => uvs.UserId == userId.Value && files.Select(f => f.Id).Contains(uvs.FileDiffId))
                 .ToListAsync();
-        }
-
-        PendingReviewDto? pendingReviewDto = null;
-        if (userId.HasValue)
-        {
-            var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId.Value);
+                
             if (user != null && !string.IsNullOrEmpty(user.AccessToken))
             {
-                var config = await context.GitHubConfigs.FirstOrDefaultAsync();
+                config = await context.GitHubConfigs.FirstOrDefaultAsync();
                 if (config != null)
                 {
                     try
@@ -116,7 +116,7 @@ public class PullRequestsController(
             }
         }
 
-        return Ok(pr.ToDetailDto(files, comments, viewedStates, pendingReviewDto));
+        return Ok(pr.ToDetailDto(files, comments, viewedStates, pendingReviewDto, pr.RequiredApprovingReviews, pr.CurrentApprovingReviews, pr.HasUnresolvedThreads, pr.IsMergeReady, pr.MergeBlockReason));
     }
 
     [HttpGet("stats")]

@@ -27,6 +27,13 @@ public class PullRequest
     public bool IsMerged { get; set; }
     public DateTime? MergedAt { get; set; }
 
+    // Merge readiness fields
+    public int? RequiredApprovingReviews { get; set; }
+    public int CurrentApprovingReviews { get; set; }
+    public bool HasUnresolvedThreads { get; set; }
+    public bool IsMergeReady { get; set; }
+    public string? MergeBlockReason { get; set; }
+
     public List<Review> Reviews { get; set; } = new();
     public List<ReviewThread> ReviewThreads { get; set; } = new();
     public List<Comment> Comments { get; set; } = new();

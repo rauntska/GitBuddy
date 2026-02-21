@@ -15,6 +15,35 @@
 
         <div class="flex-1 min-w-0 flex items-center gap-3">
           <StatusBadge v-if="prDetail" :status="prDetail.status" />
+          
+          <div 
+            v-if="prDetail && !prDetail.isMerged && !prDetail.draft && prDetail.status !== 'Merged' && prDetail.status !== 'Closed'" 
+            :class="[
+              'px-3 py-1 rounded-full text-xs font-medium border',
+              prDetail.isMergeReady 
+                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' 
+                : 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+            ]"
+            :title="prDetail.mergeBlockReason || 'Ready to merge'"
+          >
+            <span v-if="prDetail.isMergeReady" class="flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+              Ready to merge
+            </span>
+            <span v-else-if="prDetail.requiredApprovingReviews" class="flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {{ prDetail.currentApprovingReviews }}/{{ prDetail.requiredApprovingReviews }} approvals
+              <span v-if="prDetail.hasUnresolvedThreads" class="ml-1">• {{ prDetail.reviewThreads.filter(rt => !rt.isResolved && !rt.isOutdated).length }} unresolved</span>
+            </span>
+            <span v-else class="flex items-center gap-1.5">
+              {{ prDetail.mergeBlockReason || 'Review required' }}
+            </span>
+          </div>
+
           <h1 class="text-lg font-semibold text-slate-100 truncate tracking-tight">
             {{ prDetail?.title || 'Loading...' }}
           </h1>
@@ -1020,6 +1049,7 @@ const canMerge = computed(() => {
   if (prDetail.value.draft) return false;
   if (prDetail.value.isMerged) return false;
   if (prDetail.value.mergeableState === 'CONFLICTING') return false;
+  if (prDetail.value.requiredApprovingReviews !== undefined && !prDetail.value.isMergeReady) return false;
   return true;
 });
 
@@ -1029,7 +1059,9 @@ const mergeableStatusText = computed(() => {
   if (prDetail.value.draft) return 'Draft PR';
   if (prDetail.value.mergeableState === 'CONFLICTING') return 'Has conflicts';
   if (prDetail.value.mergeableState === 'UNKNOWN') return 'Checking...';
-  return 'Ready to merge';
+  if (prDetail.value.mergeBlockReason) return prDetail.value.mergeBlockReason;
+  if (prDetail.value.isMergeReady) return 'Ready to merge';
+  return 'Review required';
 });
 
 const mergeableStatusColor = computed(() => {
@@ -1038,7 +1070,9 @@ const mergeableStatusColor = computed(() => {
   if (prDetail.value.draft) return 'text-amber-400';
   if (prDetail.value.mergeableState === 'CONFLICTING') return 'text-red-400';
   if (prDetail.value.mergeableState === 'UNKNOWN') return 'text-slate-400';
-  return 'text-emerald-400';
+  if (prDetail.value.isMergeReady) return 'text-emerald-400';
+  if (prDetail.value.mergeBlockReason) return 'text-amber-400';
+  return 'text-slate-400';
 });
 
 const handleMerge = async () => {

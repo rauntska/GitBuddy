@@ -32,6 +32,7 @@ public interface IGitHubService
     Task<bool> DeletePendingReviewAsync(string organization, string repository, string reviewId, string userAccessToken);
     Task<bool> UpdateReviewCommentAsync(string organization, string repository, long commentId, string body, string userAccessToken);
     Task<bool> DeleteReviewCommentAsync(string organization, string repository, long commentId, string userAccessToken);
+    Task<Dictionary<string, GitHubBranchProtectionData?>> GetRepositoryRulesetsAsync(string organization, string repository, GitHubConfig config);
 }
 
 public record GitHubPRData(
@@ -130,4 +131,11 @@ public record GitHubRepoMergeOptions(
     bool SquashMergeAllowed,
     bool RebaseMergeAllowed,
     string? DefaultMergeMethod
+);
+
+public record GitHubBranchProtectionData(
+    bool RequiresApprovingReviews,
+    int? RequiredApprovingReviewCount,
+    bool RequiresStatusChecks,
+    List<string> RequiredStatusChecks
 );

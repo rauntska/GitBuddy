@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { apiService } from '../services/api';
 import type { GroupedPRs, PRStats, PullRequest } from '../types';
 import { useSignalR, type PRListUpdate, type PRClosedNotification, type ReviewNotification, type ThreadNotification } from './useSignalR';
@@ -351,6 +351,23 @@ export function usePullRequests() {
     return icons[status] || 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z';
   };
 
+  const readyToMergePRs = computed(() => {
+    const allPRs: PullRequest[] = [];
+    for (const status in pullRequests.value) {
+      const prList = pullRequests.value[status];
+      if (prList) {
+        allPRs.push(...prList);
+      }
+    }
+    return allPRs.filter(pr => 
+      pr.isMergeReady === true && 
+      !pr.draft && 
+      !pr.isMerged && 
+      pr.status !== 'Merged' && 
+      pr.status !== 'Closed'
+    );
+  });
+
   return {
     pullRequests,
     stats,
@@ -363,6 +380,7 @@ export function usePullRequests() {
     getStatusColor,
     getStatusLabel,
     getStatusIcon,
+    readyToMergePRs,
     mergedPRs,
     mergedPRsLoading,
     mergedPRsTotal,

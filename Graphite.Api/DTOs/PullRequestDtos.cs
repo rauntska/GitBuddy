@@ -43,7 +43,12 @@ public record PullRequestDto(
     DateTime LastSyncedAt,
     List<ReviewDto> Reviews,
     List<ReviewThreadDto> ReviewThreads,
-    string? ChecksStatus
+    string? ChecksStatus,
+    bool IsMergeReady = false,
+    int? RequiredApprovingReviews = null,
+    int CurrentApprovingReviews = 0,
+    bool HasUnresolvedThreads = false,
+    string? MergeBlockReason = null
 );
 
 public record CommentDto(
@@ -124,7 +129,12 @@ public record PRDetailDto(
     List<FileDiffDto> Files,
     List<CommentDto> AllComments,
     List<CheckRunDto> CheckRuns,
-    PendingReviewDto? PendingReview = null
+    PendingReviewDto? PendingReview = null,
+    int? RequiredApprovingReviews = null,
+    int CurrentApprovingReviews = 0,
+    bool HasUnresolvedThreads = false,
+    bool IsMergeReady = false,
+    string? MergeBlockReason = null
 );
 
 public record AddCommentRequest(

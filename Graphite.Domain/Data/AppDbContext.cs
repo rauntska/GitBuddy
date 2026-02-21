@@ -24,6 +24,7 @@ public class AppDbContext : DbContext
     public DbSet<CommentTemplate> CommentTemplates { get; set; }
     public DbSet<PendingReview> PendingReviews { get; set; }
     public DbSet<PendingComment> PendingComments { get; set; }
+    public DbSet<RepositoryRule> RepositoryRules { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -257,6 +258,13 @@ public class AppDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.PendingReviewId);
             entity.HasIndex(e => new { e.PendingReviewId, e.Path, e.Line });
+        });
+
+        modelBuilder.Entity<RepositoryRule>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.Repository, e.BranchPattern }).IsUnique();
+            entity.HasIndex(e => e.LastSyncedAt);
         });
     }
 }
