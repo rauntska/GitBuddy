@@ -8,6 +8,7 @@ const preferences = ref<UserPreferences>({
   fileTreeWidth: 256,
   commentsPanelWidth: 320,
   fileTreeVisible: true,
+  listViewMode: 'normal',
   keyboardShortcuts: {
     toggleComments: 'c',
     toggleFileTree: 'f',
@@ -74,6 +75,10 @@ export function useUserPreferences() {
     await updatePreference('fileTreeVisible', visible);
   };
 
+  const setListViewMode = async (mode: 'compact' | 'normal') => {
+    await updatePreference('listViewMode', mode);
+  };
+
   const setKeyboardShortcut = async (key: keyof UserPreferences['keyboardShortcuts'], value: string) => {
     const oldShortcuts = preferences.value.keyboardShortcuts;
     preferences.value.keyboardShortcuts = { ...preferences.value.keyboardShortcuts, [key]: value };
@@ -118,6 +123,7 @@ export function useUserPreferences() {
     setFileTreeWidth,
     setCommentsPanelWidth,
     setFileTreeVisible,
+    setListViewMode,
     setKeyboardShortcut,
     updatePreferences,
   };

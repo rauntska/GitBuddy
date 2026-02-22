@@ -14,6 +14,11 @@ export const apiService = {
     return response.data;
   },
 
+  getUnreadCount: async (): Promise<{ count: number }> => {
+    const response = await api.get<{ count: number }>('/pullrequests/unread-count');
+    return response.data;
+  },
+
   getMergedPRs: async (skip = 0, take = 10): Promise<{ pullRequests: PullRequest[]; total: number; hasMore: boolean }> => {
     const response = await api.get<PullRequest[]>('/pullrequests/merged', {
       params: { skip, take }

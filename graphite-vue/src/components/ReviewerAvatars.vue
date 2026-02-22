@@ -9,17 +9,15 @@
         :src="review.reviewerAvatar"
         :alt="review.reviewer"
         :title="`${review.reviewer} - ${getReviewStateLabel(review.state)}`"
-        class="w-7 h-7 rounded-full border-2 border-slate-800 ring-2"
-        :class="getReviewStateColor(review.state)"
+        :class="[avatarSize, 'rounded-full border-2 border-slate-800 ring-2', getReviewStateColor(review.state)]"
       />
       <div
-        class="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-slate-800"
-        :class="getReviewStateDotColor(review.state)"
+        :class="[dotSize, 'rounded-full border-2 border-slate-800 absolute bottom-0 right-0', getReviewStateDotColor(review.state)]"
       />
     </div>
     <div
       v-if="remainingCount > 0"
-      class="flex items-center justify-center w-7 h-7 rounded-full border-2 border-slate-800 bg-slate-700 text-xs text-slate-300 font-medium"
+      :class="[avatarSize, 'flex items-center justify-center rounded-full border-2 border-slate-800 bg-slate-700 text-slate-300 font-medium', compact ? 'text-[10px]' : 'text-xs']"
       :title="`${remainingCount} more reviewers`"
     >
       +{{ remainingCount }}
@@ -34,9 +32,14 @@ import type { Review } from '../types';
 const props = defineProps<{
   reviews: Review[];
   maxDisplay?: number;
+  size?: 'sm' | 'md';
 }>();
 
+const compact = computed(() => props.size === 'sm');
+
 const maxDisplay = computed(() => props.maxDisplay || 4);
+const avatarSize = computed(() => compact.value ? 'w-5 h-5' : 'w-7 h-7');
+const dotSize = computed(() => compact.value ? 'w-2 h-2' : 'w-3 h-3');
 
 const displayedReviews = computed(() => props.reviews.slice(0, maxDisplay.value));
 const remainingCount = computed(() => Math.max(0, props.reviews.length - maxDisplay.value));

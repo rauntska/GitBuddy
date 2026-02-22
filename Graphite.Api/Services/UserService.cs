@@ -43,7 +43,8 @@ public class UserService : IUserService
                 DiffViewMode = "unified",
                 FileTreeWidth = 256,
                 CommentsPanelWidth = 320,
-                FileTreeVisible = true
+                FileTreeVisible = true,
+                ListViewMode = "normal"
             };
             _context.UserPreferences.Add(preferences);
             await _context.SaveChangesAsync();
@@ -53,7 +54,8 @@ public class UserService : IUserService
             preferences.DiffViewMode,
             preferences.FileTreeWidth,
             preferences.CommentsPanelWidth,
-            preferences.FileTreeVisible
+            preferences.FileTreeVisible,
+            preferences.ListViewMode ?? "normal"
         );
     }
 
@@ -79,6 +81,9 @@ public class UserService : IUserService
         
         if (request.FileTreeVisible.HasValue)
             preferences.FileTreeVisible = request.FileTreeVisible.Value;
+        
+        if (request.ListViewMode != null)
+            preferences.ListViewMode = request.ListViewMode;
 
         preferences.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
@@ -87,7 +92,8 @@ public class UserService : IUserService
             preferences.DiffViewMode,
             preferences.FileTreeWidth,
             preferences.CommentsPanelWidth,
-            preferences.FileTreeVisible
+            preferences.FileTreeVisible,
+            preferences.ListViewMode ?? "normal"
         );
     }
 
@@ -113,7 +119,8 @@ public class UserService : IUserService
                 DiffViewMode = "unified",
                 FileTreeWidth = 256,
                 CommentsPanelWidth = 320,
-                FileTreeVisible = true
+                FileTreeVisible = true,
+                ListViewMode = "normal"
             };
             _context.UserPreferences.Add(preferences);
 
@@ -150,7 +157,8 @@ public class UserService : IUserService
                 DiffViewMode = "unified",
                 FileTreeWidth = 256,
                 CommentsPanelWidth = 320,
-                FileTreeVisible = true
+                FileTreeVisible = true,
+                ListViewMode = "normal"
             };
             _context.UserPreferences.Add(preferences);
 

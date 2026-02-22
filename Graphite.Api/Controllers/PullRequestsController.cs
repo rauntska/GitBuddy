@@ -126,6 +126,60 @@ public class PullRequestsController(
         return Ok(stats);
     }
 
+    [HttpGet("unread-count")]
+    public async Task<IActionResult> GetUnreadCount()
+    {
+        var userIdClaim = User.FindFirst("UserId")?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized(new { message = "User not authenticated" });
+        }
+
+        var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null)
+        {
+            return Unauthorized(new { message = "User not found" });
+        }
+
+        var username = user.Username;
+        
+        var allPRs = await context.PullRequests
+            .Include(pr => pr.Reviews)
+            .Where(pr => !pr.IsMerged && pr.Status != "Closed" && pr.Status != "Merged")
+            .ToListAsync();
+
+        var userReviewedPRIds = allPRs
+            .Where(pr => pr.Reviews.Any(r => r.Reviewer == username && 
+                (r.State == "APPROVED" || r.State == "CHANGES_REQUESTED" || r.State == "COMMENTED")))
+            .Select(pr => pr.Id)
+            .ToHashSet();
+
+        int unreadCount = 0;
+
+        foreach (var pr in allPRs)
+        {
+            var isAuthor = pr.Author == username;
+            var hasReviewed = userReviewedPRIds.Contains(pr.Id);
+            var isReviewer = pr.Reviews.Any(r => r.Reviewer == username);
+            var needsMoreReviewers = pr.RequiredApprovingReviews.HasValue && 
+                                      pr.CurrentApprovingReviews < pr.RequiredApprovingReviews.Value;
+
+            if (isAuthor && pr.Status == "ChangesRequested")
+            {
+                unreadCount++;
+            }
+            else if (!isAuthor && !hasReviewed)
+            {
+                if (isReviewer || needsMoreReviewers)
+                {
+                    unreadCount++;
+                }
+            }
+        }
+
+        return Ok(new { count = unreadCount });
+    }
+
     [HttpGet("merged")]
     public async Task<IActionResult> GetMergedPRs([FromQuery] int skip = 0, [FromQuery] int take = 10)
     {

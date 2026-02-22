@@ -293,6 +293,7 @@ export interface UserPreferences {
   fileTreeWidth: number;
   commentsPanelWidth: number;
   fileTreeVisible: boolean;
+  listViewMode: 'compact' | 'normal';
   viewedFilesByPr?: Record<number, string[]>;
   keyboardShortcuts: KeyboardShortcuts;
 }

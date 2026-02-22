@@ -11,6 +11,9 @@ public class UserPreferences
     public int CommentsPanelWidth { get; set; } = 320; // in pixels
     public bool FileTreeVisible { get; set; } = true;
     
+    // List view preferences
+    public string ListViewMode { get; set; } = "normal"; // "compact" or "normal"
+    
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     
     // Navigation property

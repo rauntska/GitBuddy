@@ -39,6 +39,7 @@
         v-for="pr in pullRequests"
         :key="pr.gitHubId"
         :pr="pr"
+        :compact="compact"
       />
       
       <div
@@ -61,6 +62,7 @@ const props = defineProps<{
   pullRequests: PullRequest[];
   status: string;
   expanded?: boolean;
+  compact?: boolean;
 }>();
 
  defineEmits<{

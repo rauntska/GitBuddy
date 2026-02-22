@@ -4,12 +4,14 @@ public record UserPreferencesDto(
     string DiffViewMode,
     int FileTreeWidth,
     int CommentsPanelWidth,
-    bool FileTreeVisible
+    bool FileTreeVisible,
+    string ListViewMode
 );
 
 public record UpdatePreferencesRequest(
     string? DiffViewMode,
     int? FileTreeWidth,
     int? CommentsPanelWidth,
-    bool? FileTreeVisible
+    bool? FileTreeVisible,
+    string? ListViewMode
 );

@@ -8,64 +8,47 @@ using Octokit.Webhooks.Models;
 
 namespace Graphite.Api.Services;
 
-public class WebhookService : IWebhookService
+public class WebhookService(
+    AppDbContext context,
+    IGitHubService gitHubService,
+    IPullRequestStatusService statusService,
+    ILanguageDetectionService languageDetectionService,
+    INotificationService notificationService,
+    ILogger<WebhookService> logger,
+    IServiceScopeFactory serviceScopeFactory)
+    : IWebhookService
 {
-    private readonly AppDbContext _context;
-    private readonly IGitHubService _gitHubService;
-    private readonly IPullRequestStatusService _statusService;
-    private readonly ILanguageDetectionService _languageDetectionService;
-    private readonly INotificationService _notificationService;
-    private readonly ILogger<WebhookService> _logger;
-    private readonly IServiceScopeFactory _serviceScopeFactory;
-
-    public WebhookService(
-        AppDbContext context,
-        IGitHubService gitHubService,
-        IPullRequestStatusService statusService,
-        ILanguageDetectionService languageDetectionService,
-        INotificationService notificationService,
-        ILogger<WebhookService> logger,
-        IServiceScopeFactory serviceScopeFactory)
-    {
-        _context = context;
-        _gitHubService = gitHubService;
-        _statusService = statusService;
-        _languageDetectionService = languageDetectionService;
-        _notificationService = notificationService;
-        _logger = logger;
-        _serviceScopeFactory = serviceScopeFactory;
-    }
     public async Task HandlePullRequestEventAsync(PullRequestEvent pullRequestEvent)
     {
         try
         {
-            _logger.LogInformation("Processing pull request event: {Action}", pullRequestEvent.Action);
+            logger.LogInformation("Processing pull request event: {Action}", pullRequestEvent.Action);
 
             var action = pullRequestEvent.Action?.ToLower();
             var prData = pullRequestEvent.PullRequest;
             var repo = pullRequestEvent.Repository;
 
-            _logger.LogInformation("PR webhook: {Action} - {Repository}#{Number}", action, repo.FullName, prData.Number);
+            logger.LogInformation("PR webhook: {Action} - {Repository}#{Number}", action, repo.FullName, prData.Number);
 
-            var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
+            var config = await context.GitHubConfigs.FirstOrDefaultAsync();
             if (config == null)
             {
-                _logger.LogWarning("No GitHub configuration found");
+                logger.LogWarning("No GitHub configuration found");
                 return;
             }
 
-            var existingPR = await _context.PullRequests
+            var existingPr = await context.PullRequests
                 .Include(pr => pr.Reviews)
                 .Include(pr => pr.ReviewThreads)
                 .Include(pr => pr.Comments)
                 .FirstOrDefaultAsync(pr => pr.GitHubId == prData.Number);
 
-            await ProcessPullRequestActionAsync(action, existingPR, pullRequestEvent, config, repo, prData);
+            await ProcessPullRequestActionAsync(action, existingPr, pullRequestEvent, config, repo, prData);
             await TriggerBackgroundRefreshAsync(config, repo.Name, prData.Number);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing pull request event");
+            logger.LogError(ex, "Error processing pull request event");
             throw;
         }
     }
@@ -114,25 +97,25 @@ public class WebhookService : IWebhookService
 
                     if (config.DeleteOldPRs)
                     {
-                        _context.PullRequests.Remove(existingPR);
-                        _logger.LogInformation("Deleted closed PR {Repository}#{Number}", repo.FullName, prData.Number);
+                        context.PullRequests.Remove(existingPR);
+                        logger.LogInformation("Deleted closed PR {Repository}#{Number}", repo.FullName, prData.Number);
                     }
                     else
                     {
                         existingPR.IsMerged = wasMerged;
                         existingPR.MergedAt = mergedAt;
                         existingPR.Status = wasMerged ? "Merged" : "Closed";
-                        _logger.LogInformation("Marked PR {Repository}#{Number} as {Status}",
+                        logger.LogInformation("Marked PR {Repository}#{Number} as {Status}",
                             repo.FullName, prData.Number, wasMerged ? "merged" : "closed");
                     }
 
-                    await _context.SaveChangesAsync();
-                    await _notificationService.BroadcastPRClosedAsync(prId, gitHubId, repository, wasMerged);
+                    await context.SaveChangesAsync();
+                    await notificationService.BroadcastPRClosedAsync(prId, gitHubId, repository, wasMerged);
                 }
                 break;
 
             default:
-                _logger.LogInformation("Unhandled PR action: {Action}", action);
+                logger.LogInformation("Unhandled PR action: {Action}", action);
                 break;
         }
     }
@@ -143,43 +126,43 @@ public class WebhookService : IWebhookService
         var repo = pullRequestEvent.Repository;
         var organization = repo.FullName.Split('/')[0];
 
-        var reviews = await _gitHubService.GetReviewsAsync(organization, repo.Name, prData.Number, config);
-        var reviewThreads = await _gitHubService.GetReviewThreadsAsync(organization, repo.Name, prData.Number, config);
-        var comments = await _gitHubService.GetCommentsAsync(organization, repo.Name, prData.Number, config);
+        var reviews = await gitHubService.GetReviewsAsync(organization, repo.Name, prData.Number, config);
+        var reviewThreads = await gitHubService.GetReviewThreadsAsync(organization, repo.Name, prData.Number, config);
+        var comments = await gitHubService.GetCommentsAsync(organization, repo.Name, prData.Number, config);
 
-        var status = _statusService.DeterminePrStatus(prData.Draft, reviews);
+        var status = statusService.DeterminePrStatus(prData.Draft, reviews);
 
         var pullRequest = CreatePullRequestEntity(prData, repo, status);
-        _context.PullRequests.Add(pullRequest);
-        await _context.SaveChangesAsync();
+        context.PullRequests.Add(pullRequest);
+        await context.SaveChangesAsync();
 
         AddReviewsToContext(pullRequest.Id, reviews);
         AddReviewThreadsToContext(pullRequest.Id, reviewThreads);
         AddCommentsToContext(pullRequest, comments);
 
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
         
         try
         {
-            var fileDiffs = await _gitHubService.GetFileDiffsAsync(organization, repo.Name, prData.Number, config);
+            var fileDiffs = await gitHubService.GetFileDiffsAsync(organization, repo.Name, prData.Number, config);
             AddFileDiffsToContext(pullRequest.Id, fileDiffs);
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error fetching file diffs for PR {Repository}#{Number}", repo.FullName, prData.Number);
+            logger.LogError(ex, "Error fetching file diffs for PR {Repository}#{Number}", repo.FullName, prData.Number);
         }
         
-        _logger.LogInformation("Created new PR {Repository}#{Number}", repo.FullName, prData.Number);
+        logger.LogInformation("Created new PR {Repository}#{Number}", repo.FullName, prData.Number);
         
-        var fullPR = await _context.PullRequests
+        var fullPR = await context.PullRequests
             .Include(p => p.Reviews)
             .Include(p => p.ReviewThreads)
             .FirstOrDefaultAsync(p => p.Id == pullRequest.Id);
         
         if (fullPR != null)
         {
-            await _notificationService.BroadcastPRCreatedAsync(fullPR.ToPRListUpdateDto());
+            await notificationService.BroadcastPRCreatedAsync(fullPR.ToPRListUpdateDto());
         }
     }
 
@@ -217,7 +200,7 @@ public class WebhookService : IWebhookService
     {
         foreach (var review in reviews)
         {
-            _context.Reviews.Add(new Review
+            context.Reviews.Add(new Review
             {
                 PullRequestId = pullRequestId,
                 GitHubId = review.GitHubId,
@@ -233,7 +216,7 @@ public class WebhookService : IWebhookService
     {
         foreach (var thread in reviewThreads)
         {
-            _context.ReviewThreads.Add(new ReviewThread
+            context.ReviewThreads.Add(new ReviewThread
             {
                 PullRequestId = pullRequestId,
                 GitHubId = thread.GitHubId,
@@ -267,7 +250,7 @@ public class WebhookService : IWebhookService
         foreach (var comment in comments)
         {
             var reviewThread = pullRequest.ReviewThreads.FirstOrDefault(rt => rt.GitHubId == comment.ReviewThreadId);
-            _context.Comments.Add(new Comment
+            context.Comments.Add(new Comment
             {
                 PullRequestId = pullRequest.Id,
                 ReviewThreadId = reviewThread?.Id,
@@ -288,8 +271,8 @@ public class WebhookService : IWebhookService
     {
         foreach (var fileDiff in fileDiffs)
         {
-            var language = _languageDetectionService.DetectLanguage(fileDiff.Path);
-            _context.FileDiffs.Add(new FileDiff
+            var language = languageDetectionService.DetectLanguage(fileDiff.Path);
+            context.FileDiffs.Add(new FileDiff
             {
                 PullRequestId = pullRequestId,
                 Path = fileDiff.Path,
@@ -308,7 +291,7 @@ public class WebhookService : IWebhookService
     {
         UpdatePullRequestFields(existingPr, prData, reopened);
 
-        var allReviews = await _context.Reviews
+        var allReviews = await context.Reviews
             .Where(r => r.PullRequestId == existingPr.Id)
             .ToListAsync();
 
@@ -320,19 +303,19 @@ public class WebhookService : IWebhookService
             r.SubmittedAt
         )).ToList();
 
-        existingPr.Status = _statusService.DeterminePrStatus(prData.Draft, reviewData);
+        existingPr.Status = statusService.DeterminePrStatus(prData.Draft, reviewData);
 
-        await _context.SaveChangesAsync();
-        _logger.LogInformation("Updated PR #{GitHubId}", existingPr.GitHubId);
+        await context.SaveChangesAsync();
+        logger.LogInformation("Updated PR #{GitHubId}", existingPr.GitHubId);
         
-        var fullPR = await _context.PullRequests
+        var fullPR = await context.PullRequests
             .Include(p => p.Reviews)
             .Include(p => p.ReviewThreads)
             .FirstOrDefaultAsync(p => p.Id == existingPr.Id);
         
         if (fullPR != null)
         {
-            await _notificationService.BroadcastPRUpdatedAsync(fullPR.ToPRListUpdateDto());
+            await notificationService.BroadcastPRUpdatedAsync(fullPR.ToPRListUpdateDto());
         }
     }
 
@@ -366,20 +349,20 @@ public class WebhookService : IWebhookService
             var repo = pushEvent.Repository;
             var branch = pushEvent.Ref.Replace("refs/heads/", "");
 
-            _logger.LogInformation("Push event: {Repository} - Branch: {Branch}", repo.FullName, branch);
+            logger.LogInformation("Push event: {Repository} - Branch: {Branch}", repo.FullName, branch);
 
-            var affectedPRs = await _context.PullRequests
+            var affectedPRs = await context.PullRequests
                 .Where(pr => pr.SourceBranch == branch || pr.TargetBranch == branch)
                 .ToListAsync();
 
-            if (!affectedPRs.Any())
+            if (affectedPRs.Count == 0)
                 return;
 
             UpdateAffectedPullRequests(affectedPRs, branch);
 
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
 
-            var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
+            var config = await context.GitHubConfigs.FirstOrDefaultAsync();
             if (config != null)
             {
                 await TriggerBackgroundRefreshAsync(config, null, null);
@@ -387,7 +370,7 @@ public class WebhookService : IWebhookService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing push event");
+            logger.LogError(ex, "Error processing push event");
             throw;
         }
     }
@@ -398,7 +381,7 @@ public class WebhookService : IWebhookService
         {
             pr.UpdatedAt = DateTime.UtcNow;
             pr.LastSyncedAt = DateTime.UtcNow;
-            _logger.LogInformation("Updated PR #{GitHubId} due to push to branch {Branch}", pr.GitHubId, branch);
+            logger.LogInformation("Updated PR #{GitHubId} due to push to branch {Branch}", pr.GitHubId, branch);
         }
     }
 
@@ -413,26 +396,26 @@ public class WebhookService : IWebhookService
 
             if (issue.PullRequest == null)
             {
-                _logger.LogInformation("Comment is not on a pull request");
+                logger.LogInformation("Comment is not on a pull request");
                 return;
             }
 
-            _logger.LogInformation("Comment webhook: {Action} - {Repository}#{PRNumber} - Comment #{CommentId}",
+            logger.LogInformation("Comment webhook: {Action} - {Repository}#{PRNumber} - Comment #{CommentId}",
                 action, repo.FullName, issue.Number, comment.Id);
 
-            var existingPR = await _context.PullRequests
+            var existingPr = await context.PullRequests
                 .Include(p => p.Comments)
                 .FirstOrDefaultAsync(p => p.GitHubId == issue.Number);
 
-            if (existingPR == null)
+            if (existingPr == null)
             {
-                _logger.LogWarning("PR {Number} not found in database", issue.Number);
+                logger.LogWarning("PR {Number} not found in database", issue.Number);
                 return;
             }
 
-            await ProcessCommentActionAsync(action, existingPR, comment);
+            await ProcessCommentActionAsync(action, existingPr, comment);
 
-            var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
+            var config = await context.GitHubConfigs.FirstOrDefaultAsync();
             if (config != null)
             {
                 await TriggerBackgroundRefreshAsync(config, repo.Name, issue.Number);
@@ -440,23 +423,23 @@ public class WebhookService : IWebhookService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing comment event");
+            logger.LogError(ex, "Error processing comment event");
             throw;
         }
     }
 
-    private async Task ProcessCommentActionAsync(string? action, PullRequest existingPR, IssueComment comment)
+    private async Task ProcessCommentActionAsync(string? action, PullRequest existingPr, IssueComment comment)
     {
         switch (action)
         {
             case "created":
-                await CreateCommentAsync(existingPR, comment);
+                await CreateCommentAsync(existingPr, comment);
                 break;
             case "edited":
-                await UpdateCommentAsync(existingPR, comment);
+                await UpdateCommentAsync(existingPr, comment);
                 break;
             case "deleted":
-                await DeleteCommentAsync(existingPR, comment.Id);
+                await DeleteCommentAsync(existingPr, comment.Id);
                 break;
         }
     }
@@ -465,14 +448,14 @@ public class WebhookService : IWebhookService
     {
         if (pr.Comments.Any(c => c.GitHubId == commentData.Id))
         {
-            _logger.LogInformation("Comment #{CommentId} already exists", commentData.Id);
+            logger.LogInformation("Comment #{CommentId} already exists", commentData.Id);
             return;
         }
 
         var comment = BuildCommentEntity(pr.Id, commentData);
-        _context.Comments.Add(comment);
-        await _context.SaveChangesAsync();
-        _logger.LogInformation("Created comment #{CommentId}", commentData.Id);
+        context.Comments.Add(comment);
+        await context.SaveChangesAsync();
+        logger.LogInformation("Created comment #{CommentId}", commentData.Id);
         
         var commentDto = new CommentDto(
             comment.Id,
@@ -487,7 +470,7 @@ public class WebhookService : IWebhookService
             null,
             false
         );
-        await _notificationService.BroadcastCommentChangedAsync(pr.Id, "added", commentDto);
+        await notificationService.BroadcastCommentChangedAsync(pr.Id, "added", commentDto);
     }
 
     private async Task UpdateCommentAsync(PullRequest pr, IssueComment commentData)
@@ -495,15 +478,15 @@ public class WebhookService : IWebhookService
         var existingComment = pr.Comments.FirstOrDefault(c => c.GitHubId == commentData.Id);
         if (existingComment == null)
         {
-            _logger.LogWarning("Comment #{CommentId} not found for update", commentData.Id);
+            logger.LogWarning("Comment #{CommentId} not found for update", commentData.Id);
             return;
         }
 
         existingComment.Body = commentData.Body;
         existingComment.UpdatedAt = commentData.UpdatedAt.DateTime;
 
-        await _context.SaveChangesAsync();
-        _logger.LogInformation("Updated comment #{CommentId}", commentData.Id);
+        await context.SaveChangesAsync();
+        logger.LogInformation("Updated comment #{CommentId}", commentData.Id);
     }
 
     private async Task DeleteCommentAsync(PullRequest pr, long commentId)
@@ -511,13 +494,13 @@ public class WebhookService : IWebhookService
         var existingComment = pr.Comments.FirstOrDefault(c => c.GitHubId == commentId);
         if (existingComment == null)
         {
-            _logger.LogWarning("Comment #{CommentId} not found for deletion", commentId);
+            logger.LogWarning("Comment #{CommentId} not found for deletion", commentId);
             return;
         }
 
-        _context.Comments.Remove(existingComment);
-        await _context.SaveChangesAsync();
-        _logger.LogInformation("Deleted comment #{CommentId}", commentId);
+        context.Comments.Remove(existingComment);
+        await context.SaveChangesAsync();
+        logger.LogInformation("Deleted comment #{CommentId}", commentId);
     }
 
     private static Comment BuildCommentEntity(int pullRequestId, IssueComment commentData)
@@ -546,22 +529,22 @@ public class WebhookService : IWebhookService
             var repo = pullRequestReviewCommentEvent.Repository;
             var pr = pullRequestReviewCommentEvent.PullRequest;
 
-            _logger.LogInformation("Review comment webhook: {Action} - {Repository}#{PRNumber} - Comment #{CommentId}",
+            logger.LogInformation("Review comment webhook: {Action} - {Repository}#{PRNumber} - Comment #{CommentId}",
                 action, repo.FullName, pr.Number, comment.Id);
 
-            var existingPR = await _context.PullRequests
+            var existingPr = await context.PullRequests
                 .Include(p => p.Comments)
                 .FirstOrDefaultAsync(p => p.GitHubId == pr.Number);
 
-            if (existingPR == null)
+            if (existingPr == null)
             {
-                _logger.LogWarning("PR {Number} not found in database", pr.Number);
+                logger.LogWarning("PR {Number} not found in database", pr.Number);
                 return;
             }
 
-            await ProcessReviewCommentActionAsync(action, existingPR, comment);
+            await ProcessReviewCommentActionAsync(action, existingPr, comment);
 
-            var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
+            var config = await context.GitHubConfigs.FirstOrDefaultAsync();
             if (config != null)
             {
                 await TriggerBackgroundRefreshAsync(config, repo.Name, pr.Number);
@@ -569,7 +552,7 @@ public class WebhookService : IWebhookService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing review comment event");
+            logger.LogError(ex, "Error processing review comment event");
             throw;
         }
     }
@@ -594,14 +577,14 @@ public class WebhookService : IWebhookService
     {
         if (pr.Comments.Any(c => c.GitHubId == commentData.Id))
         {
-            _logger.LogInformation("Review comment #{CommentId} already exists", commentData.Id);
+            logger.LogInformation("Review comment #{CommentId} already exists", commentData.Id);
             return;
         }
 
         var comment = BuildReviewCommentEntity(pr.Id, commentData);
-        _context.Comments.Add(comment);
-        await _context.SaveChangesAsync();
-        _logger.LogInformation("Created review comment #{CommentId}", commentData.Id);
+        context.Comments.Add(comment);
+        await context.SaveChangesAsync();
+        logger.LogInformation("Created review comment #{CommentId}", commentData.Id);
         
         var commentDto = new CommentDto(
             comment.Id,
@@ -616,7 +599,7 @@ public class WebhookService : IWebhookService
             commentData.Line,
             false
         );
-        await _notificationService.BroadcastCommentChangedAsync(pr.Id, "added", commentDto);
+        await notificationService.BroadcastCommentChangedAsync(pr.Id, "added", commentDto);
     }
 
     private async Task UpdateReviewCommentAsync(PullRequest pr, Octokit.Webhooks.Models.PullRequestReviewComment commentData)
@@ -624,15 +607,15 @@ public class WebhookService : IWebhookService
         var existingComment = pr.Comments.FirstOrDefault(c => c.GitHubId == commentData.Id);
         if (existingComment == null)
         {
-            _logger.LogWarning("Review comment #{CommentId} not found for update", commentData.Id);
+            logger.LogWarning("Review comment #{CommentId} not found for update", commentData.Id);
             return;
         }
 
         existingComment.Body = commentData.Body;
         existingComment.UpdatedAt = commentData.UpdatedAt.DateTime;
 
-        await _context.SaveChangesAsync();
-        _logger.LogInformation("Updated review comment #{CommentId}", commentData.Id);
+        await context.SaveChangesAsync();
+        logger.LogInformation("Updated review comment #{CommentId}", commentData.Id);
     }
 
     private static Comment BuildReviewCommentEntity(int pullRequestId, Octokit.Webhooks.Models.PullRequestReviewComment commentData)
@@ -662,23 +645,23 @@ public class WebhookService : IWebhookService
             var repo = pullRequestReviewThreadEvent.Repository;
             var pr = pullRequestReviewThreadEvent.PullRequest;
 
-            _logger.LogInformation("Review thread webhook: {Action} - {Repository}#{PRNumber} - Thread #{ThreadId}",
+            logger.LogInformation("Review thread webhook: {Action} - {Repository}#{PRNumber} - Thread #{ThreadId}",
                 action, repo?.FullName, pr.Number, thread?.Id);
 
-            var existingPR = await _context.PullRequests
+            var existingPr = await context.PullRequests
                 .Include(p => p.ReviewThreads)
                 .FirstOrDefaultAsync(p => p.GitHubId == pr.Number);
 
-            if (existingPR == null)
+            if (existingPr == null)
             {
-                _logger.LogWarning("PR {Number} not found in database", pr.Number);
+                logger.LogWarning("PR {Number} not found in database", pr.Number);
                 return;
             }
 
-            var existingThread = existingPR.ReviewThreads.FirstOrDefault(rt => rt.GitHubId == thread.Id.ToString());
+            var existingThread = existingPr.ReviewThreads.FirstOrDefault(rt => rt.GitHubId == thread.Id.ToString());
             await ProcessReviewThreadActionAsync(action, existingThread, thread.Id);
 
-            var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
+            var config = await context.GitHubConfigs.FirstOrDefaultAsync();
             if (config != null)
             {
                 await TriggerBackgroundRefreshAsync(config, repo.Name, pr.Number);
@@ -686,7 +669,7 @@ public class WebhookService : IWebhookService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing review thread event");
+            logger.LogError(ex, "Error processing review thread event");
             throw;
         }
     }
@@ -702,18 +685,18 @@ public class WebhookService : IWebhookService
                 existingThread.IsResolved = true;
                 existingThread.State = "RESOLVED";
                 existingThread.UpdatedAt = DateTime.UtcNow;
-                await _context.SaveChangesAsync();
-                _logger.LogInformation("Resolved review thread #{ThreadId}", threadId);
-                await _notificationService.BroadcastThreadChangedAsync(existingThread.PullRequestId, existingThread.Id, true);
+                await context.SaveChangesAsync();
+                logger.LogInformation("Resolved review thread #{ThreadId}", threadId);
+                await notificationService.BroadcastThreadChangedAsync(existingThread.PullRequestId, existingThread.Id, true);
                 break;
 
             case "unresolved":
                 existingThread.IsResolved = false;
                 existingThread.State = "UNRESOLVED";
                 existingThread.UpdatedAt = DateTime.UtcNow;
-                await _context.SaveChangesAsync();
-                _logger.LogInformation("Unresolved review thread #{ThreadId}", threadId);
-                await _notificationService.BroadcastThreadChangedAsync(existingThread.PullRequestId, existingThread.Id, false);
+                await context.SaveChangesAsync();
+                logger.LogInformation("Unresolved review thread #{ThreadId}", threadId);
+                await notificationService.BroadcastThreadChangedAsync(existingThread.PullRequestId, existingThread.Id, false);
                 break;
         }
     }
@@ -727,24 +710,24 @@ public class WebhookService : IWebhookService
             var repo = pullRequestReviewEvent.Repository;
             var pr = pullRequestReviewEvent.PullRequest;
 
-            _logger.LogInformation("Pull request review webhook: {Action} - {Repository}#{PRNumber} - Review #{ReviewId} - State: {State}",
+            logger.LogInformation("Pull request review webhook: {Action} - {Repository}#{PRNumber} - Review #{ReviewId} - State: {State}",
                 action, repo.FullName, pr.Number, review.Id, review.State);
 
-            var existingPR = await _context.PullRequests
+            var existingPr = await context.PullRequests
                 .Include(p => p.Reviews)
                 .FirstOrDefaultAsync(p => p.GitHubId == pr.Number);
 
-            if (existingPR == null)
+            if (existingPr == null)
             {
-                _logger.LogWarning("PR {Number} not found in database", pr.Number);
+                logger.LogWarning("PR {Number} not found in database", pr.Number);
                 return;
             }
 
-            await ProcessPullRequestReviewActionAsync(action, existingPR, review);
+            await ProcessPullRequestReviewActionAsync(action, existingPr, review);
 
             // Update PR status based on reviews
-            var allReviews = await _context.Reviews
-                .Where(r => r.PullRequestId == existingPR.Id)
+            var allReviews = await context.Reviews
+                .Where(r => r.PullRequestId == existingPr.Id)
                 .ToListAsync();
 
             var reviewData = allReviews.Select(r => new GitHubReviewData(
@@ -755,11 +738,11 @@ public class WebhookService : IWebhookService
                 r.SubmittedAt
             )).ToList();
 
-            existingPR.Status = _statusService.DeterminePrStatus(existingPR.Draft, reviewData);
-            existingPR.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            existingPr.Status = statusService.DeterminePrStatus(existingPr.Draft, reviewData);
+            existingPr.UpdatedAt = DateTime.UtcNow;
+            await context.SaveChangesAsync();
 
-            var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
+            var config = await context.GitHubConfigs.FirstOrDefaultAsync();
             if (config != null)
             {
                 await TriggerBackgroundRefreshAsync(config, repo.Name, pr.Number);
@@ -767,7 +750,7 @@ public class WebhookService : IWebhookService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing pull request review event");
+            logger.LogError(ex, "Error processing pull request review event");
             throw;
         }
     }
@@ -805,7 +788,7 @@ public class WebhookService : IWebhookService
             existingReview.State = reviewState;
             existingReview.SubmittedAt = reviewData.SubmittedAt?.UtcDateTime;
             long reviewId = reviewData.Id;
-            _logger.LogInformation("Updated review #{ReviewId} with state {State}", reviewId, reviewState);
+            logger.LogInformation("Updated review #{ReviewId} with state {State}", reviewId, reviewState);
         }
         else
         {
@@ -818,12 +801,12 @@ public class WebhookService : IWebhookService
                 State = reviewState,
                 SubmittedAt = reviewData.SubmittedAt?.UtcDateTime
             };
-            _context.Reviews.Add(newReview);
+            context.Reviews.Add(newReview);
             long reviewId = reviewData.Id;
-            _logger.LogInformation("Created review #{ReviewId} with state {State}", reviewId, reviewState);
+            logger.LogInformation("Created review #{ReviewId} with state {State}", reviewId, reviewState);
         }
 
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
         
         var reviewDto = new ReviewDto(
             existingReview?.Id ?? 0,
@@ -833,7 +816,7 @@ public class WebhookService : IWebhookService
             reviewState,
             (DateTime?)reviewData.SubmittedAt?.UtcDateTime
         );
-        await _notificationService.BroadcastReviewAddedAsync(pr.Id, pr.Status, reviewDto);
+        await notificationService.BroadcastReviewAddedAsync(pr.Id, pr.Status, reviewDto);
     }
 
     private async Task UpdateExistingReviewAsync(PullRequest pr, dynamic reviewData, string reviewState)
@@ -842,16 +825,16 @@ public class WebhookService : IWebhookService
         if (existingReview == null)
         {
             long reviewId = reviewData.Id;
-            _logger.LogWarning("Review #{ReviewId} not found for update", reviewId);
+            logger.LogWarning("Review #{ReviewId} not found for update", reviewId);
             return;
         }
 
         existingReview.State = reviewState;
         existingReview.SubmittedAt = reviewData.SubmittedAt?.UtcDateTime;
 
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
         long id = reviewData.Id;
-        _logger.LogInformation("Updated review #{ReviewId} with state {State}", id, reviewState);
+        logger.LogInformation("Updated review #{ReviewId} with state {State}", id, reviewState);
     }
 
     private async Task DismissReviewAsync(PullRequest pr, long reviewId)
@@ -859,13 +842,13 @@ public class WebhookService : IWebhookService
         var existingReview = pr.Reviews.FirstOrDefault(r => r.GitHubId == reviewId.ToString());
         if (existingReview == null)
         {
-            _logger.LogWarning("Review #{ReviewId} not found for dismissal", reviewId);
+            logger.LogWarning("Review #{ReviewId} not found for dismissal", reviewId);
             return;
         }
 
         existingReview.State = "DISMISSED";
-        await _context.SaveChangesAsync();
-        _logger.LogInformation("Dismissed review #{ReviewId}", reviewId);
+        await context.SaveChangesAsync();
+        logger.LogInformation("Dismissed review #{ReviewId}", reviewId);
     }
 
     private Task TriggerBackgroundRefreshAsync(GitHubConfig config, string? repository, long? prNumber)
@@ -874,14 +857,14 @@ public class WebhookService : IWebhookService
         {
             try
             {
-                _logger.LogInformation("Triggering background refresh for repository: {Repository}, PR: {PRNumber}", repository, prNumber);
-                await using var scope = _serviceScopeFactory.CreateAsyncScope();
+                logger.LogInformation("Triggering background refresh for repository: {Repository}, PR: {PRNumber}", repository, prNumber);
+                await using var scope = serviceScopeFactory.CreateAsyncScope();
                 var cacheService = scope.ServiceProvider.GetRequiredService<ICacheService>();
                 await cacheService.RefreshPullRequestsAsync(config);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in background refresh");
+                logger.LogError(ex, "Error in background refresh");
             }
         });
         return Task.CompletedTask;

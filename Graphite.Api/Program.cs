@@ -101,7 +101,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    dbContext.Database.Migrate();
+    await dbContext.Database.MigrateAsync();
 }
 
 app.UseCors("AllowVueDev");
@@ -115,4 +115,4 @@ app.MapHub<PRHub>("/hubs/pr");
 var webhookSecret = builder.Configuration["GitHub:WebhookSecret"];
 app.MapGitHubWebhooks(path: "/api/webhooks/github", secret: webhookSecret);
 
-app.Run();
+await app.RunAsync();

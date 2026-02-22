@@ -1,8 +1,8 @@
 <template>
   <span 
-    :class="badgeClass"
+    :class="[badgeClass, compact ? 'px-1 py-0.5 text-[9px]' : 'px-1.5 py-0.5 text-[10px]']"
     :title="tooltipText"
-    class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide">
+    class="rounded font-bold uppercase tracking-wide">
     {{ size }}
   </span>
 </template>
@@ -14,6 +14,7 @@ import { getPRSize, getSizeBadgeClass } from '../utils/prHelpers';
 const props = defineProps<{
   additions: number;
   deletions: number;
+  compact?: boolean;
 }>();
 
 const totalLines = computed(() => props.additions + props.deletions);
