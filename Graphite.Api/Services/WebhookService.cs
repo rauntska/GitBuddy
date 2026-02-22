@@ -12,28 +12,28 @@ public class WebhookService : IWebhookService
 {
     private readonly AppDbContext _context;
     private readonly IGitHubService _gitHubService;
-    private readonly ICacheService _cacheService;
     private readonly IPullRequestStatusService _statusService;
     private readonly ILanguageDetectionService _languageDetectionService;
     private readonly INotificationService _notificationService;
     private readonly ILogger<WebhookService> _logger;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
 
     public WebhookService(
         AppDbContext context,
         IGitHubService gitHubService,
-        ICacheService cacheService,
         IPullRequestStatusService statusService,
         ILanguageDetectionService languageDetectionService,
         INotificationService notificationService,
-        ILogger<WebhookService> logger)
+        ILogger<WebhookService> logger,
+        IServiceScopeFactory serviceScopeFactory)
     {
         _context = context;
         _gitHubService = gitHubService;
-        _cacheService = cacheService;
         _statusService = statusService;
         _languageDetectionService = languageDetectionService;
         _notificationService = notificationService;
         _logger = logger;
+        _serviceScopeFactory = serviceScopeFactory;
     }
     public async Task HandlePullRequestEventAsync(PullRequestEvent pullRequestEvent)
     {
@@ -870,13 +870,14 @@ public class WebhookService : IWebhookService
 
     private Task TriggerBackgroundRefreshAsync(GitHubConfig config, string? repository, long? prNumber)
     {
-        return Task.CompletedTask;
         _ = Task.Run(async () =>
         {
             try
             {
                 _logger.LogInformation("Triggering background refresh for repository: {Repository}, PR: {PRNumber}", repository, prNumber);
-                await _cacheService.RefreshPullRequestsAsync(config);
+                await using var scope = _serviceScopeFactory.CreateAsyncScope();
+                var cacheService = scope.ServiceProvider.GetRequiredService<ICacheService>();
+                await cacheService.RefreshPullRequestsAsync(config);
             }
             catch (Exception ex)
             {
