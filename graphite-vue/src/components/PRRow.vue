@@ -81,7 +81,7 @@
 
       <!-- Reviewer Avatars -->
       <div :class="compact ? 'w-[60px]' : 'w-[80px]'" class="flex justify-center">
-        <ReviewerAvatars :reviews="pr.reviews" :max-display="compact ? 2 : 3" :size="compact ? 'sm' : 'md'" />
+        <ReviewerAvatars :reviews="pr.reviews.filter(r => r.reviewer !== pr.author)" :max-display="compact ? 2 : 3" :size="compact ? 'sm' : 'md'" />
       </div>
 
       <!-- Comments (Resolved/Total) -->

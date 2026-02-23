@@ -324,8 +324,8 @@
                 <div v-if="prDetail.reviews.length > 0" class="p-4 bg-gradient-to-br from-slate-800/40 to-slate-800/20 border border-slate-700/30 rounded-xl shadow-sm">
                   <div class="text-xs font-medium text-slate-400 mb-3">Reviewers</div>
                   <div class="space-y-2">
-                    <div
-                      v-for="review in prDetail.reviews"
+<div
+                      v-for="review in prDetail.reviews.filter(r => r.reviewer !== prDetail?.author)"
                       :key="review.id"
                       class="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-700/30 transition-colors duration-200"
                     >
