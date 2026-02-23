@@ -17,8 +17,10 @@ public class PullRequestsController(
     AppDbContext context, 
     IGitHubService gitHubService,
     IGitHubGraphQLService gitHubGraphQLService)
-    : ControllerBase
+    : BaseController(context)
 {
+    private readonly AppDbContext _context = context;
+
     [HttpGet]
     public async Task<IActionResult> Get()
     {
@@ -36,7 +38,7 @@ public class PullRequestsController(
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id)
     {
-        var pr = await context.PullRequests
+        var pr = await _context.PullRequests
             .Include(p => p.Reviews)
             .Include(p => p.ReviewThreads)
             .Include(p => p.CheckRuns)
@@ -47,11 +49,11 @@ public class PullRequestsController(
             return NotFound(new { message = "Pull request not found" });
         }
 
-        var files = await context.FileDiffs
+        var files = await _context.FileDiffs
             .Where(f => f.PullRequestId == id)
             .ToListAsync();
 
-        var comments = await context.Comments
+        var comments = await _context.Comments
             .Where(c => c.PullRequestId == id)
             .ToListAsync();
 
@@ -69,14 +71,14 @@ public class PullRequestsController(
         
         if (userId.HasValue)
         {
-            user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId.Value);
-            viewedStates = await context.UserFileViewedStates
+            user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId.Value);
+            viewedStates = await _context.UserFileViewedStates
                 .Where(uvs => uvs.UserId == userId.Value && files.Select(f => f.Id).Contains(uvs.FileDiffId))
                 .ToListAsync();
                 
             if (user != null && !string.IsNullOrEmpty(user.AccessToken))
             {
-                config = await context.GitHubConfigs.FirstOrDefaultAsync();
+                config = await _context.GitHubConfigs.FirstOrDefaultAsync();
                 if (config != null)
                 {
                     try
@@ -129,37 +131,29 @@ public class PullRequestsController(
     [HttpGet("unread-count")]
     public async Task<IActionResult> GetUnreadCount()
     {
-        var userIdClaim = User.FindFirst("UserId")?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
-        {
-            return Unauthorized(new { message = "User not authenticated" });
-        }
-
-        var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        var user = await CurrentUser();
         if (user == null)
-        {
             return Unauthorized(new { message = "User not found" });
-        }
 
         var username = user.Username;
         
-        var allPRs = await context.PullRequests
+        var allPRs = await _context.PullRequests
             .Include(pr => pr.Reviews)
-            .Where(pr => !pr.IsMerged && pr.Status != "Closed" && pr.Status != "Merged")
+            .Where(pr => !pr.IsMerged && pr.Status != "Closed" && pr.Status != "Merged" && pr.Status != "Draft")
             .ToListAsync();
 
-        var userReviewedPRIds = allPRs
+        var userReviewedPrIds = allPRs
             .Where(pr => pr.Reviews.Any(r => r.Reviewer == username && 
-                (r.State == "APPROVED" || r.State == "CHANGES_REQUESTED" || r.State == "COMMENTED")))
+                r.State is "Approved" or "ChangesRequested" or "Commented"))
             .Select(pr => pr.Id)
             .ToHashSet();
 
-        int unreadCount = 0;
+        var unreadCount = 0;
 
         foreach (var pr in allPRs)
         {
             var isAuthor = pr.Author == username;
-            var hasReviewed = userReviewedPRIds.Contains(pr.Id);
+            var hasReviewed = userReviewedPrIds.Contains(pr.Id);
             var isReviewer = pr.Reviews.Any(r => r.Reviewer == username);
             var needsMoreReviewers = pr.RequiredApprovingReviews.HasValue && 
                                       pr.CurrentApprovingReviews < pr.RequiredApprovingReviews.Value;
@@ -183,7 +177,7 @@ public class PullRequestsController(
     [HttpGet("merged")]
     public async Task<IActionResult> GetMergedPRs([FromQuery] int skip = 0, [FromQuery] int take = 10)
     {
-        var mergedPRs = await context.PullRequests
+        var mergedPRs = await _context.PullRequests
             .Include(pr => pr.Reviews)
             .Include(pr => pr.ReviewThreads)
             .Where(pr => pr.IsMerged)
@@ -192,7 +186,7 @@ public class PullRequestsController(
             .Take(take)
             .ToListAsync();
 
-        var totalCount = await context.PullRequests.CountAsync(pr => pr.IsMerged);
+        var totalCount = await _context.PullRequests.CountAsync(pr => pr.IsMerged);
 
         Response.Headers.Append("X-Total-Count", totalCount.ToString());
         Response.Headers.Append("X-Has-More", ((skip + take) < totalCount).ToString().ToLower());
@@ -236,7 +230,7 @@ public class PullRequestsController(
     [HttpGet("{id}/files/{*filePath}")]
     public async Task<IActionResult> GetFileDiff(int id, string filePath)
     {
-        var fileDiff = await context.FileDiffs
+        var fileDiff = await _context.FileDiffs
             .FirstOrDefaultAsync(f => f.PullRequestId == id && f.Path == filePath);
 
         if (fileDiff == null)
@@ -250,7 +244,7 @@ public class PullRequestsController(
     [HttpGet("{id}/comments")]
     public async Task<IActionResult> GetComments(int id)
     {
-        var comments = await context.Comments
+        var comments = await _context.Comments
             .Where(c => c.PullRequestId == id)
             .ToListAsync();
 
@@ -261,21 +255,11 @@ public class PullRequestsController(
     [Authorize]
     public async Task<IActionResult> AddComment(int id, [FromBody] AddCommentRequest request)
     {
-        var userIdClaim = User.FindFirst("UserId")?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
-        {
-            return Unauthorized(new { message = "User not authenticated" });
-        }
+        var user = await CurrentUser();
+        if (user == null)
+            return Unauthorized(new { message = "User not found" });
 
-        var user = await context.Users
-            .FirstOrDefaultAsync(u => u.Id == userId);
-
-        if (user == null || string.IsNullOrEmpty(user.AccessToken))
-        {
-            return Unauthorized(new { message = "User token not available" });
-        }
-
-        var pr = await context.PullRequests
+        var pr = await _context.PullRequests
             .Include(p => p.ReviewThreads)
             .FirstOrDefaultAsync(p => p.Id == id);
         if (pr == null)
@@ -283,7 +267,7 @@ public class PullRequestsController(
             return NotFound(new { message = "Pull request not found" });
         }
 
-        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
+        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
         if (config == null)
         {
             return BadRequest(new { message = "GitHub configuration not found" });
@@ -304,20 +288,20 @@ public class PullRequestsController(
                     user.AccessToken
                 );
 
-                var pendingReview = await context.PendingReviews
-                    .FirstOrDefaultAsync(pr => pr.PullRequestId == id && pr.UserId == userId);
+                var pendingReview = await _context.PendingReviews
+                    .FirstOrDefaultAsync(pr => pr.PullRequestId == id && pr.UserId == user.Id);
 
                 if (pendingReview == null && !string.IsNullOrEmpty(pendingComment.ReviewId))
                 {
                     pendingReview = new PendingReview
                     {
                         PullRequestId = id,
-                        UserId = userId,
+                        UserId = user.Id,
                         GitHubReviewId = pendingComment.ReviewId,
                         CreatedAt = DateTime.UtcNow
                     };
-                    context.PendingReviews.Add(pendingReview);
-                    await context.SaveChangesAsync();
+                    _context.PendingReviews.Add(pendingReview);
+                    await _context.SaveChangesAsync();
                 }
 
                 if (pendingReview != null)
@@ -330,8 +314,8 @@ public class PullRequestsController(
                         Line = pendingComment.Line ?? request.Line.Value,
                         CreatedAt = pendingComment.CreatedAt
                     };
-                    context.PendingComments.Add(dbPendingComment);
-                    await context.SaveChangesAsync();
+                    _context.PendingComments.Add(dbPendingComment);
+                    await _context.SaveChangesAsync();
 
                     return Ok(new
                     {
@@ -406,21 +390,11 @@ public class PullRequestsController(
     [Authorize]
     public async Task<IActionResult> AddCommentReply(int id, [FromBody] AddCommentReplyRequest request)
     {
-        var userIdClaim = User.FindFirst("UserId")?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
-        {
-            return Unauthorized(new { message = "User not authenticated" });
-        }
+        var user = await CurrentUser();
+        if (user == null)
+            return Unauthorized(new { message = "User not found" });
 
-        var user = await context.Users
-            .FirstOrDefaultAsync(u => u.Id == userId);
-
-        if (user == null || string.IsNullOrEmpty(user.AccessToken))
-        {
-            return Unauthorized(new { message = "User token not available" });
-        }
-
-        var pr = await context.PullRequests
+        var pr = await _context.PullRequests
             .Include(p => p.ReviewThreads)
             .FirstOrDefaultAsync(p => p.Id == id);
         if (pr == null)
@@ -428,7 +402,7 @@ public class PullRequestsController(
             return NotFound(new { message = "Pull request not found" });
         }
 
-        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
+        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
         if (config == null)
         {
             return BadRequest(new { message = "GitHub configuration not found" });
@@ -484,8 +458,8 @@ public class PullRequestsController(
                     CreatedAt = comment.CreatedAt,
                     UpdatedAt = comment.UpdatedAt
                 };
-                context.Comments.Add(dbComment);
-                await context.SaveChangesAsync();
+                _context.Comments.Add(dbComment);
+                await _context.SaveChangesAsync();
 
                 return Ok(new CommentDto(
                     dbComment.Id,
@@ -534,27 +508,17 @@ public class PullRequestsController(
     [Authorize]
     public async Task<IActionResult> ResolveReviewThread(int id, string threadId, [FromBody] ResolveThreadRequest request)
     {
-        var userIdClaim = User.FindFirst("UserId")?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
-        {
-            return Unauthorized(new { message = "User not authenticated" });
-        }
+        var user = await CurrentUser();
+        if (user == null)
+            return Unauthorized(new { message = "User not found" });
 
-        var user = await context.Users
-            .FirstOrDefaultAsync(u => u.Id == userId);
-
-        if (user == null || string.IsNullOrEmpty(user.AccessToken))
-        {
-            return Unauthorized(new { message = "User token not available" });
-        }
-
-        var pr = await context.PullRequests.FindAsync(id);
+        var pr = await _context.PullRequests.FindAsync(id);
         if (pr == null)
         {
             return NotFound(new { message = "Pull request not found" });
         }
 
-        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
+        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
         if (config == null)
         {
             return BadRequest(new { message = "GitHub configuration not found" });
@@ -583,27 +547,17 @@ public class PullRequestsController(
     [Authorize]
     public async Task<IActionResult> UnresolveReviewThread(int id, string threadId, [FromBody] UnresolveThreadRequest request)
     {
-        var userIdClaim = User.FindFirst("UserId")?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
-        {
-            return Unauthorized(new { message = "User not authenticated" });
-        }
+        var user = await CurrentUser();
+        if (user == null)
+            return Unauthorized(new { message = "User not found" });
 
-        var user = await context.Users
-            .FirstOrDefaultAsync(u => u.Id == userId);
-
-        if (user == null || string.IsNullOrEmpty(user.AccessToken))
-        {
-            return Unauthorized(new { message = "User token not available" });
-        }
-
-        var pr = await context.PullRequests.FindAsync(id);
+        var pr = await _context.PullRequests.FindAsync(id);
         if (pr == null)
         {
             return NotFound(new { message = "Pull request not found" });
         }
 
-        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
+        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
         if (config == null)
         {
             return BadRequest(new { message = "GitHub configuration not found" });
@@ -631,27 +585,17 @@ public class PullRequestsController(
     [Authorize]
     public async Task<IActionResult> SubmitReview(int id, [FromBody] SubmitReviewRequest request)
     {
-        var userIdClaim = User.FindFirst("UserId")?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
-        {
-            return Unauthorized(new { message = "User not authenticated" });
-        }
+        var user = await CurrentUser();
+        if (user == null)
+            return Unauthorized(new { message = "User not found" });
 
-        var user = await context.Users
-            .FirstOrDefaultAsync(u => u.Id == userId);
-
-        if (user == null || string.IsNullOrEmpty(user.AccessToken))
-        {
-            return Unauthorized(new { message = "User token not available" });
-        }
-
-        var pr = await context.PullRequests.FindAsync(id);
+        var pr = await _context.PullRequests.FindAsync(id);
         if (pr == null)
         {
             return NotFound(new { message = "Pull request not found" });
         }
 
-        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
+        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
         if (config == null)
         {
             return BadRequest(new { message = "GitHub configuration not found" });
@@ -681,19 +625,11 @@ public class PullRequestsController(
     [Authorize]
     public async Task<IActionResult> MergePR(int id, [FromBody] MergePRRequest? request = null)
     {
-        var userIdClaim = User.FindFirst("UserId")?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
-        {
-            return Unauthorized(new { message = "User not authenticated" });
-        }
+        var user = await CurrentUser();
+        if (user == null)
+            return Unauthorized(new { message = "User not found" });
 
-        var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId);
-        if (user == null || string.IsNullOrEmpty(user.AccessToken))
-        {
-            return Unauthorized(new { message = "User token not available" });
-        }
-
-        var pr = await context.PullRequests.FindAsync(id);
+        var pr = await _context.PullRequests.FindAsync(id);
         if (pr == null)
         {
             return NotFound(new { message = "Pull request not found" });
@@ -714,7 +650,7 @@ public class PullRequestsController(
             return BadRequest(new { message = "Pull request has merge conflicts that must be resolved before merging." });
         }
 
-        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
+        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
         if (config == null)
         {
             return BadRequest(new { message = "GitHub configuration not found" });
@@ -737,7 +673,7 @@ public class PullRequestsController(
             pr.IsMerged = true;
             pr.MergedAt = DateTime.UtcNow;
             pr.Status = "Merged";
-            await context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
 
             return Ok(new { message = "Pull request merged successfully", isMerged = true, mergedAt = pr.MergedAt });
         }
@@ -769,19 +705,19 @@ public class PullRequestsController(
             return Unauthorized(new { message = "User not authenticated" });
         }
 
-        var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null || string.IsNullOrEmpty(user.AccessToken))
         {
             return Unauthorized(new { message = "User token not available" });
         }
 
-        var pr = await context.PullRequests.FindAsync(id);
+        var pr = await _context.PullRequests.FindAsync(id);
         if (pr == null)
         {
             return NotFound(new { message = "Pull request not found" });
         }
 
-        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
+        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
         if (config == null)
         {
             return BadRequest(new { message = "GitHub configuration not found" });
@@ -822,7 +758,7 @@ public class PullRequestsController(
             return Unauthorized(new { message = "User not authenticated" });
         }
 
-        var user = await context.Users
+        var user = await _context.Users
             .FirstOrDefaultAsync(u => u.Id == userId);
 
         if (user == null || string.IsNullOrEmpty(user.AccessToken))
@@ -830,7 +766,7 @@ public class PullRequestsController(
             return Unauthorized(new { message = "User token not available" });
         }
 
-        var pr = await context.PullRequests.FindAsync(id);
+        var pr = await _context.PullRequests.FindAsync(id);
         if (pr == null)
         {
             return NotFound(new { message = "Pull request not found" });
@@ -841,7 +777,7 @@ public class PullRequestsController(
             return BadRequest(new { message = "Pull request is not a draft" });
         }
 
-        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
+        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
         if (config == null)
         {
             return BadRequest(new { message = "GitHub configuration not found" });
@@ -860,7 +796,7 @@ public class PullRequestsController(
             // Update local database
             pr.Draft = false;
             pr.Status = "AwaitingReview";
-            await context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
 
             return Ok(new { message = "Draft PR published successfully", draft = false, status = "AwaitingReview" });
         }
@@ -881,14 +817,14 @@ public class PullRequestsController(
         {
             return Unauthorized(new { message = "User not authenticated" });
         }
-        var user = await context.Users
+        var user = await _context.Users
             .FirstOrDefaultAsync(u => u.Id == userIdFromClaim);
         
         
-        var pr = await context.PullRequests.FindAsync(id);
+        var pr = await _context.PullRequests.FindAsync(id);
         if (pr == null) return NotFound();
 
-        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
+        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
         if (config == null) return BadRequest(new { message = "GitHub configuration not found" });
 
         var userAccessToken = user.AccessToken;
@@ -905,19 +841,19 @@ public class PullRequestsController(
             }
 
             // Also update local DB state
-            var fileDiff = await context.FileDiffs.FirstOrDefaultAsync(f => f.PullRequestId == id && f.Path == request.Path);
+            var fileDiff = await _context.FileDiffs.FirstOrDefaultAsync(f => f.PullRequestId == id && f.Path == request.Path);
             if (fileDiff != null)
             {
                 // Get current user from JWT
                 var userIdStr = User.FindFirst("UserId")?.Value;
                 if (int.TryParse(userIdStr, out var userId))
                 {
-                    var viewedState = await context.UserFileViewedStates
+                    var viewedState = await _context.UserFileViewedStates
                         .FirstOrDefaultAsync(vs => vs.FileDiffId == fileDiff.Id && vs.UserId == userId);
 
                     if (viewedState == null)
                     {
-                        context.UserFileViewedStates.Add(new UserFileViewedState
+                        _context.UserFileViewedStates.Add(new UserFileViewedState
                         {
                             FileDiffId = fileDiff.Id,
                             UserId = userId,
@@ -931,7 +867,7 @@ public class PullRequestsController(
                         viewedState.UpdatedAt = DateTime.UtcNow;
                     }
 
-                    await context.SaveChangesAsync();
+                    await _context.SaveChangesAsync();
                 }
             }
 
@@ -946,7 +882,7 @@ public class PullRequestsController(
     [HttpGet("{id}/mentionable-users")]
     public async Task<IActionResult> GetMentionableUsers(int id)
     {
-        var pr = await context.PullRequests
+        var pr = await _context.PullRequests
             .Include(p => p.Reviews)
             .Include(p => p.Comments)
             .FirstOrDefaultAsync(p => p.Id == id);
@@ -979,7 +915,7 @@ public class PullRequestsController(
         }
 
         // Also query for user avatars
-        var userAvatars = await context.Users
+        var userAvatars = await _context.Users
             .Where(u => users.Contains(u.Username))
             .Select(u => new { u.Username, u.AvatarUrl, u.Name })
             .ToDictionaryAsync(u => u.Username);
@@ -1006,7 +942,7 @@ public class PullRequestsController(
         }
 
         // Get PR details
-        var pr = await context.PullRequests
+        var pr = await _context.PullRequests
             .FirstOrDefaultAsync(p => p.Id == id);
 
         if (pr == null)
@@ -1015,7 +951,7 @@ public class PullRequestsController(
         }
 
         // Get user's token from database
-        var user = await context.Users
+        var user = await _context.Users
             .FirstOrDefaultAsync(u => u.Id == userId);
         
         if (user == null || string.IsNullOrEmpty(user.AccessToken))
@@ -1042,7 +978,7 @@ public class PullRequestsController(
             );
 
             // Get existing file diffs from database
-            var dbFileDiffs = await context.FileDiffs
+            var dbFileDiffs = await _context.FileDiffs
                 .Where(f => f.PullRequestId == id)
                 .ToListAsync();
 
@@ -1053,7 +989,7 @@ public class PullRequestsController(
                 if (dbFileDiff != null)
                 {
                     // Update or create viewed state
-                    var existingState = await context.UserFileViewedStates
+                    var existingState = await _context.UserFileViewedStates
                         .FirstOrDefaultAsync(uvs => uvs.UserId == userId && uvs.FileDiffId == dbFileDiff.Id);
 
                     if (existingState != null)
@@ -1064,7 +1000,7 @@ public class PullRequestsController(
                     else
                     {
                         // Create new viewed state
-                        context.UserFileViewedStates.Add(new UserFileViewedState
+                        _context.UserFileViewedStates.Add(new UserFileViewedState
                         {
                             UserId = userId,
                             FileDiffId = dbFileDiff.Id,
@@ -1075,10 +1011,10 @@ public class PullRequestsController(
                 }
             }
 
-            await context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
 
             // Return updated file diffs with viewed state
-            var viewedStates = await context.UserFileViewedStates
+            var viewedStates = await _context.UserFileViewedStates
                 .Where(uvs => uvs.UserId == userId && dbFileDiffs.Select(f => f.Id).Contains(uvs.FileDiffId))
                 .ToListAsync();
 
@@ -1112,19 +1048,19 @@ public class PullRequestsController(
             return Unauthorized(new { message = "User not authenticated" });
         }
 
-        var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null || string.IsNullOrEmpty(user.AccessToken))
         {
             return Unauthorized(new { message = "User token not available" });
         }
 
-        var pr = await context.PullRequests.FindAsync(id);
+        var pr = await _context.PullRequests.FindAsync(id);
         if (pr == null)
         {
             return NotFound(new { message = "Pull request not found" });
         }
 
-        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
+        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
         if (config == null)
         {
             return BadRequest(new { message = "GitHub configuration not found" });
@@ -1206,19 +1142,19 @@ public class PullRequestsController(
             return Unauthorized(new { message = "User not authenticated" });
         }
 
-        var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null || string.IsNullOrEmpty(user.AccessToken))
         {
             return Unauthorized(new { message = "User token not available" });
         }
 
-        var pr = await context.PullRequests.FindAsync(id);
+        var pr = await _context.PullRequests.FindAsync(id);
         if (pr == null)
         {
             return NotFound(new { message = "Pull request not found" });
         }
 
-        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
+        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
         if (config == null)
         {
             return BadRequest(new { message = "GitHub configuration not found" });
@@ -1272,19 +1208,19 @@ public class PullRequestsController(
             return Unauthorized(new { message = "User not authenticated" });
         }
 
-        var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null || string.IsNullOrEmpty(user.AccessToken))
         {
             return Unauthorized(new { message = "User token not available" });
         }
 
-        var pr = await context.PullRequests.FindAsync(id);
+        var pr = await _context.PullRequests.FindAsync(id);
         if (pr == null)
         {
             return NotFound(new { message = "Pull request not found" });
         }
 
-        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
+        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
         if (config == null)
         {
             return BadRequest(new { message = "GitHub configuration not found" });
@@ -1331,19 +1267,19 @@ public class PullRequestsController(
             return Unauthorized(new { message = "User not authenticated" });
         }
 
-        var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null || string.IsNullOrEmpty(user.AccessToken))
         {
             return Unauthorized(new { message = "User token not available" });
         }
 
-        var pr = await context.PullRequests.FindAsync(id);
+        var pr = await _context.PullRequests.FindAsync(id);
         if (pr == null)
         {
             return NotFound(new { message = "Pull request not found" });
         }
 
-        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
+        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
         if (config == null)
         {
             return BadRequest(new { message = "GitHub configuration not found" });
@@ -1360,12 +1296,12 @@ public class PullRequestsController(
 
             if (success)
             {
-                var pendingComment = await context.PendingComments
+                var pendingComment = await _context.PendingComments
                     .FirstOrDefaultAsync(c => c.PendingReview.PullRequestId == id && c.PendingReview.UserId == userId);
                 if (pendingComment != null)
                 {
-                    context.PendingComments.Remove(pendingComment);
-                    await context.SaveChangesAsync();
+                    _context.PendingComments.Remove(pendingComment);
+                    await _context.SaveChangesAsync();
                 }
                 return Ok(new { message = "Comment deleted successfully" });
             }
@@ -1388,19 +1324,19 @@ public class PullRequestsController(
             return Unauthorized(new { message = "User not authenticated" });
         }
 
-        var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null || string.IsNullOrEmpty(user.AccessToken))
         {
             return Unauthorized(new { message = "User token not available" });
         }
 
-        var pr = await context.PullRequests.FindAsync(id);
+        var pr = await _context.PullRequests.FindAsync(id);
         if (pr == null)
         {
             return NotFound(new { message = "Pull request not found" });
         }
 
-        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
+        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
         if (config == null)
         {
             return BadRequest(new { message = "GitHub configuration not found" });
@@ -1448,19 +1384,19 @@ public class PullRequestsController(
             return Unauthorized(new { message = "User not authenticated" });
         }
 
-        var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null || string.IsNullOrEmpty(user.AccessToken))
         {
             return Unauthorized(new { message = "User token not available" });
         }
 
-        var pr = await context.PullRequests.FindAsync(id);
+        var pr = await _context.PullRequests.FindAsync(id);
         if (pr == null)
         {
             return NotFound(new { message = "Pull request not found" });
         }
 
-        var config = await context.GitHubConfigs.FirstOrDefaultAsync();
+        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
         if (config == null)
         {
             return BadRequest(new { message = "GitHub configuration not found" });

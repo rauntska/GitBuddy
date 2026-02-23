@@ -37,7 +37,7 @@ public class RepositoryRuleService : IRepositoryRuleService
             .Distinct()
             .ToListAsync();
 
-        if (!repositories.Any())
+        if (repositories.Count == 0)
         {
             _logger.LogInformation("No open PRs found, skipping repository rules sync");
             return;

@@ -12,15 +12,8 @@ public interface IAllowlistService
     Task<AllowedUser?> FindMatchAsync(string email, string gitHubUsername);
 }
 
-public class AllowlistService : IAllowlistService
+public class AllowlistService(AppDbContext context) : IAllowlistService
 {
-    private readonly AppDbContext _context;
-
-    public AllowlistService(AppDbContext context)
-    {
-        _context = context;
-    }
-
     public async Task<AllowedUser> AddToAllowlistAsync(string? email, string? gitHubUsername, UserRole assignedRole, int createdById)
     {
         var allowedUser = new AllowedUser
@@ -31,14 +24,14 @@ public class AllowlistService : IAllowlistService
             CreatedByUserId = createdById
         };
 
-        _context.AllowedUsers.Add(allowedUser);
-        await _context.SaveChangesAsync();
+        context.AllowedUsers.Add(allowedUser);
+        await context.SaveChangesAsync();
         return allowedUser;
     }
 
     public async Task<IEnumerable<AllowedUser>> GetAllAsync()
     {
-        return await _context.AllowedUsers
+        return await context.AllowedUsers
             .Include(a => a.CreatedByUser)
             .OrderByDescending(a => a.CreatedAt)
             .ToListAsync();
@@ -46,12 +39,12 @@ public class AllowlistService : IAllowlistService
 
     public async Task<bool> RemoveFromAllowlistAsync(int id)
     {
-        var allowedUser = await _context.AllowedUsers.FindAsync(id);
+        var allowedUser = await context.AllowedUsers.FindAsync(id);
         if (allowedUser == null)
             return false;
 
-        _context.AllowedUsers.Remove(allowedUser);
-        await _context.SaveChangesAsync();
+        context.AllowedUsers.Remove(allowedUser);
+        await context.SaveChangesAsync();
         return true;
     }
 
@@ -60,7 +53,7 @@ public class AllowlistService : IAllowlistService
         var normalizedEmail = email?.ToLowerInvariant();
         var normalizedUsername = gitHubUsername?.ToLowerInvariant();
 
-        return await _context.AllowedUsers
+        return await context.AllowedUsers
             .FirstOrDefaultAsync(a =>
                 (a.Email != null && a.Email == normalizedEmail) ||
                 (a.GitHubUsername != null && a.GitHubUsername == normalizedUsername));

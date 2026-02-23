@@ -9,16 +9,10 @@ public interface IGitHubTokenService
     Task<string> GetAccessTokenAsync(GitHubConfig config);
 }
 
-public class GitHubTokenService : IGitHubTokenService
+public class GitHubTokenService(ILogger<GitHubTokenService> logger) : IGitHubTokenService
 {
-    private readonly ILogger<GitHubTokenService> _logger;
     private string? _cachedInstallationToken;
     private DateTime _installationTokenExpiration = DateTime.MinValue;
-
-    public GitHubTokenService(ILogger<GitHubTokenService> logger)
-    {
-        _logger = logger;
-    }
 
     public async Task<string> GetAccessTokenAsync(GitHubConfig config)
     {
@@ -39,7 +33,7 @@ public class GitHubTokenService : IGitHubTokenService
             try
             {
                 var jwt = GenerateJwt(config.AppId, config.PrivateKey);
-                _logger.LogInformation("Generated JWT for App ID: {AppId}", config.AppId);
+                logger.LogInformation("Generated JWT for App ID: {AppId}", config.AppId);
 
                 var client = new GitHubClient(new ProductHeaderValue("Graphite-PR-Dashboard"))
                 {
@@ -49,11 +43,11 @@ public class GitHubTokenService : IGitHubTokenService
                 var installationToken = await client.GitHubApps.CreateInstallationToken(installationId);
                 _cachedInstallationToken = installationToken.Token;
                 _installationTokenExpiration = installationToken.ExpiresAt.UtcDateTime.AddMinutes(-5);
-                _logger.LogInformation("Successfully obtained installation token");
+                logger.LogInformation("Successfully obtained installation token");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error generating GitHub App JWT or obtaining installation token. AppId: {AppId}, InstallationId: {InstallationId}", config.AppId, config.InstallationId);
+                logger.LogError(ex, "Error generating GitHub App JWT or obtaining installation token. AppId: {AppId}, InstallationId: {InstallationId}", config.AppId, config.InstallationId);
                 throw;
             }
         }
@@ -68,7 +62,7 @@ public class GitHubTokenService : IGitHubTokenService
             ValidatePrivateKey(privateKeyPem);
             var normalizedKey = NormalizePrivateKey(privateKeyPem);
 
-            _logger.LogInformation("Generating JWT for App ID: {AppId}", appId);
+            logger.LogInformation("Generating JWT for App ID: {AppId}", appId);
 
             var rsa = ImportRsaKey(normalizedKey);
             var (iat, exp) = GetJwtTimestamps();
@@ -80,7 +74,7 @@ public class GitHubTokenService : IGitHubTokenService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error generating JWT for App ID: {AppId}", appId);
+            logger.LogError(ex, "Error generating JWT for App ID: {AppId}", appId);
             throw;
         }
     }
@@ -122,12 +116,12 @@ public class GitHubTokenService : IGitHubTokenService
         try
         {
             rsa.ImportFromPem(privateKeyPem);
-            _logger.LogInformation("Successfully imported RSA private key. Key size: {KeySize} bits", rsa.KeySize);
+            logger.LogInformation("Successfully imported RSA private key. Key size: {KeySize} bits", rsa.KeySize);
             return rsa;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to import RSA private key");
+            logger.LogError(ex, "Failed to import RSA private key");
             throw;
         }
     }
@@ -143,7 +137,7 @@ public class GitHubTokenService : IGitHubTokenService
 
     private string BuildAndSignJwt(string appId, long iat, long exp, RSA rsa)
     {
-        _logger.LogInformation("Generating JWT with iat={Iat}, exp={Exp}, iss={Iss}", iat, exp, appId);
+        logger.LogInformation("Generating JWT with iat={Iat}, exp={Exp}, iss={Iss}", iat, exp, appId);
 
         var headerJson = "{\"alg\":\"RS256\",\"typ\":\"JWT\"}";
         var payloadJson = $"{{\"iat\":{iat},\"exp\":{exp},\"iss\":\"{appId}\"}}";
@@ -158,7 +152,7 @@ public class GitHubTokenService : IGitHubTokenService
         var signatureBase64 = Base64UrlEncode(signature);
 
         var jwt = $"{unsignedToken}.{signatureBase64}";
-        _logger.LogInformation("JWT generated successfully. Length: {Length}", jwt.Length);
+        logger.LogInformation("JWT generated successfully. Length: {Length}", jwt.Length);
 
         return jwt;
     }
@@ -170,12 +164,12 @@ public class GitHubTokenService : IGitHubTokenService
             var parts = jwt.Split('.');
             var headerDecoded = System.Text.Encoding.UTF8.GetString(Base64UrlDecode(parts[0]));
             var payloadDecoded = System.Text.Encoding.UTF8.GetString(Base64UrlDecode(parts[1]));
-            _logger.LogInformation("JWT Header (decoded): {Header}", headerDecoded);
-            _logger.LogInformation("JWT Payload (decoded): {Payload}", payloadDecoded);
+            logger.LogInformation("JWT Header (decoded): {Header}", headerDecoded);
+            logger.LogInformation("JWT Payload (decoded): {Payload}", payloadDecoded);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Could not decode JWT for verification");
+            logger.LogWarning(ex, "Could not decode JWT for verification");
         }
     }
 

@@ -531,7 +531,7 @@ public class GitHubService(
             var rulesets = System.Text.Json.JsonSerializer.Deserialize<List<GitHubRuleset>>(rulesetsContent, 
                 new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-            if (rulesets == null || !rulesets.Any())
+            if (rulesets == null || rulesets.Count == 0)
             {
                 logger.LogInformation("No rulesets found for {Organization}/{Repository}", organization, repository);
                 return result;

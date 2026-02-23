@@ -20,18 +20,11 @@ public interface IUserService
     Task<int> GetUserCountAsync();
 }
 
-public class UserService : IUserService
+public class UserService(AppDbContext context) : IUserService
 {
-    private readonly AppDbContext _context;
-
-    public UserService(AppDbContext context)
-    {
-        _context = context;
-    }
-
     public async Task<UserPreferencesDto> GetPreferencesAsync(int userId)
     {
-        var preferences = await _context.UserPreferences
+        var preferences = await context.UserPreferences
             .FirstOrDefaultAsync(p => p.UserId == userId);
 
         if (preferences == null)
@@ -46,8 +39,8 @@ public class UserService : IUserService
                 FileTreeVisible = true,
                 ListViewMode = "normal"
             };
-            _context.UserPreferences.Add(preferences);
-            await _context.SaveChangesAsync();
+            context.UserPreferences.Add(preferences);
+            await context.SaveChangesAsync();
         }
 
         return new UserPreferencesDto(
@@ -61,13 +54,13 @@ public class UserService : IUserService
 
     public async Task<UserPreferencesDto> UpdatePreferencesAsync(int userId, UpdatePreferencesRequest request)
     {
-        var preferences = await _context.UserPreferences
+        var preferences = await context.UserPreferences
             .FirstOrDefaultAsync(p => p.UserId == userId);
 
         if (preferences == null)
         {
             preferences = new UserPreferences { UserId = userId };
-            _context.UserPreferences.Add(preferences);
+            context.UserPreferences.Add(preferences);
         }
 
         if (request.DiffViewMode != null)
@@ -86,7 +79,7 @@ public class UserService : IUserService
             preferences.ListViewMode = request.ListViewMode;
 
         preferences.UpdatedAt = DateTime.UtcNow;
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
 
         return new UserPreferencesDto(
             preferences.DiffViewMode,
@@ -99,7 +92,7 @@ public class UserService : IUserService
 
     public async Task<User> GetOrCreateDefaultUserAsync()
     {
-        var user = await _context.Users
+        var user = await context.Users
             .Include(u => u.Preferences)
             .FirstOrDefaultAsync(u => u.Username == "default");
 
@@ -111,7 +104,7 @@ public class UserService : IUserService
                 Email = "default@localhost",
                 CreatedAt = DateTime.UtcNow
             };
-            _context.Users.Add(user);
+            context.Users.Add(user);
 
             var preferences = new UserPreferences
             {
@@ -122,9 +115,9 @@ public class UserService : IUserService
                 FileTreeVisible = true,
                 ListViewMode = "normal"
             };
-            _context.UserPreferences.Add(preferences);
+            context.UserPreferences.Add(preferences);
 
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
         }
 
         return user;
@@ -132,7 +125,7 @@ public class UserService : IUserService
 
     public async Task<User> GetOrCreateGitHubUserAsync(GitHubUserDto githubUser, string accessToken)
     {
-        var user = await _context.Users
+        var user = await context.Users
             .Include(u => u.Preferences)
             .FirstOrDefaultAsync(u => u.Provider == "GitHub" && u.ProviderUserId == githubUser.Id.ToString());
 
@@ -149,7 +142,7 @@ public class UserService : IUserService
                 CreatedAt = DateTime.UtcNow,
                 LastLoginAt = DateTime.UtcNow
             };
-            _context.Users.Add(user);
+            context.Users.Add(user);
 
             var preferences = new UserPreferences
             {
@@ -160,9 +153,9 @@ public class UserService : IUserService
                 FileTreeVisible = true,
                 ListViewMode = "normal"
             };
-            _context.UserPreferences.Add(preferences);
+            context.UserPreferences.Add(preferences);
 
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
         }
         else
         {
@@ -171,7 +164,7 @@ public class UserService : IUserService
             user.AvatarUrl = githubUser.AvatarUrl;
             user.AccessToken = accessToken;
             user.LastLoginAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
         }
 
         return user;
@@ -179,11 +172,11 @@ public class UserService : IUserService
 
     public async Task UpdateUserLastLoginAsync(int userId)
     {
-        var user = await _context.Users.FindAsync(userId);
+        var user = await context.Users.FindAsync(userId);
         if (user != null)
         {
             user.LastLoginAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
         }
     }
 
@@ -195,12 +188,12 @@ public class UserService : IUserService
             return null;
         }
 
-        return await _context.Users.FindAsync(userId);
+        return await context.Users.FindAsync(userId);
     }
 
     public async Task<IEnumerable<User>> GetAllUsersAsync()
     {
-        return await _context.Users
+        return await context.Users
             .Include(u => u.Preferences)
             .OrderBy(u => u.Username)
             .ToListAsync();
@@ -208,33 +201,33 @@ public class UserService : IUserService
 
     public async Task<bool> UpdateUserRoleAsync(int userId, UserRole role)
     {
-        var user = await _context.Users.FindAsync(userId);
+        var user = await context.Users.FindAsync(userId);
         if (user == null)
             return false;
 
         user.Role = role;
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
         return true;
     }
 
     public async Task<bool> DeleteUserAsync(int userId)
     {
-        var user = await _context.Users.FindAsync(userId);
+        var user = await context.Users.FindAsync(userId);
         if (user == null)
             return false;
 
-        _context.Users.Remove(user);
-        await _context.SaveChangesAsync();
+        context.Users.Remove(user);
+        await context.SaveChangesAsync();
         return true;
     }
 
     public async Task<bool> HasAnyUsersAsync()
     {
-        return await _context.Users.AnyAsync();
+        return await context.Users.AnyAsync();
     }
 
     public async Task<int> GetUserCountAsync()
     {
-        return await _context.Users.CountAsync();
+        return await context.Users.CountAsync();
     }
 }

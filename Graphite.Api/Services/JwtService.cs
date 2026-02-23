@@ -13,20 +13,12 @@ public interface IJwtService
     ClaimsPrincipal? ValidateToken(string token);
 }
 
-public class JwtService : IJwtService
+public class JwtService(IConfiguration configuration) : IJwtService
 {
-    private readonly string _key;
-    private readonly string _issuer;
-    private readonly string _audience;
-    private readonly int _expirationMinutes;
-
-    public JwtService(IConfiguration configuration)
-    {
-        _key = configuration["Jwt:Key"] ?? throw new ArgumentNullException("Jwt:Key not configured");
-        _issuer = configuration["Jwt:Issuer"] ?? "Graphite";
-        _audience = configuration["Jwt:Audience"] ?? "GraphiteUsers";
-        _expirationMinutes = int.Parse(configuration["Jwt:ExpirationMinutes"] ?? "10080");
-    }
+    private readonly string _key = configuration["Jwt:Key"] ?? throw new ArgumentNullException("Jwt:Key not configured");
+    private readonly string _issuer = configuration["Jwt:Issuer"] ?? "Graphite";
+    private readonly string _audience = configuration["Jwt:Audience"] ?? "GraphiteUsers";
+    private readonly int _expirationMinutes = int.Parse(configuration["Jwt:ExpirationMinutes"] ?? "10080");
 
     public string GenerateToken(User user)
     {
