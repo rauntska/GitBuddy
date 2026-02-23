@@ -4,15 +4,18 @@ namespace Graphite.Api.Services;
 
 public interface IPullRequestStatusService
 {
-    string DeterminePrStatus(bool isDraft, List<GitHubReviewData> reviews);
+    string DeterminePrStatus(bool isDraft, bool isMergeReady, List<GitHubReviewData> reviews);
 }
 
 public class PullRequestStatusService : IPullRequestStatusService
 {
-    public string DeterminePrStatus(bool isDraft, List<GitHubReviewData> reviews)
+    public string DeterminePrStatus(bool isDraft, bool isMergeReady, List<GitHubReviewData> reviews)
     {
         if (isDraft)
             return "Draft";
+
+        if (isMergeReady)
+            return "ReadyToMerge";
 
         var latestReviews = reviews
             .GroupBy(r => r.Reviewer)

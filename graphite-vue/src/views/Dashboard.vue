@@ -133,17 +133,6 @@
 
       <!-- PR Groups -->
       <div v-if="authStore.isAuthenticated && hasPRData" class="space-y-6">
-        <!-- Ready to Merge Section -->
-        <PRGroup
-          v-if="readyToMergePRs.length > 0"
-          title="Ready to Merge"
-          :pull-requests="readyToMergePRs"
-          status="ReadyToMerge"
-          :expanded="expandedGroups['ReadyToMerge'] ?? true"
-          :compact="isCompactMode"
-          @toggle="toggleGroup('ReadyToMerge')"
-        />
-
         <PRGroup
           v-for="(group, status) in pullRequests"
           :key="status"
@@ -210,7 +199,6 @@
      loadMergedPRs,
      loadMoreMergedPRs,
      signalR,
-     readyToMergePRs,
    } = usePullRequests();
 
 const expandedGroups = ref<Record<string, boolean>>({});

@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import { apiService } from '../services/api';
 import type { GroupedPRs, PRStats, PullRequest } from '../types';
 import { useSignalR, type PRListUpdate, type PRClosedNotification, type ReviewNotification, type ThreadNotification } from './useSignalR';
@@ -8,7 +8,8 @@ export function usePullRequests() {
   const stats = ref<PRStats>({ 
     totalOpen: 0, 
     draft: 0, 
-    approved: 0, 
+    approved: 0,
+    readyToMerge: 0,
     awaitingReview: 0,
     totalComments: 0,
     resolvedComments: 0,
@@ -320,6 +321,7 @@ export function usePullRequests() {
 
   const getStatusColor = (status: string): string => {
     const colors: Record<string, string> = {
+      ReadyToMerge: 'bg-emerald-500',
       AwaitingReview: 'bg-blue-500',
       Approved: 'bg-green-500',
       Reviewed: 'bg-purple-500',
@@ -331,6 +333,7 @@ export function usePullRequests() {
 
   const getStatusLabel = (status: string): string => {
     const labels: Record<string, string> = {
+      ReadyToMerge: 'Ready to Merge',
       AwaitingReview: 'Awaiting Review',
       Approved: 'Approved',
       Reviewed: 'Reviewed',
@@ -342,6 +345,7 @@ export function usePullRequests() {
 
   const getStatusIcon = (status: string): string => {
     const icons: Record<string, string> = {
+      ReadyToMerge: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
       AwaitingReview: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
       Approved: 'M5 13l4 4L19 7',
       Reviewed: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z',
@@ -350,23 +354,6 @@ export function usePullRequests() {
     };
     return icons[status] || 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z';
   };
-
-  const readyToMergePRs = computed(() => {
-    const allPRs: PullRequest[] = [];
-    for (const status in pullRequests.value) {
-      const prList = pullRequests.value[status];
-      if (prList) {
-        allPRs.push(...prList);
-      }
-    }
-    return allPRs.filter(pr => 
-      pr.isMergeReady === true && 
-      !pr.draft && 
-      !pr.isMerged && 
-      pr.status !== 'Merged' && 
-      pr.status !== 'Closed'
-    );
-  });
 
   return {
     pullRequests,
@@ -380,7 +367,6 @@ export function usePullRequests() {
     getStatusColor,
     getStatusLabel,
     getStatusIcon,
-    readyToMergePRs,
     mergedPRs,
     mergedPRsLoading,
     mergedPRsTotal,

@@ -9,6 +9,7 @@ public class CacheService(
     IGitHubService gitHubService,
     ILanguageDetectionService languageDetectionService,
     IRepositoryRuleService repositoryRuleService,
+    IPullRequestStatusService statusService,
     ILogger<CacheService> logger)
     : ICacheService
 {
@@ -278,6 +279,18 @@ public class CacheService(
             try
             {
                 await repositoryRuleService.CalculateMergeReadinessAsync(existingPR);
+                
+                if (existingPR.Status != "Merged" && existingPR.Status != "Closed")
+                {
+                    var reviewData = existingPR.Reviews.Select(r => new GitHubReviewData(
+                        r.GitHubId,
+                        r.Reviewer,
+                        r.ReviewerAvatar,
+                        r.State,
+                        r.SubmittedAt
+                    )).ToList();
+                    existingPR.Status = statusService.DeterminePrStatus(existingPR.Draft, existingPR.IsMergeReady, reviewData);
+                }
             }
             catch (Exception ex)
             {
@@ -366,6 +379,7 @@ public class CacheService(
 
         return new Dictionary<string, List<PullRequest>>
         {
+            ["ReadyToMerge"] = pullRequests.Where(pr => pr.Status == "ReadyToMerge").ToList(),
             ["AwaitingReview"] = pullRequests.Where(pr => pr.Status == "AwaitingReview").ToList(),
             ["Approved"] = pullRequests.Where(pr => pr.Status == "Approved").ToList(),
             ["Reviewed"] = pullRequests.Where(pr => pr.Status == "Reviewed").ToList(),
@@ -388,6 +402,7 @@ public class CacheService(
             TotalOpen: pullRequests.Count(pr=>pr.Status != "Closed" && pr.Status != "Merged"),
             Draft: pullRequests.Count(pr => pr.Status == "Draft"),
             Approved: pullRequests.Count(pr => pr.Status == "Approved"),
+            ReadyToMerge: pullRequests.Count(pr => pr.Status == "ReadyToMerge"),
             AwaitingReview: pullRequests.Count(pr => pr.Status == "AwaitingReview"),
             TotalComments: totalThreads,
             ResolvedComments: resolvedThreads,

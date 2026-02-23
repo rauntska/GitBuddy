@@ -108,6 +108,7 @@ export interface PRStats {
   totalOpen: number;
   draft: number;
   approved: number;
+  readyToMerge: number;
   awaitingReview: number;
   totalComments: number;
   resolvedComments: number;
