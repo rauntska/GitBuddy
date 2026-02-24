@@ -180,10 +180,10 @@
               <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd" />
             </svg>
             <span
-              v-if="prDetail?.allComments && prDetail.allComments.length > 0"
+              v-if="unresolvedThreadsCount > 0"
               class="absolute -top-1.5 -right-1.5 bg-blue-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-0.5 shadow-lg"
             >
-              {{ prDetail.allComments.length }}
+              {{ unresolvedThreadsCount }}
             </span>
           </button>
 
@@ -541,9 +541,13 @@
           <CommentsPanel
             :comments="prDetail?.allComments || []"
             :review-threads="prDetail?.reviewThreads || []"
+            :pr-id="id"
+            :current-username="authStore.username"
             @close="toggleCommentsPanel"
             @scroll-to-comment="scrollToComment"
             @scroll-to-thread="scrollToThread"
+            @reply-added="handleReplyAdded"
+            @thread-resolved="handleThreadResolved"
           />
           <!-- Resize Handle -->
           <div
@@ -976,6 +980,35 @@ const handleClickOutside = (e: MouseEvent) => {
     }
   };
 
+  const handleReplyAdded = (comment: Comment) => {
+    if (prDetail.value && comment) {
+      const existingComment = prDetail.value.allComments.find(c => c.id === comment.id);
+      if (!existingComment) {
+        prDetail.value.allComments.push(comment);
+        
+        const thread = prDetail.value.reviewThreads.find(
+          t => t.gitHubId === comment.reviewThreadId?.toString() || String(t.id) === comment.reviewThreadId?.toString()
+        );
+        if (thread) {
+          thread.commentCount = (thread.commentCount || 0) + 1;
+        }
+      }
+    }
+  };
+
+  const handleThreadResolved = (threadId: string, resolved: boolean) => {
+    if (prDetail.value) {
+      const thread = prDetail.value.reviewThreads.find(t => t.gitHubId === threadId);
+      if (thread) {
+        thread.isResolved = resolved;
+        thread.state = resolved ? 'RESOLVED' : 'UNRESOLVED';
+      }
+      
+      const hasUnresolved = prDetail.value.reviewThreads.some(t => !t.isResolved && !t.isOutdated);
+      prDetail.value.hasUnresolvedThreads = hasUnresolved;
+    }
+  };
+
 
 const handleSubmitReview = async () => {
   if (reviewAction.value === 'CHANGES_REQUESTED' && !reviewComment.value.trim()) {
@@ -1043,6 +1076,11 @@ const loadMergeOptions = async () => {
     selectedMergeMethod.value = options.defaultMergeMethod as 'merge' | 'squash' | 'rebase';
   }
 };
+
+const unresolvedThreadsCount = computed(() => {
+  if (!prDetail.value?.reviewThreads) return 0;
+  return prDetail.value.reviewThreads.filter(t => !t.isResolved).length;
+});
 
 const canMerge = computed(() => {
   if (!prDetail.value) return false;

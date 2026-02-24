@@ -312,10 +312,10 @@ public class CacheService(
             .Where(pr => !currentIds.Contains(pr.GitHubId) && !pr.IsMerged && pr.Status != "Closed")
             .ToListAsync();
 
-        if (!oldPRs.Any()) return;
+        if (oldPRs.Count == 0) return;
 
         const int batchSize = 15;
-        for (int i = 0; i < oldPRs.Count; i += batchSize)
+        for (var i = 0; i < oldPRs.Count; i += batchSize)
         {
             var batch = oldPRs.Skip(i).Take(batchSize).ToList();
 

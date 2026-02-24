@@ -333,6 +333,27 @@ export const apiService = {
     const response = await api.get<AdminStats>('/admin/stats');
     return response.data;
   },
+
+  // File content for code snippets
+  getFileContentRange: async (
+    prId: number,
+    path: string,
+    line: number,
+    contextLines: number = 3
+  ): Promise<{ lines: { lineNumber: number; content: string }[] }> => {
+    const startLine = Math.max(1, line - contextLines);
+    const endLine = line + contextLines;
+    
+    const response = await api.get(`/pullrequests/${prId}/files/content`, {
+      params: {
+        path,
+        newStartLine: startLine,
+        newEndLine: endLine
+      }
+    });
+    
+    return response.data;
+  },
 };
 
 export default api;
