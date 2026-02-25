@@ -11,25 +11,16 @@ namespace Graphite.Api.Controllers;
 [ApiController]
 [Route("api/comment-templates")]
 [Authorize]
-public class CommentTemplatesController : ControllerBase
+public class CommentTemplatesController(AppDbContext context, IUserService userService) : ControllerBase
 {
-    private readonly AppDbContext _context;
-    private readonly IUserService _userService;
-
-    public CommentTemplatesController(AppDbContext context, IUserService userService)
-    {
-        _context = context;
-        _userService = userService;
-    }
-
     [HttpGet]
     public async Task<ActionResult<List<CommentTemplateDto>>> GetTemplates([FromQuery] string? search, [FromQuery] string? tag)
     {
-        var currentUser = await _userService.GetCurrentUserAsync(User);
+        var currentUser = await userService.GetCurrentUserAsync(User);
         if (currentUser == null)
             return Unauthorized();
 
-        var query = _context.CommentTemplates
+        var query = context.CommentTemplates
             .Where(t => t.UserId == currentUser.Id || t.IsOrganizationTemplate);
 
         if (!string.IsNullOrEmpty(search))
@@ -55,11 +46,11 @@ public class CommentTemplatesController : ControllerBase
     [HttpGet("tags")]
     public async Task<ActionResult<List<string>>> GetTags()
     {
-        var currentUser = await _userService.GetCurrentUserAsync(User);
+        var currentUser = await userService.GetCurrentUserAsync(User);
         if (currentUser == null)
             return Unauthorized();
 
-        var templates = await _context.CommentTemplates
+        var templates = await context.CommentTemplates
             .Where(t => t.UserId == currentUser.Id || t.IsOrganizationTemplate)
             .Where(t => t.Tags != null)
             .Select(t => t.Tags!)
@@ -78,11 +69,11 @@ public class CommentTemplatesController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<CommentTemplateDto>> GetTemplate(int id)
     {
-        var currentUser = await _userService.GetCurrentUserAsync(User);
+        var currentUser = await userService.GetCurrentUserAsync(User);
         if (currentUser == null)
             return Unauthorized();
 
-        var template = await _context.CommentTemplates
+        var template = await context.CommentTemplates
             .FirstOrDefaultAsync(t => t.Id == id && (t.UserId == currentUser.Id || t.IsOrganizationTemplate));
 
         if (template == null)
@@ -94,7 +85,7 @@ public class CommentTemplatesController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<CommentTemplateDto>> CreateTemplate([FromBody] CreateCommentTemplateDto dto)
     {
-        var currentUser = await _userService.GetCurrentUserAsync(User);
+        var currentUser = await userService.GetCurrentUserAsync(User);
         if (currentUser == null)
             return Unauthorized();
 
@@ -108,8 +99,8 @@ public class CommentTemplatesController : ControllerBase
             CreatedAt = DateTime.UtcNow
         };
 
-        _context.CommentTemplates.Add(template);
-        await _context.SaveChangesAsync();
+        context.CommentTemplates.Add(template);
+        await context.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetTemplate), new { id = template.Id }, MapToDto(template));
     }
@@ -117,11 +108,11 @@ public class CommentTemplatesController : ControllerBase
     [HttpPut("{id}")]
     public async Task<ActionResult<CommentTemplateDto>> UpdateTemplate(int id, [FromBody] UpdateCommentTemplateDto dto)
     {
-        var currentUser = await _userService.GetCurrentUserAsync(User);
+        var currentUser = await userService.GetCurrentUserAsync(User);
         if (currentUser == null)
             return Unauthorized();
 
-        var template = await _context.CommentTemplates
+        var template = await context.CommentTemplates
             .FirstOrDefaultAsync(t => t.Id == id && t.UserId == currentUser.Id);
 
         if (template == null)
@@ -135,7 +126,7 @@ public class CommentTemplatesController : ControllerBase
         template.Body = dto.Body;
         template.Tags = dto.Tags;
 
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
 
         return Ok(MapToDto(template));
     }
@@ -143,11 +134,11 @@ public class CommentTemplatesController : ControllerBase
     [HttpPost("{id}/use")]
     public async Task<ActionResult<CommentTemplateDto>> RecordUsage(int id)
     {
-        var currentUser = await _userService.GetCurrentUserAsync(User);
+        var currentUser = await userService.GetCurrentUserAsync(User);
         if (currentUser == null)
             return Unauthorized();
 
-        var template = await _context.CommentTemplates
+        var template = await context.CommentTemplates
             .FirstOrDefaultAsync(t => t.Id == id && (t.UserId == currentUser.Id || t.IsOrganizationTemplate));
 
         if (template == null)
@@ -156,7 +147,7 @@ public class CommentTemplatesController : ControllerBase
         template.UsageCount++;
         template.LastUsedAt = DateTime.UtcNow;
 
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
 
         return Ok(MapToDto(template));
     }
@@ -164,18 +155,18 @@ public class CommentTemplatesController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteTemplate(int id)
     {
-        var currentUser = await _userService.GetCurrentUserAsync(User);
+        var currentUser = await userService.GetCurrentUserAsync(User);
         if (currentUser == null)
             return Unauthorized();
 
-        var template = await _context.CommentTemplates
+        var template = await context.CommentTemplates
             .FirstOrDefaultAsync(t => t.Id == id && t.UserId == currentUser.Id);
 
         if (template == null)
             return NotFound();
 
-        _context.CommentTemplates.Remove(template);
-        await _context.SaveChangesAsync();
+        context.CommentTemplates.Remove(template);
+        await context.SaveChangesAsync();
 
         return NoContent();
     }

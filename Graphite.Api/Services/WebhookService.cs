@@ -365,7 +365,7 @@ public class WebhookService(
             var config = await context.GitHubConfigs.FirstOrDefaultAsync();
             if (config != null)
             {
-                await TriggerBackgroundRefreshAsync(config, null, null);
+                // await TriggerBackgroundRefreshAsync(config, null, null);
             }
         }
         catch (Exception ex)

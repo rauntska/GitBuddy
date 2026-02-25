@@ -8,29 +8,17 @@ namespace Graphite.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Roles = "Admin")]
-public class AdminController : ControllerBase
+public class AdminController(
+    IUserService userService,
+    IInvitationService invitationService,
+    IAllowlistService allowlistService,
+    IConfiguration configuration)
+    : ControllerBase
 {
-    private readonly IUserService _userService;
-    private readonly IInvitationService _invitationService;
-    private readonly IAllowlistService _allowlistService;
-    private readonly IConfiguration _configuration;
-
-    public AdminController(
-        IUserService userService,
-        IInvitationService invitationService,
-        IAllowlistService allowlistService,
-        IConfiguration configuration)
-    {
-        _userService = userService;
-        _invitationService = invitationService;
-        _allowlistService = allowlistService;
-        _configuration = configuration;
-    }
-
     [HttpGet("users")]
     public async Task<IActionResult> GetUsers()
     {
-        var users = await _userService.GetAllUsersAsync();
+        var users = await userService.GetAllUsersAsync();
         return Ok(users.Select(u => new
         {
             u.Id,
@@ -48,7 +36,7 @@ public class AdminController : ControllerBase
     [HttpPut("users/{id}/role")]
     public async Task<IActionResult> UpdateUserRole(int id, [FromBody] UpdateRoleRequest request)
     {
-        var success = await _userService.UpdateUserRoleAsync(id, request.Role);
+        var success = await userService.UpdateUserRoleAsync(id, request.Role);
         if (!success)
             return NotFound(new { message = "User not found" });
 
@@ -64,7 +52,7 @@ public class AdminController : ControllerBase
             return BadRequest(new { message = "Cannot delete your own account" });
         }
 
-        var success = await _userService.DeleteUserAsync(id);
+        var success = await userService.DeleteUserAsync(id);
         if (!success)
             return NotFound(new { message = "User not found" });
 
@@ -74,8 +62,8 @@ public class AdminController : ControllerBase
     [HttpGet("invitations")]
     public async Task<IActionResult> GetInvitations()
     {
-        var invitations = await _invitationService.GetAllInvitationsAsync();
-        var frontendUrl = _configuration["Frontend:Url"] ?? "http://localhost:5173";
+        var invitations = await invitationService.GetAllInvitationsAsync();
+        var frontendUrl = configuration["Frontend:Url"] ?? "http://localhost:5173";
         
         return Ok(invitations.Select(i => new
         {
@@ -106,7 +94,7 @@ public class AdminController : ControllerBase
             expiresAt = DateTime.UtcNow.AddDays(request.ExpiresInDays.Value);
         }
 
-        var invitation = await _invitationService.CreateInvitationAsync(
+        var invitation = await invitationService.CreateInvitationAsync(
             request.Email,
             request.GitHubUsername,
             request.AssignedRole,
@@ -114,7 +102,7 @@ public class AdminController : ControllerBase
             expiresAt
         );
 
-        var frontendUrl = _configuration["Frontend:Url"] ?? "http://localhost:5173";
+        var frontendUrl = configuration["Frontend:Url"] ?? "http://localhost:5173";
 
         return Ok(new
         {
@@ -132,7 +120,7 @@ public class AdminController : ControllerBase
     [HttpDelete("invitations/{id}")]
     public async Task<IActionResult> RevokeInvitation(int id)
     {
-        var success = await _invitationService.RevokeInvitationAsync(id);
+        var success = await invitationService.RevokeInvitationAsync(id);
         if (!success)
             return NotFound(new { message = "Invitation not found or already accepted" });
 
@@ -142,7 +130,7 @@ public class AdminController : ControllerBase
     [HttpGet("allowlist")]
     public async Task<IActionResult> GetAllowlist()
     {
-        var allowlist = await _allowlistService.GetAllAsync();
+        var allowlist = await allowlistService.GetAllAsync();
         return Ok(allowlist.Select(a => new
         {
             a.Id,
@@ -164,7 +152,7 @@ public class AdminController : ControllerBase
 
         var currentUserId = int.Parse(User.FindFirst("UserId")?.Value ?? "0");
 
-        var allowedUser = await _allowlistService.AddToAllowlistAsync(
+        var allowedUser = await allowlistService.AddToAllowlistAsync(
             request.Email,
             request.GitHubUsername,
             request.AssignedRole,
@@ -184,7 +172,7 @@ public class AdminController : ControllerBase
     [HttpDelete("allowlist/{id}")]
     public async Task<IActionResult> RemoveFromAllowlist(int id)
     {
-        var success = await _allowlistService.RemoveFromAllowlistAsync(id);
+        var success = await allowlistService.RemoveFromAllowlistAsync(id);
         if (!success)
             return NotFound(new { message = "Allowlist entry not found" });
 
@@ -194,9 +182,9 @@ public class AdminController : ControllerBase
     [HttpGet("stats")]
     public async Task<IActionResult> GetStats()
     {
-        var users = await _userService.GetAllUsersAsync();
-        var invitations = await _invitationService.GetAllInvitationsAsync();
-        var allowlist = await _allowlistService.GetAllAsync();
+        var users = await userService.GetAllUsersAsync();
+        var invitations = await invitationService.GetAllInvitationsAsync();
+        var allowlist = await allowlistService.GetAllAsync();
 
         return Ok(new
         {

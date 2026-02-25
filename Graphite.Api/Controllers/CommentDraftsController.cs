@@ -11,25 +11,16 @@ namespace Graphite.Api.Controllers;
 [ApiController]
 [Route("api/comment-drafts")]
 [Authorize]
-public class CommentDraftsController : ControllerBase
+public class CommentDraftsController(AppDbContext context, IUserService userService) : ControllerBase
 {
-    private readonly AppDbContext _context;
-    private readonly IUserService _userService;
-
-    public CommentDraftsController(AppDbContext context, IUserService userService)
-    {
-        _context = context;
-        _userService = userService;
-    }
-
     [HttpGet("prs/{pullRequestId}")]
     public async Task<ActionResult<List<CommentDraftDto>>> GetDraftsForPullRequest(int pullRequestId)
     {
-        var currentUser = await _userService.GetCurrentUserAsync(User);
+        var currentUser = await userService.GetCurrentUserAsync(User);
         if (currentUser == null)
             return Unauthorized();
 
-        var drafts = await _context.CommentDrafts
+        var drafts = await context.CommentDrafts
             .Where(d => d.UserId == currentUser.Id && d.PullRequestId == pullRequestId)
             .OrderByDescending(d => d.UpdatedAt)
             .ToListAsync();
@@ -40,11 +31,11 @@ public class CommentDraftsController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<CommentDraftDto>> GetDraft(int id)
     {
-        var currentUser = await _userService.GetCurrentUserAsync(User);
+        var currentUser = await userService.GetCurrentUserAsync(User);
         if (currentUser == null)
             return Unauthorized();
 
-        var draft = await _context.CommentDrafts
+        var draft = await context.CommentDrafts
             .FirstOrDefaultAsync(d => d.Id == id && d.UserId == currentUser.Id);
 
         if (draft == null)
@@ -56,12 +47,12 @@ public class CommentDraftsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<CommentDraftDto>> SaveDraft([FromBody] SaveCommentDraftDto dto)
     {
-        var currentUser = await _userService.GetCurrentUserAsync(User);
+        var currentUser = await userService.GetCurrentUserAsync(User);
         if (currentUser == null)
             return Unauthorized();
 
         // Check if draft already exists for this location
-        var existingDraft = await _context.CommentDrafts
+        var existingDraft = await context.CommentDrafts
             .FirstOrDefaultAsync(d =>
                 d.UserId == currentUser.Id &&
                 d.PullRequestId == dto.PullRequestId &&
@@ -73,7 +64,7 @@ public class CommentDraftsController : ControllerBase
         {
             existingDraft.Body = dto.Body;
             existingDraft.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
             return Ok(MapToDto(existingDraft));
         }
 
@@ -88,8 +79,8 @@ public class CommentDraftsController : ControllerBase
             UpdatedAt = DateTime.UtcNow
         };
 
-        _context.CommentDrafts.Add(draft);
-        await _context.SaveChangesAsync();
+        context.CommentDrafts.Add(draft);
+        await context.SaveChangesAsync();
 
         return Ok(MapToDto(draft));
     }
@@ -97,18 +88,18 @@ public class CommentDraftsController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteDraft(int id)
     {
-        var currentUser = await _userService.GetCurrentUserAsync(User);
+        var currentUser = await userService.GetCurrentUserAsync(User);
         if (currentUser == null)
             return Unauthorized();
 
-        var draft = await _context.CommentDrafts
+        var draft = await context.CommentDrafts
             .FirstOrDefaultAsync(d => d.Id == id && d.UserId == currentUser.Id);
 
         if (draft == null)
             return NotFound();
 
-        _context.CommentDrafts.Remove(draft);
-        await _context.SaveChangesAsync();
+        context.CommentDrafts.Remove(draft);
+        await context.SaveChangesAsync();
 
         return NoContent();
     }
@@ -116,11 +107,11 @@ public class CommentDraftsController : ControllerBase
     [HttpDelete("prs/{pullRequestId}/clear")]
     public async Task<IActionResult> ClearDraftsForPullRequest(int pullRequestId, [FromQuery] int? reviewThreadId, [FromQuery] string? filePath, [FromQuery] int? lineNumber)
     {
-        var currentUser = await _userService.GetCurrentUserAsync(User);
+        var currentUser = await userService.GetCurrentUserAsync(User);
         if (currentUser == null)
             return Unauthorized();
 
-        var query = _context.CommentDrafts
+        var query = context.CommentDrafts
             .Where(d => d.UserId == currentUser.Id && d.PullRequestId == pullRequestId);
 
         if (reviewThreadId.HasValue)
@@ -131,8 +122,8 @@ public class CommentDraftsController : ControllerBase
             query = query.Where(d => d.LineNumber == lineNumber);
 
         var drafts = await query.ToListAsync();
-        _context.CommentDrafts.RemoveRange(drafts);
-        await _context.SaveChangesAsync();
+        context.CommentDrafts.RemoveRange(drafts);
+        await context.SaveChangesAsync();
 
         return NoContent();
     }

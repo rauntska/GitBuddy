@@ -11,33 +11,20 @@ namespace Graphite.Api.Controllers;
 [ApiController]
 [Route("api/comments")]
 [Authorize]
-public class CommentsController : ControllerBase
+public class CommentsController(
+    AppDbContext context,
+    IUserService userService,
+    IGitHubService gitHubService)
+    : ControllerBase
 {
-    private readonly AppDbContext _context;
-    private readonly IUserService _userService;
-    private readonly INotificationService _notificationService;
-    private readonly IGitHubService _gitHubService;
-
-    public CommentsController(
-        AppDbContext context,
-        IUserService userService,
-        INotificationService notificationService,
-        IGitHubService gitHubService)
-    {
-        _context = context;
-        _userService = userService;
-        _notificationService = notificationService;
-        _gitHubService = gitHubService;
-    }
-
     [HttpPut("{commentId}")]
     public async Task<ActionResult<ExtendedCommentDto>> UpdateComment(int commentId, [FromBody] UpdateCommentDto dto)
     {
-        var currentUser = await _userService.GetCurrentUserAsync(User);
+        var currentUser = await userService.GetCurrentUserAsync(User);
         if (currentUser == null)
             return Unauthorized();
 
-        var comment = await _context.Comments
+        var comment = await context.Comments
             .Include(c => c.Reactions)
             .FirstOrDefaultAsync(c => c.Id == commentId);
         if (comment == null)
@@ -50,17 +37,17 @@ public class CommentsController : ControllerBase
         // Update on GitHub if we have the GitHub ID and user's access token
         if (comment.GitHubId > 0 && !string.IsNullOrEmpty(currentUser.AccessToken))
         {
-            var pr = await _context.PullRequests
+            var pr = await context.PullRequests
                 .FirstOrDefaultAsync(p => p.Id == comment.PullRequestId);
             
             if (pr != null)
             {
-                var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
+                var config = await context.GitHubConfigs.FirstOrDefaultAsync();
                 if (config != null)
                 {
                     try
                     {
-                        await _gitHubService.UpdateReviewCommentAsync(
+                        await gitHubService.UpdateReviewCommentAsync(
                             config.Organization,
                             pr.Repository,
                             comment.GitHubId,
@@ -81,7 +68,7 @@ public class CommentsController : ControllerBase
         comment.EditCount++;
         comment.UpdatedAt = DateTime.UtcNow;
 
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
 
         return Ok(MapToExtendedDto(comment, currentUser.Username));
     }
@@ -89,11 +76,11 @@ public class CommentsController : ControllerBase
     [HttpDelete("{commentId}")]
     public async Task<IActionResult> DeleteComment(int commentId)
     {
-        var currentUser = await _userService.GetCurrentUserAsync(User);
+        var currentUser = await userService.GetCurrentUserAsync(User);
         if (currentUser == null)
             return Unauthorized();
 
-        var comment = await _context.Comments.FindAsync(commentId);
+        var comment = await context.Comments.FindAsync(commentId);
         if (comment == null)
             return NotFound();
 
@@ -103,17 +90,17 @@ public class CommentsController : ControllerBase
         // Delete from GitHub if we have the GitHub ID and user's access token
         if (comment.GitHubId > 0 && !string.IsNullOrEmpty(currentUser.AccessToken))
         {
-            var pr = await _context.PullRequests
+            var pr = await context.PullRequests
                 .FirstOrDefaultAsync(p => p.Id == comment.PullRequestId);
             
             if (pr != null)
             {
-                var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
+                var config = await context.GitHubConfigs.FirstOrDefaultAsync();
                 if (config != null)
                 {
                     try
                     {
-                        await _gitHubService.DeleteReviewCommentAsync(
+                        await gitHubService.DeleteReviewCommentAsync(
                             config.Organization,
                             pr.Repository,
                             comment.GitHubId,
@@ -128,8 +115,8 @@ public class CommentsController : ControllerBase
             }
         }
 
-        _context.Comments.Remove(comment);
-        await _context.SaveChangesAsync();
+        context.Comments.Remove(comment);
+        await context.SaveChangesAsync();
 
         return NoContent();
     }
@@ -137,7 +124,7 @@ public class CommentsController : ControllerBase
     [HttpPost("{commentId}/reactions")]
     public async Task<ActionResult<CommentReactionDto>> AddReaction(int commentId, [FromBody] AddReactionDto dto)
     {
-        var currentUser = await _userService.GetCurrentUserAsync(User);
+        var currentUser = await userService.GetCurrentUserAsync(User);
         if (currentUser == null)
             return Unauthorized();
 
@@ -145,12 +132,12 @@ public class CommentsController : ControllerBase
         if (!validReactions.Contains(dto.Reaction.ToLower()))
             return BadRequest("Invalid reaction type");
 
-        var comment = await _context.Comments.FindAsync(commentId);
+        var comment = await context.Comments.FindAsync(commentId);
         if (comment == null)
             return NotFound();
 
         // Check if reaction already exists
-        var existingReaction = await _context.CommentReactions
+        var existingReaction = await context.CommentReactions
             .FirstOrDefaultAsync(r => r.CommentId == commentId && r.Username == currentUser.Username && r.Reaction == dto.Reaction);
 
         if (existingReaction != null)
@@ -169,8 +156,8 @@ public class CommentsController : ControllerBase
             CreatedAt = DateTime.UtcNow
         };
 
-        _context.CommentReactions.Add(reaction);
-        await _context.SaveChangesAsync();
+        context.CommentReactions.Add(reaction);
+        await context.SaveChangesAsync();
 
         return Ok(new CommentReactionDto(
             reaction.Id,
@@ -183,18 +170,18 @@ public class CommentsController : ControllerBase
     [HttpDelete("{commentId}/reactions/{reaction}")]
     public async Task<IActionResult> RemoveReaction(int commentId, string reaction)
     {
-        var currentUser = await _userService.GetCurrentUserAsync(User);
+        var currentUser = await userService.GetCurrentUserAsync(User);
         if (currentUser == null)
             return Unauthorized();
 
-        var existingReaction = await _context.CommentReactions
+        var existingReaction = await context.CommentReactions
             .FirstOrDefaultAsync(r => r.CommentId == commentId && r.Username == currentUser.Username && r.Reaction == reaction);
 
         if (existingReaction == null)
             return NotFound();
 
-        _context.CommentReactions.Remove(existingReaction);
-        await _context.SaveChangesAsync();
+        context.CommentReactions.Remove(existingReaction);
+        await context.SaveChangesAsync();
 
         return NoContent();
     }
@@ -202,10 +189,10 @@ public class CommentsController : ControllerBase
     [HttpGet("{commentId}/reactions")]
     public async Task<ActionResult<ReactionsSummaryDto>> GetReactions(int commentId)
     {
-        var currentUser = await _userService.GetCurrentUserAsync(User);
+        var currentUser = await userService.GetCurrentUserAsync(User);
         var currentUsername = currentUser?.Username ?? "";
 
-        var reactions = await _context.CommentReactions
+        var reactions = await context.CommentReactions
             .Where(r => r.CommentId == commentId)
             .ToListAsync();
 

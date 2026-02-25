@@ -10,36 +10,22 @@ namespace Graphite.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class AuthController : ControllerBase
+public class AuthController(
+    IConfiguration configuration,
+    IUserService userService,
+    IJwtService jwtService,
+    IInvitationService invitationService,
+    IAllowlistService allowlistService,
+    IHttpClientFactory httpClientFactory)
+    : ControllerBase
 {
-    private readonly IConfiguration _configuration;
-    private readonly IUserService _userService;
-    private readonly IJwtService _jwtService;
-    private readonly IInvitationService _invitationService;
-    private readonly IAllowlistService _allowlistService;
-    private readonly HttpClient _httpClient;
-
-    public AuthController(
-        IConfiguration configuration,
-        IUserService userService,
-        IJwtService jwtService,
-        IInvitationService invitationService,
-        IAllowlistService allowlistService,
-        IHttpClientFactory httpClientFactory)
-    {
-        _configuration = configuration;
-        _userService = userService;
-        _jwtService = jwtService;
-        _invitationService = invitationService;
-        _allowlistService = allowlistService;
-        _httpClient = httpClientFactory.CreateClient();
-    }
+    private readonly HttpClient _httpClient = httpClientFactory.CreateClient();
 
     [HttpGet("github")]
     public IActionResult GitHubLogin([FromQuery] string? invite)
     {
-        var clientId = _configuration["GitHub:ClientId"];
-        var redirectUri = _configuration["GitHub:RedirectUri"];
+        var clientId = configuration["GitHub:ClientId"];
+        var redirectUri = configuration["GitHub:RedirectUri"];
         var scope = "user:email read:org repo";
         var state = invite ?? "";
 
@@ -52,8 +38,8 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var clientId = _configuration["GitHub:ClientId"];
-            var clientSecret = _configuration["GitHub:ClientSecret"];
+            var clientId = configuration["GitHub:ClientId"];
+            var clientSecret = configuration["GitHub:ClientSecret"];
 
             if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(clientSecret))
             {
@@ -106,9 +92,9 @@ public class AuthController : ControllerBase
                 return BadRequest(new { message = "Failed to obtain user information from GitHub" });
             }
 
-            var frontendUrl = _configuration["Frontend:Url"] ?? "http://localhost:5173";
+            var frontendUrl = configuration["Frontend:Url"] ?? "http://localhost:5173";
 
-            var existingUser = await _userService.GetAllUsersAsync();
+            var existingUser = await userService.GetAllUsersAsync();
             var user = existingUser.FirstOrDefault(u => u.Provider == "GitHub" && u.ProviderUserId == githubUser.Id.ToString());
 
             if (user != null)
@@ -118,28 +104,28 @@ public class AuthController : ControllerBase
                 user.AvatarUrl = githubUser.AvatarUrl;
                 user.AccessToken = accessToken;
                 user.LastLoginAt = DateTime.UtcNow;
-                var token = _jwtService.GenerateToken(user);
+                var token = jwtService.GenerateToken(user);
                 var redirectUrl = $"{frontendUrl}/auth/callback?token={token}&username={user.Username}&avatar={Uri.EscapeDataString(user.AvatarUrl ?? "")}&role={user.Role}";
                 return Redirect(redirectUrl);
             }
 
-            var hasUsers = await _userService.HasAnyUsersAsync();
+            var hasUsers = await userService.HasAnyUsersAsync();
 
             if (hasUsers)
             {
-                var allowedEntry = await _allowlistService.FindMatchAsync(githubUser.Email ?? "", githubUser.Login);
+                var allowedEntry = await allowlistService.FindMatchAsync(githubUser.Email ?? "", githubUser.Login);
 
                 if (allowedEntry != null)
                 {
                     user = await CreateGitHubUserAsync(githubUser, accessToken, allowedEntry.AssignedRole, null);
-                    var token = _jwtService.GenerateToken(user);
+                    var token = jwtService.GenerateToken(user);
                     var redirectUrl = $"{frontendUrl}/auth/callback?token={token}&username={user.Username}&avatar={Uri.EscapeDataString(user.AvatarUrl ?? "")}&role={user.Role}";
                     return Redirect(redirectUrl);
                 }
 
                 if (!string.IsNullOrEmpty(state))
                 {
-                    var invitation = await _invitationService.ValidateInvitationAsync(state);
+                    var invitation = await invitationService.ValidateInvitationAsync(state);
                     if (invitation != null)
                     {
                         var emailMatches = invitation.Email.Equals(githubUser.Email, StringComparison.OrdinalIgnoreCase);
@@ -148,8 +134,8 @@ public class AuthController : ControllerBase
                         if (emailMatches || usernameMatches)
                         {
                             user = await CreateGitHubUserAsync(githubUser, accessToken, invitation.AssignedRole, invitation.Id);
-                            await _invitationService.AcceptInvitationAsync(invitation.Id, user.Id);
-                            var token = _jwtService.GenerateToken(user);
+                            await invitationService.AcceptInvitationAsync(invitation.Id, user.Id);
+                            var token = jwtService.GenerateToken(user);
                             var redirectUrl = $"{frontendUrl}/auth/callback?token={token}&username={user.Username}&avatar={Uri.EscapeDataString(user.AvatarUrl ?? "")}&role={user.Role}";
                             return Redirect(redirectUrl);
                         }
@@ -161,7 +147,7 @@ public class AuthController : ControllerBase
             }
 
             user = await CreateGitHubUserAsync(githubUser, accessToken, UserRole.Admin, null);
-            var adminToken = _jwtService.GenerateToken(user);
+            var adminToken = jwtService.GenerateToken(user);
             var adminRedirectUrl = $"{frontendUrl}/auth/callback?token={adminToken}&username={user.Username}&avatar={Uri.EscapeDataString(user.AvatarUrl ?? "")}&role={user.Role}";
             return Redirect(adminRedirectUrl);
         }
@@ -173,21 +159,7 @@ public class AuthController : ControllerBase
 
     private async Task<User> CreateGitHubUserAsync(GitHubUserDto githubUser, string accessToken, UserRole role, int? invitationId)
     {
-        var user = new User
-        {
-            Username = githubUser.Login,
-            Email = githubUser.Email ?? $"{githubUser.Login}@github.local",
-            Provider = "GitHub",
-            ProviderUserId = githubUser.Id.ToString(),
-            AvatarUrl = githubUser.AvatarUrl,
-            AccessToken = accessToken,
-            CreatedAt = DateTime.UtcNow,
-            LastLoginAt = DateTime.UtcNow,
-            Role = role,
-            InvitationId = invitationId
-        };
-
-        return await _userService.GetOrCreateGitHubUserAsync(githubUser, accessToken);
+        return await userService.GetOrCreateGitHubUserAsync(githubUser, accessToken);
     }
 
     [Authorize]
@@ -205,7 +177,7 @@ public class AuthController : ControllerBase
             return Unauthorized();
         }
 
-        var user = await _userService.GetCurrentUserAsync(User);
+        var user = await userService.GetCurrentUserAsync(User);
         if (user == null)
         {
             return Unauthorized();
