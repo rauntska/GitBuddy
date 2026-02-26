@@ -1,5 +1,3 @@
-using Graphite.Domain.Models;
-
 namespace Graphite.Api.Services;
 
 public interface IPullRequestStatusService

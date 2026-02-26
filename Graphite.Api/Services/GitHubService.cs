@@ -31,6 +31,46 @@ public class GitHubService(
         return pullRequests.OrderByDescending(pr => pr.UpdatedAt).ToList();
     }
 
+    public async Task<GitHubPRData?> GetPullRequestAsync(string organization, string repository, long pullRequestNumber, GitHubConfig config)
+    {
+        var accessToken = await tokenService.GetAccessTokenAsync(config);
+        var connection = new GraphQLConnection(new GraphQLProductHeaderValue("Graphite-PR-Dashboard"), accessToken);
+
+        var prQuery = new GraphQLQuery()
+            .Repository(repository, organization)
+            .PullRequest((Arg<int>)pullRequestNumber)
+            .Select(pr => new
+            {
+                pr.Number,
+                pr.Title,
+                AuthorLogin = pr.Author.Login,
+                AuthorAvatar = "",
+                pr.IsDraft,
+                pr.Url,
+                pr.Additions,
+                pr.Deletions,
+                pr.ChangedFiles,
+                pr.CreatedAt,
+                pr.UpdatedAt,
+                pr.Body,
+                HeadRefName = pr.HeadRefName,
+                BaseRefName = pr.BaseRefName,
+                pr.Mergeable
+            })
+            .Compile();
+
+        try
+        {
+            var pr = await connection.Run(prQuery);
+            return await CreatePullRequestDataAsync(organization, repository, pr, config);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error fetching PR {Organization}/{Repository}#{PullRequestNumber}", organization, repository, pullRequestNumber);
+            return null;
+        }
+    }
+
     private static async Task<IEnumerable<string>> GetRepositoryNamesAsync(string organization, string accessToken)
     {
         var connection = new GraphQLConnection(new GraphQLProductHeaderValue("Graphite-PR-Dashboard"), accessToken);

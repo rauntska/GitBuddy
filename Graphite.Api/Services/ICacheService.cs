@@ -4,7 +4,7 @@ namespace Graphite.Api.Services;
 
 public interface ICacheService
 {
-    Task RefreshPullRequestsAsync(GitHubConfig config);
+    Task RefreshPullRequestsAsync(GitHubConfig config, long? prNumber = null, string? repository = null);
     Task<Dictionary<string, List<PullRequest>>> GetCachedPullRequestsAsync();
     Task<PRStats> GetPullRequestStatsAsync();
     Task<GitHubConfig?> GetConfigAsync();

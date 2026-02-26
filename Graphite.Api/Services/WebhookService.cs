@@ -860,7 +860,7 @@ public class WebhookService(
                 logger.LogInformation("Triggering background refresh for repository: {Repository}, PR: {PRNumber}", repository, prNumber);
                 await using var scope = serviceScopeFactory.CreateAsyncScope();
                 var cacheService = scope.ServiceProvider.GetRequiredService<ICacheService>();
-                await cacheService.RefreshPullRequestsAsync(config);
+                await cacheService.RefreshPullRequestsAsync(config, prNumber, repository);
             }
             catch (Exception ex)
             {

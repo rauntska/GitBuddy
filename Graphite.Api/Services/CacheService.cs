@@ -13,293 +13,351 @@ public class CacheService(
     ILogger<CacheService> logger)
     : ICacheService
 {
-    public async Task RefreshPullRequestsAsync(GitHubConfig config)
+    public async Task RefreshPullRequestsAsync(GitHubConfig config, long? prNumber = null, string? repository = null)
     {
-        var prDataList = await gitHubService.GetOpenPullRequestsAsync(config.Organization, config);
-
+        var prDataList = await FetchPullRequestsAsync(config, prNumber, repository);
+        
         foreach (var prData in prDataList)
         {
-            var existingPR = await context.PullRequests
-                .Include(pr => pr.Reviews)
-                .Include(pr => pr.ReviewThreads)
-                .Include(pr => pr.Comments)
-                .Include(pr => pr.CheckRuns)
-                .FirstOrDefaultAsync(pr => pr.GitHubId == prData.Id);
+            await SyncPullRequestAsync(config, prData);
+        }
 
-            if (existingPR != null)
+        await context.SaveChangesAsync();
+        
+        if (!prNumber.HasValue)
+        {
+            await CleanupOldPRsAsync(prDataList);
+        }
+    }
+
+    private async Task<List<GitHubPRData>> FetchPullRequestsAsync(GitHubConfig config, long? prNumber, string? repository)
+    {
+        if (prNumber.HasValue && !string.IsNullOrEmpty(repository))
+        {
+            var prData = await gitHubService.GetPullRequestAsync(config.Organization, repository, prNumber.Value, config);
+            if (prData == null)
             {
-                existingPR.Title = prData.Title;
-                existingPR.Repository = prData.Repository;
-                existingPR.Author = prData.Author;
-                existingPR.AuthorAvatar = prData.AuthorAvatar;
-                existingPR.Status = prData.Status;
-                existingPR.Draft = prData.Draft;
-                existingPR.Additions = prData.Additions;
-                existingPR.Deletions = prData.Deletions;
-                existingPR.ChangedFiles = prData.ChangedFiles;
-                existingPR.UpdatedAt = prData.UpdatedAt;
-                existingPR.LastSyncedAt = DateTime.UtcNow;
-                existingPR.Description = prData.Description;
-                existingPR.SourceBranch = prData.SourceBranch;
-                existingPR.TargetBranch = prData.TargetBranch;
-                existingPR.MergeableState = prData.MergeableState;
-                existingPR.ChecksStatus = prData.ChecksStatus;
+                logger.LogWarning("Could not fetch PR {Repository}#{PrNumber}", repository, prNumber);
+                return [];
+            }
+            return [prData];
+        }
+        
+        return await gitHubService.GetOpenPullRequestsAsync(config.Organization, config);
+    }
+
+    private async Task SyncPullRequestAsync(GitHubConfig config, GitHubPRData prData)
+    {
+        var existingPR = await context.PullRequests
+            .Include(pr => pr.Reviews)
+            .Include(pr => pr.ReviewThreads)
+            .Include(pr => pr.Comments)
+            .Include(pr => pr.CheckRuns)
+            .FirstOrDefaultAsync(pr => pr.GitHubId == prData.Id);
+
+        existingPR = await UpsertPullRequestAsync(existingPR, prData);
+        
+        SyncReviews(existingPR, prData);
+        SyncReviewThreads(existingPR, prData);
+        await context.SaveChangesAsync();
+        await SyncCommentsAsync(existingPR, prData, config);
+        SyncCheckRuns(existingPR, prData);
+        await SyncFileDiffsAsync(existingPR, prData, config);
+        await SyncMergeReadinessAsync(existingPR);
+    }
+
+    private async Task<PullRequest> UpsertPullRequestAsync(PullRequest? existingPR, GitHubPRData prData)
+    {
+        if (existingPR != null)
+        {
+            UpdatePullRequestFields(existingPR, prData);
+            return existingPR;
+        }
+
+        var newPR = CreatePullRequest(prData);
+        context.PullRequests.Add(newPR);
+        await context.SaveChangesAsync();
+        return newPR;
+    }
+
+    private static void UpdatePullRequestFields(PullRequest pr, GitHubPRData data)
+    {
+        pr.Title = data.Title;
+        pr.Repository = data.Repository;
+        pr.Author = data.Author;
+        pr.AuthorAvatar = data.AuthorAvatar;
+        pr.Status = data.Status;
+        pr.Draft = data.Draft;
+        pr.Additions = data.Additions;
+        pr.Deletions = data.Deletions;
+        pr.ChangedFiles = data.ChangedFiles;
+        pr.UpdatedAt = data.UpdatedAt;
+        pr.LastSyncedAt = DateTime.UtcNow;
+        pr.Description = data.Description;
+        pr.SourceBranch = data.SourceBranch;
+        pr.TargetBranch = data.TargetBranch;
+        pr.MergeableState = data.MergeableState;
+        pr.ChecksStatus = data.ChecksStatus;
+    }
+
+    private static PullRequest CreatePullRequest(GitHubPRData data)
+    {
+        return new PullRequest
+        {
+            GitHubId = data.Id,
+            Title = data.Title,
+            Repository = data.Repository,
+            Author = data.Author,
+            AuthorAvatar = data.AuthorAvatar,
+            Status = data.Status,
+            Draft = data.Draft,
+            Url = data.Url,
+            Additions = data.Additions,
+            Deletions = data.Deletions,
+            ChangedFiles = data.ChangedFiles,
+            CreatedAt = data.CreatedAt,
+            UpdatedAt = data.UpdatedAt,
+            LastSyncedAt = DateTime.UtcNow,
+            Description = data.Description,
+            SourceBranch = data.SourceBranch,
+            TargetBranch = data.TargetBranch,
+            MergeableState = data.MergeableState,
+            ChecksStatus = data.ChecksStatus
+        };
+    }
+
+    private void SyncReviews(PullRequest pr, GitHubPRData prData)
+    {
+        var existingIds = pr.Reviews.Select(r => r.GitHubId).ToHashSet();
+        var incomingIds = (prData.Reviews ?? []).Select(r => r.GitHubId).ToHashSet();
+
+        foreach (var reviewId in incomingIds.Except(existingIds))
+        {
+            var reviewData = prData.Reviews!.First(r => r.GitHubId == reviewId);
+            context.Reviews.Add(new Review
+            {
+                PullRequestId = pr.Id,
+                GitHubId = reviewData.GitHubId,
+                Reviewer = reviewData.Reviewer,
+                ReviewerAvatar = reviewData.ReviewerAvatar,
+                State = reviewData.State,
+                SubmittedAt = reviewData.SubmittedAt
+            });
+        }
+
+        foreach (var reviewId in existingIds.Except(incomingIds))
+        {
+            var review = pr.Reviews.First(r => r.GitHubId == reviewId);
+            context.Reviews.Remove(review);
+        }
+    }
+
+    private void SyncReviewThreads(PullRequest pr, GitHubPRData prData)
+    {
+        var existingIds = pr.ReviewThreads.Select(rt => rt.GitHubId).ToHashSet();
+        var incomingIds = (prData.ReviewThreads ?? []).Select(rt => rt.GitHubId).ToHashSet();
+
+        foreach (var thread in prData.ReviewThreads ?? [])
+        {
+            if (!existingIds.Contains(thread.GitHubId))
+            {
+                context.ReviewThreads.Add(new ReviewThread
+                {
+                    PullRequestId = pr.Id,
+                    GitHubId = thread.GitHubId,
+                    Path = thread.Path,
+                    Line = thread.Line,
+                    State = thread.State,
+                    IsResolved = thread.IsResolved,
+                    IsOutdated = thread.IsOutdated,
+                    CreatedAt = thread.CreatedAt,
+                    UpdatedAt = thread.UpdatedAt,
+                    FirstCommentAuthor = thread.FirstCommentAuthor,
+                    FirstCommentBody = thread.FirstCommentBody,
+                    CommentCount = thread.CommentCount
+                });
             }
             else
             {
-                existingPR = new PullRequest
-                {
-                    GitHubId = prData.Id,
-                    Title = prData.Title,
-                    Repository = prData.Repository,
-                    Author = prData.Author,
-                    AuthorAvatar = prData.AuthorAvatar,
-                    Status = prData.Status,
-                    Draft = prData.Draft,
-                    Url = prData.Url,
-                    Additions = prData.Additions,
-                    Deletions = prData.Deletions,
-                    ChangedFiles = prData.ChangedFiles,
-                    CreatedAt = prData.CreatedAt,
-                    UpdatedAt = prData.UpdatedAt,
-                    LastSyncedAt = DateTime.UtcNow,
-                    Description = prData.Description,
-                    SourceBranch = prData.SourceBranch,
-                    TargetBranch = prData.TargetBranch,
-                    MergeableState = prData.MergeableState,
-                    ChecksStatus = prData.ChecksStatus
-                };
-                context.PullRequests.Add(existingPR);
-                await context.SaveChangesAsync();
+                var existingThread = pr.ReviewThreads.First(rt => rt.GitHubId == thread.GitHubId);
+                existingThread.Path = thread.Path;
+                existingThread.Line = thread.Line;
+                existingThread.State = thread.State;
+                existingThread.IsResolved = thread.IsResolved;
+                existingThread.IsOutdated = thread.IsOutdated;
+                existingThread.UpdatedAt = thread.UpdatedAt;
+                existingThread.FirstCommentAuthor = thread.FirstCommentAuthor;
+                existingThread.FirstCommentBody = thread.FirstCommentBody;
+                existingThread.CommentCount = thread.CommentCount;
             }
+        }
 
-            var existingReviewIds = existingPR.Reviews.Select(r => r.GitHubId).ToHashSet();
-            var incomingReviewIds = (prData.Reviews ?? []).Select(r => r.GitHubId).ToHashSet();
+        foreach (var threadId in existingIds.Except(incomingIds))
+        {
+            var thread = pr.ReviewThreads.First(rt => rt.GitHubId == threadId);
+            context.ReviewThreads.Remove(thread);
+        }
+    }
 
-            foreach (var reviewId in incomingReviewIds.Except(existingReviewIds))
+    private async Task SyncCommentsAsync(PullRequest pr, GitHubPRData prData, GitHubConfig config)
+    {
+        try
+        {
+            var comments = await gitHubService.GetCommentsAsync(config.Organization, prData.Repository, prData.Id, config);
+            var existingIds = pr.Comments.Select(c => c.GitHubId).ToHashSet();
+
+            foreach (var comment in comments)
             {
-                var reviewData = prData.Reviews!.First(r => r.GitHubId == reviewId);
-                context.Reviews.Add(new Review
+                var reviewThread = pr.ReviewThreads.FirstOrDefault(rt => rt.GitHubId == comment.ReviewThreadId);
+                
+                if (!existingIds.Contains(comment.GitHubId))
                 {
-                    PullRequestId = existingPR.Id,
-                    GitHubId = reviewData.GitHubId,
-                    Reviewer = reviewData.Reviewer,
-                    ReviewerAvatar = reviewData.ReviewerAvatar,
-                    State = reviewData.State,
-                    SubmittedAt = reviewData.SubmittedAt
-                });
-            }
-
-            foreach (var reviewId in existingReviewIds.Except(incomingReviewIds))
-            {
-                var review = existingPR.Reviews.First(r => r.GitHubId == reviewId);
-                context.Reviews.Remove(review);
-            }
-
-            // Fetch and sync individual comments
-            try
-            {
-                var comments = await gitHubService.GetCommentsAsync(config.Organization, prData.Repository, prData.Id, config);
-                var existingCommentIds = existingPR.Comments.Select(c => c.GitHubId).ToHashSet();
-                var reviewThreadMap = existingPR.ReviewThreads.ToDictionary(rt => rt.GitHubId, rt => rt.Id);
-
-                foreach (var comment in comments)
-                {
-                    var reviewThread = existingPR.ReviewThreads.FirstOrDefault(rt => rt.GitHubId == comment.ReviewThreadId);
-                    
-                    if (!existingCommentIds.Contains(comment.GitHubId))
+                    context.Comments.Add(new Comment
                     {
-                        context.Comments.Add(new Comment
-                        {
-                            PullRequestId = existingPR.Id,
-                            ReviewThreadId = reviewThread?.Id,
-                            GitHubId = comment.GitHubId,
-                            Author = comment.Author,
-                            AuthorAvatar = comment.AuthorAvatar,
-                            Body = comment.Body,
-                            Path = comment.Path,
-                            Line = comment.Line,
-                            IsOutdated = comment.IsOutdated,
-                            CreatedAt = comment.CreatedAt,
-                            UpdatedAt = comment.UpdatedAt
-                        });
-                    }
-                    else
-                    {
-                        var existingComment = existingPR.Comments.First(c => c.GitHubId == comment.GitHubId);
-                        existingComment.ReviewThreadId = reviewThread?.Id;
-                        existingComment.Author = comment.Author;
-                        existingComment.AuthorAvatar = comment.AuthorAvatar;
-                        existingComment.Body = comment.Body;
-                        existingComment.Path = comment.Path;
-                        existingComment.Line = comment.Line;
-                        existingComment.IsOutdated = comment.IsOutdated;
-                        existingComment.UpdatedAt = comment.UpdatedAt;
-                    }
-                }
-
-                // Remove comments that are no longer in the response
-                var incomingCommentIds = comments.Select(c => c.GitHubId).ToHashSet();
-                foreach (var comment in existingPR.Comments.Where(c => !incomingCommentIds.Contains(c.GitHubId)))
-                {
-                    context.Comments.Remove(comment);
-                }
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Error fetching comments for PR {Organization}/{Repository}#{PullRequestNumber}", config.Organization, prData.Repository, prData.Id);
-            }
-
-            var existingThreadIds = existingPR.ReviewThreads.Select(rt => rt.GitHubId).ToHashSet();
-            var incomingThreadIds = (prData.ReviewThreads ?? []).Select(rt => rt.GitHubId).ToHashSet();
-
-            foreach (var thread in prData.ReviewThreads ?? [])
-            {
-                if (!existingThreadIds.Contains(thread.GitHubId))
-                {
-                    context.ReviewThreads.Add(new ReviewThread
-                    {
-                        PullRequestId = existingPR.Id,
-                        GitHubId = thread.GitHubId,
-                        Path = thread.Path,
-                        Line = thread.Line,
-                        State = thread.State,
-                        IsResolved = thread.IsResolved,
-                        IsOutdated = thread.IsOutdated,
-                        CreatedAt = thread.CreatedAt,
-                        UpdatedAt = thread.UpdatedAt,
-                        FirstCommentAuthor = thread.FirstCommentAuthor,
-                        FirstCommentBody = thread.FirstCommentBody,
-                        CommentCount = thread.CommentCount
+                        PullRequestId = pr.Id,
+                        ReviewThreadId = reviewThread?.Id,
+                        GitHubId = comment.GitHubId,
+                        Author = comment.Author,
+                        AuthorAvatar = comment.AuthorAvatar,
+                        Body = comment.Body,
+                        Path = comment.Path,
+                        Line = comment.Line,
+                        IsOutdated = comment.IsOutdated,
+                        CreatedAt = comment.CreatedAt,
+                        UpdatedAt = comment.UpdatedAt
                     });
                 }
                 else
                 {
-                    var existingThread = existingPR.ReviewThreads.First(rt => rt.GitHubId == thread.GitHubId);
-                    existingThread.Path = thread.Path;
-                    existingThread.Line = thread.Line;
-                    existingThread.State = thread.State;
-                    existingThread.IsResolved = thread.IsResolved;
-                    existingThread.IsOutdated = thread.IsOutdated;
-                    existingThread.UpdatedAt = thread.UpdatedAt;
-                    existingThread.FirstCommentAuthor = thread.FirstCommentAuthor;
-                    existingThread.FirstCommentBody = thread.FirstCommentBody;
-                    existingThread.CommentCount = thread.CommentCount;
+                    var existingComment = pr.Comments.First(c => c.GitHubId == comment.GitHubId);
+                    existingComment.ReviewThreadId = reviewThread?.Id;
+                    existingComment.Author = comment.Author;
+                    existingComment.AuthorAvatar = comment.AuthorAvatar;
+                    existingComment.Body = comment.Body;
+                    existingComment.Path = comment.Path;
+                    existingComment.Line = comment.Line;
+                    existingComment.IsOutdated = comment.IsOutdated;
+                    existingComment.UpdatedAt = comment.UpdatedAt;
                 }
             }
 
-            foreach (var threadId in existingThreadIds.Except(incomingThreadIds))
+            var incomingIds = comments.Select(c => c.GitHubId).ToHashSet();
+            foreach (var comment in pr.Comments.Where(c => !incomingIds.Contains(c.GitHubId)))
             {
-                var thread = existingPR.ReviewThreads.First(rt => rt.GitHubId == threadId);
-                context.ReviewThreads.Remove(thread);
-            }
-
-            // Sync check runs
-            try
-            {
-                var existingCheckRunIds = existingPR.CheckRuns.Select(cr => cr.GitHubId).ToHashSet();
-                var incomingCheckRunIds = (prData.CheckRuns ?? []).Select(cr => cr.Id).ToHashSet();
-
-                foreach (var checkRunData in prData.CheckRuns ?? [])
-                {
-                    if (!existingCheckRunIds.Contains(checkRunData.Id))
-                    {
-                        context.CheckRuns.Add(new CheckRun
-                        {
-                            PullRequestId = existingPR.Id,
-                            GitHubId = checkRunData.Id,
-                            Name = checkRunData.Name,
-                            Status = checkRunData.Status,
-                            Conclusion = checkRunData.Conclusion,
-                            Url = checkRunData.Url,
-                            StartedAt = checkRunData.StartedAt,
-                            CompletedAt = checkRunData.CompletedAt,
-                            LastSyncedAt = DateTime.UtcNow
-                        });
-                    }
-                    else
-                    {
-                        var existingCheckRun = existingPR.CheckRuns.First(cr => cr.GitHubId == checkRunData.Id);
-                        existingCheckRun.Name = checkRunData.Name;
-                        existingCheckRun.Status = checkRunData.Status;
-                        existingCheckRun.Conclusion = checkRunData.Conclusion;
-                        existingCheckRun.Url = checkRunData.Url;
-                        existingCheckRun.StartedAt = checkRunData.StartedAt;
-                        existingCheckRun.CompletedAt = checkRunData.CompletedAt;
-                        existingCheckRun.LastSyncedAt = DateTime.UtcNow;
-                    }
-                }
-
-                // Remove check runs that are no longer in response
-                foreach (var checkRun in existingPR.CheckRuns.Where(cr => !incomingCheckRunIds.Contains(cr.GitHubId)))
-                {
-                    context.CheckRuns.Remove(checkRun);
-                }
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Error syncing check runs for PR {PrId}", prData.Id);
-            }
-
-            // Fetch and store file diffs
-            try
-            {
-                var fileDiffs = await gitHubService.GetFileDiffsAsync(config.Organization, prData.Repository, prData.Id, config);
-                var existingFileDiffs = await context.FileDiffs
-                    .Where(f => f.PullRequestId == existingPR.Id)
-                    .ToListAsync();
-
-                // Remove old file diffs
-                context.FileDiffs.RemoveRange(existingFileDiffs);
-
-                // Add new file diffs with language detection
-                foreach (var fileDiff in fileDiffs)
-                {
-                    var language = languageDetectionService.DetectLanguage(fileDiff.Path);
-                    context.FileDiffs.Add(new FileDiff
-                    {
-                        PullRequestId = existingPR.Id,
-                        Path = fileDiff.Path,
-                        OldPath = fileDiff.OldPath,
-                        Status = fileDiff.Status,
-                        Additions = fileDiff.Additions,
-                        Deletions = fileDiff.Deletions,
-                        Changes = fileDiff.Changes,
-                        Patch = fileDiff.Patch,
-                        Language = language
-                    });
-                }
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Error fetching file diffs for PR {PrId}", prData.Id);
-            }
-
-            // Calculate merge readiness
-            try
-            {
-                await repositoryRuleService.CalculateMergeReadinessAsync(existingPR);
-                
-                if (existingPR.Status != "Merged" && existingPR.Status != "Closed")
-                {
-                    var reviewData = existingPR.Reviews.Select(r => new GitHubReviewData(
-                        r.GitHubId,
-                        r.Reviewer,
-                        r.ReviewerAvatar,
-                        r.State,
-                        r.SubmittedAt
-                    )).ToList();
-                    existingPR.Status = statusService.DeterminePrStatus(existingPR.Draft, existingPR.IsMergeReady, reviewData);
-                }
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Error calculating merge readiness for PR {PrId}", prData.Id);
+                context.Comments.Remove(comment);
             }
         }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error fetching comments for PR {Organization}/{Repository}#{PullRequestNumber}", 
+                config.Organization, prData.Repository, prData.Id);
+        }
+    }
 
-        await context.SaveChangesAsync();
-        await CleanupOldPRsAsync(prDataList);
+    private void SyncCheckRuns(PullRequest pr, GitHubPRData prData)
+    {
+        try
+        {
+            var existingIds = pr.CheckRuns.Select(cr => cr.GitHubId).ToHashSet();
+            var incomingIds = (prData.CheckRuns ?? []).Select(cr => cr.Id).ToHashSet();
+
+            foreach (var checkRunData in prData.CheckRuns ?? [])
+            {
+                if (!existingIds.Contains(checkRunData.Id))
+                {
+                    context.CheckRuns.Add(new CheckRun
+                    {
+                        PullRequestId = pr.Id,
+                        GitHubId = checkRunData.Id,
+                        Name = checkRunData.Name,
+                        Status = checkRunData.Status,
+                        Conclusion = checkRunData.Conclusion,
+                        Url = checkRunData.Url,
+                        StartedAt = checkRunData.StartedAt,
+                        CompletedAt = checkRunData.CompletedAt,
+                        LastSyncedAt = DateTime.UtcNow
+                    });
+                }
+                else
+                {
+                    var existingCheckRun = pr.CheckRuns.First(cr => cr.GitHubId == checkRunData.Id);
+                    existingCheckRun.Name = checkRunData.Name;
+                    existingCheckRun.Status = checkRunData.Status;
+                    existingCheckRun.Conclusion = checkRunData.Conclusion;
+                    existingCheckRun.Url = checkRunData.Url;
+                    existingCheckRun.StartedAt = checkRunData.StartedAt;
+                    existingCheckRun.CompletedAt = checkRunData.CompletedAt;
+                    existingCheckRun.LastSyncedAt = DateTime.UtcNow;
+                }
+            }
+
+            foreach (var checkRun in pr.CheckRuns.Where(cr => !incomingIds.Contains(cr.GitHubId)))
+            {
+                context.CheckRuns.Remove(checkRun);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error syncing check runs for PR {PrId}", prData.Id);
+        }
+    }
+
+    private async Task SyncFileDiffsAsync(PullRequest pr, GitHubPRData prData, GitHubConfig config)
+    {
+        try
+        {
+            var fileDiffs = await gitHubService.GetFileDiffsAsync(config.Organization, prData.Repository, prData.Id, config);
+            var existingFileDiffs = await context.FileDiffs
+                .Where(f => f.PullRequestId == pr.Id)
+                .ToListAsync();
+
+            context.FileDiffs.RemoveRange(existingFileDiffs);
+
+            foreach (var fileDiff in fileDiffs)
+            {
+                var language = languageDetectionService.DetectLanguage(fileDiff.Path);
+                context.FileDiffs.Add(new FileDiff
+                {
+                    PullRequestId = pr.Id,
+                    Path = fileDiff.Path,
+                    OldPath = fileDiff.OldPath,
+                    Status = fileDiff.Status,
+                    Additions = fileDiff.Additions,
+                    Deletions = fileDiff.Deletions,
+                    Changes = fileDiff.Changes,
+                    Patch = fileDiff.Patch,
+                    Language = language
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error fetching file diffs for PR {PrId}", prData.Id);
+        }
+    }
+
+    private async Task SyncMergeReadinessAsync(PullRequest pr)
+    {
+        try
+        {
+            await repositoryRuleService.CalculateMergeReadinessAsync(pr);
+            
+            if (pr.Status != "Merged" && pr.Status != "Closed")
+            {
+                var reviewData = pr.Reviews.Select(r => new GitHubReviewData(
+                    r.GitHubId,
+                    r.Reviewer,
+                    r.ReviewerAvatar,
+                    r.State,
+                    r.SubmittedAt
+                )).ToList();
+                pr.Status = statusService.DeterminePrStatus(pr.Draft, pr.IsMergeReady, reviewData);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error calculating merge readiness for PR {PrId}", pr.GitHubId);
+        }
     }
 
     private async Task CleanupOldPRsAsync(List<GitHubPRData> currentPRs)

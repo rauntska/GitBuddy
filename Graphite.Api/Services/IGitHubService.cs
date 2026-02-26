@@ -6,6 +6,7 @@ namespace Graphite.Api.Services;
 public interface IGitHubService
 {
     Task<List<GitHubPRData>> GetOpenPullRequestsAsync(string organization, GitHubConfig config);
+    Task<GitHubPRData?> GetPullRequestAsync(string organization, string repository, long pullRequestNumber, GitHubConfig config);
     Task<List<GitHubReviewData>> GetReviewsAsync(string organization, string repository, long pullRequestNumber,
         GitHubConfig config);
     Task<List<GitHubReviewThreadData>> GetReviewThreadsAsync(string organization, string repository,
