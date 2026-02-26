@@ -70,6 +70,10 @@ builder.Services.AddScoped<IRepositoryRuleService, RepositoryRuleService>();
 // Utility services
 builder.Services.AddScoped<ILanguageDetectionService, LanguageDetectionService>();
 builder.Services.AddScoped<IGitHubConfigValidationService, GitHubConfigValidationService>();
+builder.Services.AddScoped<IPullRequestValidationService, PullRequestValidationService>();
+
+// MediatR
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 
 // Webhook processing
 builder.Services.AddScoped<WebhookEventProcessor, GitHubWebhookProcessor>();

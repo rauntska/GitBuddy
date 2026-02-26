@@ -1,8 +1,13 @@
 using Graphite.Api.DTOs;
 using Graphite.Api.Extensions;
+using Graphite.Api.Features.PullRequests.AddComment;
+using Graphite.Api.Features.PullRequests.GetById;
+using Graphite.Api.Features.PullRequests.GetUnreadCount;
+using Graphite.Api.Features.PullRequests.Merge;
 using Graphite.Api.Services;
 using Graphite.Domain.Data;
 using Graphite.Domain.Models;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
@@ -13,6 +18,7 @@ namespace Graphite.Api.Controllers;
 [Route("api/[controller]")]
 [Authorize]
 public class PullRequestsController(
+    ISender mediator,
     ICacheService cacheService, 
     AppDbContext context, 
     IGitHubService gitHubService,
@@ -38,87 +44,10 @@ public class PullRequestsController(
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id)
     {
-        var pr = await _context.PullRequests
-            .Include(p => p.Reviews)
-            .Include(p => p.ReviewThreads)
-            .Include(p => p.CheckRuns)
-            .FirstOrDefaultAsync(p => p.Id == id);
-
-        if (pr == null)
-        {
+        var result = await mediator.Send(new GetPullRequestByIdQuery(id, User));
+        if (result == null)
             return NotFound(new { message = "Pull request not found" });
-        }
-
-        var files = await _context.FileDiffs
-            .Where(f => f.PullRequestId == id)
-            .ToListAsync();
-
-        var comments = await _context.Comments
-            .Where(c => c.PullRequestId == id)
-            .ToListAsync();
-
-        int? userId = null;
-        var userIdClaim = User.FindFirst("UserId")?.Value;
-        if (!string.IsNullOrEmpty(userIdClaim) && int.TryParse(userIdClaim, out var parsedUserId))
-        {
-            userId = parsedUserId;
-        }
-
-        PendingReviewDto? pendingReviewDto = null;
-        User? user = null;
-        GitHubConfig? config = null;
-        List<UserFileViewedState>? viewedStates = null;
-        
-        if (userId.HasValue)
-        {
-            user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId.Value);
-            viewedStates = await _context.UserFileViewedStates
-                .Where(uvs => uvs.UserId == userId.Value && files.Select(f => f.Id).Contains(uvs.FileDiffId))
-                .ToListAsync();
-                
-            if (user != null && !string.IsNullOrEmpty(user.AccessToken))
-            {
-                config = await _context.GitHubConfigs.FirstOrDefaultAsync();
-                if (config != null)
-                {
-                    try
-                    {
-                        var pendingReview = await gitHubService.GetPendingReviewAsync(
-                            config.Organization,
-                            pr.Repository,
-                            pr.GitHubId,
-                            user.Username,
-                            user.AccessToken
-                        );
-
-                        if (pendingReview != null)
-                        {
-                            pendingReviewDto = new PendingReviewDto(
-                                pendingReview.GitHubId,
-                                pendingReview.State,
-                                pendingReview.Comments.Select(c => new PendingReviewCommentDto(
-                                    c.GitHubId,
-                                    c.Path ?? string.Empty,
-                                    c.Line,
-                                    c.Body,
-                                    c.Author,
-                                    c.AuthorAvatar,
-                                    c.CreatedAt,
-                                    c.UpdatedAt,
-                                    c.ThreadId
-                                )).ToList()
-                            );
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Error fetching pending review: {ex.Message}");
-                    }
-                }
-            }
-        }
-
-        return Ok(pr.ToDetailDto(files, comments, viewedStates, pendingReviewDto, pr.RequiredApprovingReviews, pr.CurrentApprovingReviews, pr.HasUnresolvedThreads, pr.IsMergeReady, pr.MergeBlockReason));
+        return Ok(result);
     }
 
     [HttpGet("stats")]
@@ -135,43 +64,8 @@ public class PullRequestsController(
         if (user == null)
             return Unauthorized(new { message = "User not found" });
 
-        var username = user.Username;
-        
-        var allPRs = await _context.PullRequests
-            .Include(pr => pr.Reviews)
-            .Where(pr => !pr.IsMerged && pr.Status != "Closed" && pr.Status != "Merged" && pr.Status != "Draft")
-            .ToListAsync();
-
-        var userReviewedPrIds = allPRs
-            .Where(pr => pr.Reviews.Any(r => r.Reviewer == username && 
-                r.State is "Approved" or "ChangesRequested" or "Commented"))
-            .Select(pr => pr.Id)
-            .ToHashSet();
-
-        var unreadCount = 0;
-
-        foreach (var pr in allPRs)
-        {
-            var isAuthor = pr.Author == username;
-            var hasReviewed = userReviewedPrIds.Contains(pr.Id);
-            var isReviewer = pr.Reviews.Any(r => r.Reviewer == username);
-            var needsMoreReviewers = pr.RequiredApprovingReviews.HasValue && 
-                                      pr.CurrentApprovingReviews < pr.RequiredApprovingReviews.Value;
-
-            if (isAuthor && pr.Status == "ChangesRequested")
-            {
-                unreadCount++;
-            }
-            else if (!isAuthor && !hasReviewed)
-            {
-                if (isReviewer || needsMoreReviewers)
-                {
-                    unreadCount++;
-                }
-            }
-        }
-
-        return Ok(new { count = unreadCount });
+        var count = await mediator.Send(new GetUnreadCountQuery(user.Username));
+        return Ok(new { count });
     }
 
     [HttpGet("merged")]
@@ -255,130 +149,22 @@ public class PullRequestsController(
     [Authorize]
     public async Task<IActionResult> AddComment(int id, [FromBody] AddCommentRequest request)
     {
-        var user = await CurrentUser();
-        if (user == null)
-            return Unauthorized(new { message = "User not found" });
-
-        var pr = await _context.PullRequests
-            .Include(p => p.ReviewThreads)
-            .FirstOrDefaultAsync(p => p.Id == id);
-        if (pr == null)
-        {
-            return NotFound(new { message = "Pull request not found" });
-        }
-
-        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
-        if (config == null)
-        {
-            return BadRequest(new { message = "GitHub configuration not found" });
-        }
-
         try
         {
-            if (!string.IsNullOrEmpty(request.Path) && request.Line.HasValue)
-            {
-                var pendingComment = await gitHubService.AddPendingReviewCommentAsync(
-                    config.Organization,
-                    pr.Repository,
-                    pr.GitHubId,
-                    request.Body,
-                    request.Path,
-                    request.Line.Value,
-                    config,
-                    user.AccessToken
-                );
-
-                var pendingReview = await _context.PendingReviews
-                    .FirstOrDefaultAsync(pr => pr.PullRequestId == id && pr.UserId == user.Id);
-
-                if (pendingReview == null && !string.IsNullOrEmpty(pendingComment.ReviewId))
-                {
-                    pendingReview = new PendingReview
-                    {
-                        PullRequestId = id,
-                        UserId = user.Id,
-                        GitHubReviewId = pendingComment.ReviewId,
-                        CreatedAt = DateTime.UtcNow
-                    };
-                    _context.PendingReviews.Add(pendingReview);
-                    await _context.SaveChangesAsync();
-                }
-
-                if (pendingReview != null)
-                {
-                    var dbPendingComment = new PendingComment
-                    {
-                        PendingReviewId = pendingReview.Id,
-                        Body = pendingComment.Body,
-                        Path = pendingComment.Path ?? request.Path,
-                        Line = pendingComment.Line ?? request.Line.Value,
-                        CreatedAt = pendingComment.CreatedAt
-                    };
-                    _context.PendingComments.Add(dbPendingComment);
-                    await _context.SaveChangesAsync();
-
-                    return Ok(new
-                    {
-                        isPending = true,
-                        id = dbPendingComment.Id,
-                        gitHubId = pendingComment.GitHubId,
-                        pendingReviewId = pendingComment.ReviewId,
-                        reviewThreadId = pendingComment.ThreadId,
-                        path = pendingComment.Path,
-                        line = pendingComment.Line,
-                        body = pendingComment.Body,
-                        author = pendingComment.Author,
-                        authorAvatar = pendingComment.AuthorAvatar,
-                        createdAt = pendingComment.CreatedAt,
-                        updatedAt = pendingComment.UpdatedAt
-                    });
-                }
-
-                return Ok(new
-                {
-                    isPending = true,
-                    id = 0,
-                    gitHubId = pendingComment.GitHubId,
-                    pendingReviewId = pendingComment.ReviewId,
-                    reviewThreadId = pendingComment.ThreadId,
-                    path = pendingComment.Path,
-                    line = pendingComment.Line,
-                    body = pendingComment.Body,
-                    author = pendingComment.Author,
-                    authorAvatar = pendingComment.AuthorAvatar,
-                    createdAt = pendingComment.CreatedAt,
-                    updatedAt = pendingComment.UpdatedAt
-                });
-            }
-
-            var comment = await gitHubService.AddPullRequestCommentAsync(
-                config.Organization,
-                pr.Repository,
-                pr.GitHubId,
-                request.Body,
-                null,
-                null,
-                config,
-                user.AccessToken
-            );
-
-            return Ok(new CommentDto(
-                0,
-                comment.GitHubId,
-                null,
-                comment.Author,
-                comment.AuthorAvatar,
-                comment.Body,
-                comment.CreatedAt,
-                comment.UpdatedAt,
-                comment.Path,
-                comment.Line,
-                comment.IsOutdated,
-                null,
-                0,
-                null,
-                null
-            ));
+            var result = await mediator.Send(new AddCommentCommand(id, request.Body, request.Path, request.Line, User));
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {
@@ -417,11 +203,9 @@ public class PullRequestsController(
                 request.ReviewThreadId,
                 request.Body,
                 config,
-                user.AccessToken
+                user.AccessToken!
             );
 
-            // If the reply is part of a pending review, don't save to database
-            // Instead return it with pending review info
             if (comment.IsPending)
             {
                 return Ok(new
@@ -532,7 +316,7 @@ public class PullRequestsController(
                 threadId,
                 request.Resolved,
                 config,
-                user.AccessToken
+                user.AccessToken!
             );
 
             return Ok(new { message = "Thread resolved successfully" });
@@ -570,7 +354,7 @@ public class PullRequestsController(
                 pr.Repository,
                 threadId,
                 config,
-                user.AccessToken
+                user.AccessToken!
             );
 
             return Ok(new { message = "Thread unresolved successfully" });
@@ -610,7 +394,7 @@ public class PullRequestsController(
                 request.State,
                 request.Body,
                 config,
-                user.AccessToken
+                user.AccessToken!
             );
 
             return Ok(new { message = "Review submitted successfully" });
@@ -625,74 +409,18 @@ public class PullRequestsController(
     [Authorize]
     public async Task<IActionResult> MergePR(int id, [FromBody] MergePRRequest? request = null)
     {
-        var user = await CurrentUser();
-        if (user == null)
-            return Unauthorized(new { message = "User not found" });
-
-        var pr = await _context.PullRequests.FindAsync(id);
-        if (pr == null)
+        var result = await mediator.Send(new MergePRCommand(id, request?.MergeMethod, request?.CommitTitle, request?.CommitMessage, User));
+        
+        if (!result.Success)
         {
-            return NotFound(new { message = "Pull request not found" });
+            if (result.StatusCode == 404)
+                return NotFound(new { message = result.Message });
+            if (result.StatusCode.HasValue)
+                return StatusCode(result.StatusCode.Value, new { message = result.Message, error = result.Error });
+            return BadRequest(new { message = result.Message });
         }
 
-        if (pr.Draft)
-        {
-            return BadRequest(new { message = "Cannot merge a draft pull request. Please publish it first." });
-        }
-
-        if (pr.IsMerged)
-        {
-            return BadRequest(new { message = "Pull request has already been merged." });
-        }
-
-        if (pr.MergeableState == "CONFLICTING")
-        {
-            return BadRequest(new { message = "Pull request has merge conflicts that must be resolved before merging." });
-        }
-
-        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
-        if (config == null)
-        {
-            return BadRequest(new { message = "GitHub configuration not found" });
-        }
-
-        var mergeMethod = request?.MergeMethod ?? "merge";
-
-        try
-        {
-            await gitHubService.MergePullRequestAsync(
-                config.Organization,
-                pr.Repository,
-                pr.GitHubId,
-                request?.CommitTitle,
-                request?.CommitMessage,
-                mergeMethod,
-                user.AccessToken
-            );
-
-            pr.IsMerged = true;
-            pr.MergedAt = DateTime.UtcNow;
-            pr.Status = "Merged";
-            await _context.SaveChangesAsync();
-
-            return Ok(new { message = "Pull request merged successfully", isMerged = true, mergedAt = pr.MergedAt });
-        }
-        catch (Octokit.ApiException ex)
-        {
-            var errorMessage = ex.StatusCode switch
-            {
-                System.Net.HttpStatusCode.Conflict => "Pull request has merge conflicts that must be resolved.",
-                System.Net.HttpStatusCode.MethodNotAllowed => "Merge method not allowed. Check repository settings.",
-                System.Net.HttpStatusCode.Forbidden => "You don't have permission to merge this pull request.",
-                System.Net.HttpStatusCode.UnprocessableEntity => "Pull request cannot be merged. It may be closed or have failing checks.",
-                _ => $"Failed to merge pull request: {ex.Message}"
-            };
-            return StatusCode((int)ex.StatusCode, new { message = errorMessage });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "Failed to merge pull request", error = ex.Message });
-        }
+        return Ok(new { message = result.Message, isMerged = result.IsMerged, mergedAt = result.MergedAt });
     }
 
     [HttpGet("{id}/merge-options")]
@@ -793,7 +521,6 @@ public class PullRequestsController(
                 user.AccessToken
             );
 
-            // Update local database
             pr.Draft = false;
             pr.Status = "AwaitingReview";
             await _context.SaveChangesAsync();
@@ -811,8 +538,6 @@ public class PullRequestsController(
     public async Task<IActionResult> UpdateFileViewedState(int id, [FromBody] UpdateViewedStateRequest request)
     {
         var userIdClaim = User.FindFirst("UserId")?.Value;
-        //get user accesTOken from db
-        // Get user's token from database
         if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userIdFromClaim))
         {
             return Unauthorized(new { message = "User not authenticated" });
@@ -827,7 +552,7 @@ public class PullRequestsController(
         var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
         if (config == null) return BadRequest(new { message = "GitHub configuration not found" });
 
-        var userAccessToken = user.AccessToken;
+        var userAccessToken = user!.AccessToken;
 
         try
         {
@@ -840,11 +565,9 @@ public class PullRequestsController(
                 await gitHubService.UnmarkFileAsViewedAsync(config.Organization, pr.Repository, (int)pr.GitHubId, request.Path, config, userAccessToken);
             }
 
-            // Also update local DB state
             var fileDiff = await _context.FileDiffs.FirstOrDefaultAsync(f => f.PullRequestId == id && f.Path == request.Path);
             if (fileDiff != null)
             {
-                // Get current user from JWT
                 var userIdStr = User.FindFirst("UserId")?.Value;
                 if (int.TryParse(userIdStr, out var userId))
                 {
@@ -892,7 +615,6 @@ public class PullRequestsController(
             return NotFound(new { message = "Pull request not found" });
         }
 
-        // Collect unique users from reviews, comments, and the PR author
         var users = new HashSet<string> { pr.Author };
 
         foreach (var review in pr.Reviews)
@@ -905,7 +627,6 @@ public class PullRequestsController(
             users.Add(comment.Author);
         }
 
-        // Add reviewers from the PR if available
         if (!string.IsNullOrEmpty(pr.Reviews.FirstOrDefault()?.Reviewer))
         {
             foreach (var review in pr.Reviews)
@@ -914,7 +635,6 @@ public class PullRequestsController(
             }
         }
 
-        // Also query for user avatars
         var userAvatars = await _context.Users
             .Where(u => users.Contains(u.Username))
             .Select(u => new { u.Username, u.AvatarUrl, u.Name })
@@ -934,14 +654,12 @@ public class PullRequestsController(
     [Authorize]
     public async Task<IActionResult> RefreshFileViewedStates(int id)
     {
-        // Get current user from JWT
         var userIdClaim = User.FindFirst("UserId")?.Value;
         if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
         {
             return Unauthorized(new { message = "User not authenticated" });
         }
 
-        // Get PR details
         var pr = await _context.PullRequests
             .FirstOrDefaultAsync(p => p.Id == id);
 
@@ -950,7 +668,6 @@ public class PullRequestsController(
             return NotFound(new { message = "Pull request not found" });
         }
 
-        // Get user's token from database
         var user = await _context.Users
             .FirstOrDefaultAsync(u => u.Id == userId);
         
@@ -959,7 +676,6 @@ public class PullRequestsController(
             return Unauthorized(new { message = "User token not available" });
         }
 
-        // Get config
         var config = await cacheService.GetConfigAsync();
         if (config == null)
         {
@@ -968,27 +684,23 @@ public class PullRequestsController(
 
         try
         {
-            // Fetch file diffs with user's viewed state from GitHub
             var fileDiffs = await gitHubService.GetFileDiffsAsync(
                 config.Organization,
                 pr.Repository,
                 pr.GitHubId,
                 config,
-                user.AccessToken // Use user's personal token
+                user.AccessToken
             );
 
-            // Get existing file diffs from database
             var dbFileDiffs = await _context.FileDiffs
                 .Where(f => f.PullRequestId == id)
                 .ToListAsync();
 
-            // Update database with viewed states
             foreach (var fileDiff in fileDiffs)
             {
                 var dbFileDiff = dbFileDiffs.FirstOrDefault(f => f.Path == fileDiff.Path);
                 if (dbFileDiff != null)
                 {
-                    // Update or create viewed state
                     var existingState = await _context.UserFileViewedStates
                         .FirstOrDefaultAsync(uvs => uvs.UserId == userId && uvs.FileDiffId == dbFileDiff.Id);
 
@@ -999,7 +711,6 @@ public class PullRequestsController(
                     }
                     else
                     {
-                        // Create new viewed state
                         _context.UserFileViewedStates.Add(new UserFileViewedState
                         {
                             UserId = userId,
@@ -1013,7 +724,6 @@ public class PullRequestsController(
 
             await _context.SaveChangesAsync();
 
-            // Return updated file diffs with viewed state
             var viewedStates = await _context.UserFileViewedStates
                 .Where(uvs => uvs.UserId == userId && dbFileDiffs.Select(f => f.Id).Contains(uvs.FileDiffId))
                 .ToListAsync();
