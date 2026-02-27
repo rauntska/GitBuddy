@@ -1,16 +1,30 @@
 using Graphite.Api.DTOs;
 using Graphite.Api.Extensions;
 using Graphite.Api.Features.PullRequests.AddComment;
+using Graphite.Api.Features.PullRequests.AddCommentReply;
+using Graphite.Api.Features.PullRequests.AddPendingReviewComment;
+using Graphite.Api.Features.PullRequests.DeletePendingReview;
+using Graphite.Api.Features.PullRequests.DeletePendingReviewComment;
 using Graphite.Api.Features.PullRequests.GetById;
+using Graphite.Api.Features.PullRequests.GetFileContent;
+using Graphite.Api.Features.PullRequests.GetMentionableUsers;
+using Graphite.Api.Features.PullRequests.GetMergeOptions;
+using Graphite.Api.Features.PullRequests.GetPendingReview;
 using Graphite.Api.Features.PullRequests.GetUnreadCount;
 using Graphite.Api.Features.PullRequests.Merge;
+using Graphite.Api.Features.PullRequests.PublishDraftPR;
+using Graphite.Api.Features.PullRequests.RefreshFileViewedStates;
+using Graphite.Api.Features.PullRequests.ResolveReviewThread;
+using Graphite.Api.Features.PullRequests.SubmitPendingReview;
+using Graphite.Api.Features.PullRequests.SubmitReview;
+using Graphite.Api.Features.PullRequests.UnresolveReviewThread;
+using Graphite.Api.Features.PullRequests.UpdateFileViewedState;
 using Graphite.Api.Services;
 using Graphite.Domain.Data;
-using Graphite.Domain.Models;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authorization;
 
 namespace Graphite.Api.Controllers;
 
@@ -20,9 +34,7 @@ namespace Graphite.Api.Controllers;
 public class PullRequestsController(
     ISender mediator,
     ICacheService cacheService, 
-    AppDbContext context, 
-    IGitHubService gitHubService,
-    IGitHubGraphQLService gitHubGraphQLService)
+    AppDbContext context) 
     : BaseController(context)
 {
     private readonly AppDbContext _context = context;
@@ -95,19 +107,13 @@ public class PullRequestsController(
         var config = await cacheService.GetConfigAsync();
 
         if (config == null || string.IsNullOrEmpty(config.Organization))
-        {
             return BadRequest("GitHub configuration not found. Please configure settings first.");
-        }
 
         if (!config.UseGitHubApp && string.IsNullOrEmpty(config.PersonalAccessToken))
-        {
             return BadRequest("GitHub configuration not found. Please configure settings first.");
-        }
 
         if (config.UseGitHubApp && (string.IsNullOrEmpty(config.AppId) || string.IsNullOrEmpty(config.PrivateKey) || string.IsNullOrEmpty(config.InstallationId)))
-        {
             return BadRequest("GitHub App configuration is incomplete. Please configure App ID, Private Key, and Installation ID.");
-        }
 
         try
         {
@@ -128,9 +134,7 @@ public class PullRequestsController(
             .FirstOrDefaultAsync(f => f.PullRequestId == id && f.Path == filePath);
 
         if (fileDiff == null)
-        {
             return NotFound(new { message = "File not found" });
-        }
 
         return Ok(fileDiff.ToDto());
     }
@@ -176,111 +180,39 @@ public class PullRequestsController(
     [Authorize]
     public async Task<IActionResult> AddCommentReply(int id, [FromBody] AddCommentReplyRequest request)
     {
-        var user = await CurrentUser();
-        if (user == null)
-            return Unauthorized(new { message = "User not found" });
-
-        var pr = await _context.PullRequests
-            .Include(p => p.ReviewThreads)
-            .FirstOrDefaultAsync(p => p.Id == id);
-        if (pr == null)
-        {
-            return NotFound(new { message = "Pull request not found" });
-        }
-
-        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
-        if (config == null)
-        {
-            return BadRequest(new { message = "GitHub configuration not found" });
-        }
-
         try
         {
-            var comment = await gitHubService.AddPullRequestReviewThreadReplyAsync(
-                config.Organization,
-                pr.Repository,
-                pr.GitHubId,
-                request.ReviewThreadId,
-                request.Body,
-                config,
-                user.AccessToken!
-            );
-
-            if (comment.IsPending)
+            var result = await mediator.Send(new AddCommentReplyCommand(id, request.ReviewThreadId, request.Body, User));
+            
+            if (result.IsPending && result.PendingReply != null)
             {
                 return Ok(new
                 {
                     isPending = true,
-                    pendingReviewId = comment.PendingReviewId,
-                    commentNodeId = comment.CommentNodeId,
-                    reviewThreadId = request.ReviewThreadId,
-                    author = comment.Author,
-                    authorAvatar = comment.AuthorAvatar,
-                    body = comment.Body,
-                    createdAt = comment.CreatedAt,
-                    updatedAt = comment.UpdatedAt
+                    pendingReviewId = result.PendingReply.PendingReviewId,
+                    commentNodeId = result.PendingReply.CommentNodeId,
+                    reviewThreadId = result.PendingReply.ReviewThreadId,
+                    author = result.PendingReply.Author,
+                    authorAvatar = result.PendingReply.AuthorAvatar,
+                    body = result.PendingReply.Body,
+                    createdAt = result.PendingReply.CreatedAt,
+                    updatedAt = result.PendingReply.UpdatedAt
                 });
             }
 
-            var reviewThread = pr.ReviewThreads.FirstOrDefault(rt => rt.GitHubId == request.ReviewThreadId);
-            if (reviewThread != null)
-            {
-                reviewThread.CommentCount++;
-                reviewThread.UpdatedAt = comment.UpdatedAt;
-
-                var dbComment = new Comment
-                {
-                    PullRequestId = id,
-                    ReviewThreadId = reviewThread.Id,
-                    GitHubId = comment.GitHubId,
-                    Author = comment.Author,
-                    AuthorAvatar = comment.AuthorAvatar,
-                    Body = comment.Body,
-                    Path = comment.Path,
-                    Line = comment.Line,
-                    IsOutdated = false,
-                    CreatedAt = comment.CreatedAt,
-                    UpdatedAt = comment.UpdatedAt
-                };
-                _context.Comments.Add(dbComment);
-                await _context.SaveChangesAsync();
-
-                return Ok(new CommentDto(
-                    dbComment.Id,
-                    dbComment.GitHubId,
-                    dbComment.ReviewThreadId,
-                    dbComment.Author,
-                    dbComment.AuthorAvatar,
-                    dbComment.Body,
-                    dbComment.CreatedAt,
-                    dbComment.UpdatedAt,
-                    dbComment.Path,
-                    dbComment.Line,
-                    dbComment.IsOutdated,
-                    dbComment.EditedAt,
-                    dbComment.EditCount,
-                    dbComment.ReplyToCommentId,
-                    null
-                ));
-            }
-
-            return Ok(new CommentDto(
-                0,
-                comment.GitHubId,
-                null,
-                comment.Author,
-                comment.AuthorAvatar,
-                comment.Body,
-                comment.CreatedAt,
-                comment.UpdatedAt,
-                comment.Path,
-                comment.Line,
-                comment.IsOutdated,
-                null,
-                0,
-                null,
-                null
-            ));
+            return Ok(result.Comment);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {
@@ -292,117 +224,48 @@ public class PullRequestsController(
     [Authorize]
     public async Task<IActionResult> ResolveReviewThread(int id, string threadId, [FromBody] ResolveThreadRequest request)
     {
-        var user = await CurrentUser();
-        if (user == null)
-            return Unauthorized(new { message = "User not found" });
-
-        var pr = await _context.PullRequests.FindAsync(id);
-        if (pr == null)
+        var result = await mediator.Send(new ResolveReviewThreadCommand(id, threadId, request.Resolved, User));
+        
+        if (!result.Success)
         {
-            return NotFound(new { message = "Pull request not found" });
+            if (result.Error != null)
+                return StatusCode(500, new { message = result.Message, error = result.Error });
+            return NotFound(new { message = result.Message });
         }
 
-        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
-        if (config == null)
-        {
-            return BadRequest(new { message = "GitHub configuration not found" });
-        }
-
-        try
-        {
-            await gitHubService.ResolveReviewThreadAsync(
-                config.Organization,
-                pr.Repository,
-                threadId,
-                request.Resolved,
-                config,
-                user.AccessToken!
-            );
-
-            return Ok(new { message = "Thread resolved successfully" });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "Failed to resolve thread", error = ex.Message });
-        }
+        return Ok(new { message = result.Message });
     }
 
     [HttpPost("{id}/threads/{threadId}/unresolve")]
     [Authorize]
     public async Task<IActionResult> UnresolveReviewThread(int id, string threadId, [FromBody] UnresolveThreadRequest request)
     {
-        var user = await CurrentUser();
-        if (user == null)
-            return Unauthorized(new { message = "User not found" });
-
-        var pr = await _context.PullRequests.FindAsync(id);
-        if (pr == null)
+        var result = await mediator.Send(new UnresolveReviewThreadCommand(id, threadId, User));
+        
+        if (!result.Success)
         {
-            return NotFound(new { message = "Pull request not found" });
+            if (result.Error != null)
+                return StatusCode(500, new { message = result.Message, error = result.Error });
+            return NotFound(new { message = result.Message });
         }
 
-        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
-        if (config == null)
-        {
-            return BadRequest(new { message = "GitHub configuration not found" });
-        }
-
-        try
-        {
-            await gitHubService.UnresolveReviewThreadAsync(
-                config.Organization,
-                pr.Repository,
-                threadId,
-                config,
-                user.AccessToken!
-            );
-
-            return Ok(new { message = "Thread unresolved successfully" });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "Failed to unresolve thread", error = ex.Message });
-        }
+        return Ok(new { message = result.Message });
     }
 
     [HttpPost("{id}/review")]
     [Authorize]
     public async Task<IActionResult> SubmitReview(int id, [FromBody] SubmitReviewRequest request)
     {
-        var user = await CurrentUser();
-        if (user == null)
-            return Unauthorized(new { message = "User not found" });
-
-        var pr = await _context.PullRequests.FindAsync(id);
-        if (pr == null)
+        var result = await mediator.Send(new SubmitReviewCommand(id, request.State, request.Body, User));
+        
+        if (!result.Success)
         {
-            return NotFound(new { message = "Pull request not found" });
+            if (result.Error != null)
+                return StatusCode(500, new { message = result.Message, error = result.Error });
+            return NotFound(new { message = result.Message });
         }
 
-        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
-        if (config == null)
-        {
-            return BadRequest(new { message = "GitHub configuration not found" });
-        }
-
-        try
-        {
-            await gitHubService.SubmitPullRequestReviewAsync(
-                config.Organization,
-                pr.Repository,
-                pr.GitHubId,
-                request.State,
-                request.Body,
-                config,
-                user.AccessToken!
-            );
-
-            return Ok(new { message = "Review submitted successfully" });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "Failed to submit review to GitHub", error = ex.Message });
-        }
+        return Ok(new { message = result.Message });
     }
 
     [HttpPost("{id}/merge")]
@@ -427,48 +290,22 @@ public class PullRequestsController(
     [Authorize]
     public async Task<IActionResult> GetMergeOptions(int id)
     {
-        var userIdClaim = User.FindFirst("UserId")?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
-        {
-            return Unauthorized(new { message = "User not authenticated" });
-        }
-
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
-        if (user == null || string.IsNullOrEmpty(user.AccessToken))
-        {
-            return Unauthorized(new { message = "User token not available" });
-        }
-
-        var pr = await _context.PullRequests.FindAsync(id);
-        if (pr == null)
-        {
-            return NotFound(new { message = "Pull request not found" });
-        }
-
-        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
-        if (config == null)
-        {
-            return BadRequest(new { message = "GitHub configuration not found" });
-        }
-
         try
         {
-            var mergeOptions = await gitHubService.GetRepositoryMergeOptionsAsync(
-                config.Organization,
-                pr.Repository,
-                user.AccessToken
-            );
-
-            return Ok(new
-            {
-                mergeCommitAllowed = mergeOptions.MergeCommitAllowed,
-                squashMergeAllowed = mergeOptions.SquashMergeAllowed,
-                rebaseMergeAllowed = mergeOptions.RebaseMergeAllowed,
-                defaultMergeMethod = mergeOptions.DefaultMergeMethod,
-                mergeableState = pr.MergeableState,
-                isMerged = pr.IsMerged,
-                isDraft = pr.Draft
-            });
+            var result = await mediator.Send(new GetMergeOptionsQuery(id, User));
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {
@@ -480,121 +317,38 @@ public class PullRequestsController(
     [Authorize]
     public async Task<IActionResult> PublishDraftPR(int id)
     {
-        var userIdClaim = User.FindFirst("UserId")?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+        var result = await mediator.Send(new PublishDraftPRCommand(id, User));
+        
+        if (!result.Success)
         {
-            return Unauthorized(new { message = "User not authenticated" });
+            if (result.Error != null)
+                return StatusCode(500, new { message = result.Message, error = result.Error });
+            return BadRequest(new { message = result.Message });
         }
 
-        var user = await _context.Users
-            .FirstOrDefaultAsync(u => u.Id == userId);
-
-        if (user == null || string.IsNullOrEmpty(user.AccessToken))
-        {
-            return Unauthorized(new { message = "User token not available" });
-        }
-
-        var pr = await _context.PullRequests.FindAsync(id);
-        if (pr == null)
-        {
-            return NotFound(new { message = "Pull request not found" });
-        }
-
-        if (!pr.Draft)
-        {
-            return BadRequest(new { message = "Pull request is not a draft" });
-        }
-
-        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
-        if (config == null)
-        {
-            return BadRequest(new { message = "GitHub configuration not found" });
-        }
-
-        try
-        {
-            await gitHubService.PublishDraftPullRequestAsync(
-                config.Organization,
-                pr.Repository,
-                pr.GitHubId,
-                config,
-                user.AccessToken
-            );
-
-            pr.Draft = false;
-            pr.Status = "AwaitingReview";
-            await _context.SaveChangesAsync();
-
-            return Ok(new { message = "Draft PR published successfully", draft = false, status = "AwaitingReview" });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "Failed to publish draft PR", error = ex.Message });
-        }
+        return Ok(new { message = result.Message, draft = result.Draft, status = result.Status });
     }
 
     [HttpPost("{id}/files/viewed")]
     [Authorize]
     public async Task<IActionResult> UpdateFileViewedState(int id, [FromBody] UpdateViewedStateRequest request)
     {
-        var userIdClaim = User.FindFirst("UserId")?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userIdFromClaim))
-        {
-            return Unauthorized(new { message = "User not authenticated" });
-        }
-        var user = await _context.Users
-            .FirstOrDefaultAsync(u => u.Id == userIdFromClaim);
-        
-        
-        var pr = await _context.PullRequests.FindAsync(id);
-        if (pr == null) return NotFound();
-
-        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
-        if (config == null) return BadRequest(new { message = "GitHub configuration not found" });
-
-        var userAccessToken = user!.AccessToken;
-
         try
         {
-            if (request.Viewed)
-            {
-                await gitHubService.MarkFileAsViewedAsync(config.Organization, pr.Repository, (int)pr.GitHubId, request.Path, config, userAccessToken);
-            }
-            else
-            {
-                await gitHubService.UnmarkFileAsViewedAsync(config.Organization, pr.Repository, (int)pr.GitHubId, request.Path, config, userAccessToken);
-            }
-
-            var fileDiff = await _context.FileDiffs.FirstOrDefaultAsync(f => f.PullRequestId == id && f.Path == request.Path);
-            if (fileDiff != null)
-            {
-                var userIdStr = User.FindFirst("UserId")?.Value;
-                if (int.TryParse(userIdStr, out var userId))
-                {
-                    var viewedState = await _context.UserFileViewedStates
-                        .FirstOrDefaultAsync(vs => vs.FileDiffId == fileDiff.Id && vs.UserId == userId);
-
-                    if (viewedState == null)
-                    {
-                        _context.UserFileViewedStates.Add(new UserFileViewedState
-                        {
-                            FileDiffId = fileDiff.Id,
-                            UserId = userId,
-                            ViewedState = request.Viewed ? "VIEWED" : "UNVIEWED",
-                            UpdatedAt = DateTime.UtcNow
-                        });
-                    }
-                    else
-                    {
-                        viewedState.ViewedState = request.Viewed ? "VIEWED" : "UNVIEWED";
-                        viewedState.UpdatedAt = DateTime.UtcNow;
-                    }
-
-                    await _context.SaveChangesAsync();
-                }
-            }
-
+            await mediator.Send(new UpdateFileViewedStateCommand(id, request.Path, request.Viewed, User));
             return Ok();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {
@@ -605,136 +359,37 @@ public class PullRequestsController(
     [HttpGet("{id}/mentionable-users")]
     public async Task<IActionResult> GetMentionableUsers(int id)
     {
-        var pr = await _context.PullRequests
-            .Include(p => p.Reviews)
-            .Include(p => p.Comments)
-            .FirstOrDefaultAsync(p => p.Id == id);
-
-        if (pr == null)
+        try
         {
-            return NotFound(new { message = "Pull request not found" });
+            var result = await mediator.Send(new GetMentionableUsersQuery(id));
+            return Ok(result);
         }
-
-        var users = new HashSet<string> { pr.Author };
-
-        foreach (var review in pr.Reviews)
+        catch (KeyNotFoundException ex)
         {
-            users.Add(review.Reviewer);
+            return NotFound(new { message = ex.Message });
         }
-
-        foreach (var comment in pr.Comments)
-        {
-            users.Add(comment.Author);
-        }
-
-        if (!string.IsNullOrEmpty(pr.Reviews.FirstOrDefault()?.Reviewer))
-        {
-            foreach (var review in pr.Reviews)
-            {
-                users.Add(review.Reviewer);
-            }
-        }
-
-        var userAvatars = await _context.Users
-            .Where(u => users.Contains(u.Username))
-            .Select(u => new { u.Username, u.AvatarUrl, u.Name })
-            .ToDictionaryAsync(u => u.Username);
-
-        var result = users.Select(username => new
-        {
-            Username = username,
-            AvatarUrl = userAvatars.GetValueOrDefault(username)?.AvatarUrl,
-            Name = userAvatars.GetValueOrDefault(username)?.Name
-        }).ToList();
-
-        return Ok(result);
     }
 
     [HttpPost("{id}/file-diffs/refresh-viewed-states")]
     [Authorize]
     public async Task<IActionResult> RefreshFileViewedStates(int id)
     {
-        var userIdClaim = User.FindFirst("UserId")?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
-        {
-            return Unauthorized(new { message = "User not authenticated" });
-        }
-
-        var pr = await _context.PullRequests
-            .FirstOrDefaultAsync(p => p.Id == id);
-
-        if (pr == null)
-        {
-            return NotFound(new { message = "Pull request not found" });
-        }
-
-        var user = await _context.Users
-            .FirstOrDefaultAsync(u => u.Id == userId);
-        
-        if (user == null || string.IsNullOrEmpty(user.AccessToken))
-        {
-            return Unauthorized(new { message = "User token not available" });
-        }
-
-        var config = await cacheService.GetConfigAsync();
-        if (config == null)
-        {
-            return BadRequest(new { message = "GitHub configuration not found" });
-        }
-
         try
         {
-            var fileDiffs = await gitHubService.GetFileDiffsAsync(
-                config.Organization,
-                pr.Repository,
-                pr.GitHubId,
-                config,
-                user.AccessToken
-            );
-
-            var dbFileDiffs = await _context.FileDiffs
-                .Where(f => f.PullRequestId == id)
-                .ToListAsync();
-
-            foreach (var fileDiff in fileDiffs)
-            {
-                var dbFileDiff = dbFileDiffs.FirstOrDefault(f => f.Path == fileDiff.Path);
-                if (dbFileDiff != null)
-                {
-                    var existingState = await _context.UserFileViewedStates
-                        .FirstOrDefaultAsync(uvs => uvs.UserId == userId && uvs.FileDiffId == dbFileDiff.Id);
-
-                    if (existingState != null)
-                    {
-                        existingState.ViewedState = fileDiff.ViewerViewedState;
-                        existingState.UpdatedAt = DateTime.UtcNow;
-                    }
-                    else
-                    {
-                        _context.UserFileViewedStates.Add(new UserFileViewedState
-                        {
-                            UserId = userId,
-                            FileDiffId = dbFileDiff.Id,
-                            ViewedState = fileDiff.ViewerViewedState,
-                            UpdatedAt = DateTime.UtcNow
-                        });
-                    }
-                }
-            }
-
-            await _context.SaveChangesAsync();
-
-            var viewedStates = await _context.UserFileViewedStates
-                .Where(uvs => uvs.UserId == userId && dbFileDiffs.Select(f => f.Id).Contains(uvs.FileDiffId))
-                .ToListAsync();
-
-            var result = dbFileDiffs.Select(file =>
-            {
-                var viewedState = viewedStates.FirstOrDefault(vs => vs.FileDiffId == file.Id);
-                return file.ToDto(viewedState?.ViewedState, viewedState?.UpdatedAt);
-            }).ToList();
-
-            return Ok(result);
+            var result = await mediator.Send(new RefreshFileViewedStatesCommand(id, User));
+            return Ok(result.Files);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {
@@ -752,72 +407,26 @@ public class PullRequestsController(
         [FromQuery] int? newStartLine,
         [FromQuery] int? newEndLine)
     {
-        var userIdClaim = User.FindFirst("UserId")?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
-        {
-            return Unauthorized(new { message = "User not authenticated" });
-        }
-
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
-        if (user == null || string.IsNullOrEmpty(user.AccessToken))
-        {
-            return Unauthorized(new { message = "User token not available" });
-        }
-
-        var pr = await _context.PullRequests.FindAsync(id);
-        if (pr == null)
-        {
-            return NotFound(new { message = "Pull request not found" });
-        }
-
-        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
-        if (config == null)
-        {
-            return BadRequest(new { message = "GitHub configuration not found" });
-        }
-
         try
         {
-            var oldLines = new List<FileLineContent>();
-            var newLines = new List<FileLineContent>();
-
-            if (oldStartLine.HasValue && oldEndLine.HasValue && !string.IsNullOrEmpty(pr.TargetBranch))
-            {
-                var oldContent = await gitHubGraphQLService.GetFileContentAsync(
-                    config.Organization,
-                    pr.Repository,
-                    pr.TargetBranch,
-                    path,
-                    user.AccessToken
-                );
-
-                if (oldContent != null)
-                {
-                    oldLines = ExtractLines(oldContent, oldStartLine.Value, oldEndLine.Value);
-                }
-            }
-
-            if (newStartLine.HasValue && newEndLine.HasValue && !string.IsNullOrEmpty(pr.SourceBranch))
-            {
-                var newContent = await gitHubGraphQLService.GetFileContentAsync(
-                    config.Organization,
-                    pr.Repository,
-                    pr.SourceBranch,
-                    path,
-                    user.AccessToken
-                );
-
-                if (newContent != null)
-                {
-                    newLines = ExtractLines(newContent, newStartLine.Value, newEndLine.Value);
-                }
-            }
-
+            var result = await mediator.Send(new GetFileContentQuery(id, path, oldStartLine, oldEndLine, newStartLine, newEndLine, User));
             return Ok(new
             {
-                oldLines = oldLines.Select(l => new { lineNumber = l.LineNumber, content = l.Content }),
-                newLines = newLines.Select(l => new { lineNumber = l.LineNumber, content = l.Content })
+                oldLines = result.OldLines.Select(l => new { lineNumber = l.LineNumber, content = l.Content }),
+                newLines = result.NewLines.Select(l => new { lineNumber = l.LineNumber, content = l.Content })
             });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {
@@ -825,82 +434,26 @@ public class PullRequestsController(
         }
     }
 
-    private static List<FileLineContent> ExtractLines(string content, int startLine, int endLine)
-    {
-        var lines = content.Split('\n');
-        var result = new List<FileLineContent>();
-
-        for (int i = startLine; i <= endLine && i <= lines.Length; i++)
-        {
-            var lineIndex = i - 1;
-            if (lineIndex >= 0 && lineIndex < lines.Length)
-            {
-                result.Add(new FileLineContent(i, lines[lineIndex].TrimEnd('\r')));
-            }
-        }
-
-        return result;
-    }
-
     [HttpGet("{id}/pending-review")]
     [Authorize]
     public async Task<IActionResult> GetPendingReview(int id)
     {
-        var userIdClaim = User.FindFirst("UserId")?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
-        {
-            return Unauthorized(new { message = "User not authenticated" });
-        }
-
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
-        if (user == null || string.IsNullOrEmpty(user.AccessToken))
-        {
-            return Unauthorized(new { message = "User token not available" });
-        }
-
-        var pr = await _context.PullRequests.FindAsync(id);
-        if (pr == null)
-        {
-            return NotFound(new { message = "Pull request not found" });
-        }
-
-        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
-        if (config == null)
-        {
-            return BadRequest(new { message = "GitHub configuration not found" });
-        }
-
         try
         {
-            var pendingReview = await gitHubService.GetPendingReviewAsync(
-                config.Organization,
-                pr.Repository,
-                pr.GitHubId,
-                user.Username,
-                user.AccessToken
-            );
-
-            if (pendingReview == null)
-            {
-                return Ok(new PendingReviewDto(string.Empty, "NONE", new List<PendingReviewCommentDto>()));
-            }
-
-            var dto = new PendingReviewDto(
-                pendingReview.GitHubId,
-                pendingReview.State,
-                pendingReview.Comments.Select(c => new PendingReviewCommentDto(
-                    c.GitHubId,
-                    c.Path ?? string.Empty,
-                    c.Line,
-                    c.Body,
-                    c.Author,
-                    c.AuthorAvatar,
-                    c.CreatedAt,
-                    c.UpdatedAt
-                )).ToList()
-            );
-
-            return Ok(dto);
+            var result = await mediator.Send(new GetPendingReviewQuery(id, User));
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {
@@ -912,54 +465,32 @@ public class PullRequestsController(
     [Authorize]
     public async Task<IActionResult> AddPendingReviewComment(int id, [FromBody] CreatePendingReviewCommentRequest request)
     {
-        var userIdClaim = User.FindFirst("UserId")?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
-        {
-            return Unauthorized(new { message = "User not authenticated" });
-        }
-
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
-        if (user == null || string.IsNullOrEmpty(user.AccessToken))
-        {
-            return Unauthorized(new { message = "User token not available" });
-        }
-
-        var pr = await _context.PullRequests.FindAsync(id);
-        if (pr == null)
-        {
-            return NotFound(new { message = "Pull request not found" });
-        }
-
-        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
-        if (config == null)
-        {
-            return BadRequest(new { message = "GitHub configuration not found" });
-        }
-
         try
         {
-            var comment = await gitHubService.AddPendingReviewCommentAsync(
-                config.Organization,
-                pr.Repository,
-                pr.GitHubId,
-                request.Body,
-                request.Path,
-                request.Line,
-                config,
-                user.AccessToken
-            );
-
+            var result = await mediator.Send(new AddPendingReviewCommentCommand(id, request.Body, request.Path, request.Line, User));
             return Ok(new
             {
-                commentId = comment.GitHubId,
-                reviewId = comment.ReviewId,
-                path = comment.Path,
-                line = comment.Line,
-                body = comment.Body,
-                author = comment.Author,
-                authorAvatar = comment.AuthorAvatar,
-                createdAt = comment.CreatedAt
+                commentId = result.CommentId,
+                reviewId = result.ReviewId,
+                path = result.Path,
+                line = result.Line,
+                body = result.Body,
+                author = result.Author,
+                authorAvatar = result.AuthorAvatar,
+                createdAt = result.CreatedAt
             });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {
@@ -971,52 +502,26 @@ public class PullRequestsController(
     [Authorize]
     public async Task<IActionResult> DeletePendingReviewComment(int id, string commentId)
     {
-        var userIdClaim = User.FindFirst("UserId")?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
-        {
-            return Unauthorized(new { message = "User not authenticated" });
-        }
-
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
-        if (user == null || string.IsNullOrEmpty(user.AccessToken))
-        {
-            return Unauthorized(new { message = "User token not available" });
-        }
-
-        var pr = await _context.PullRequests.FindAsync(id);
-        if (pr == null)
-        {
-            return NotFound(new { message = "Pull request not found" });
-        }
-
-        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
-        if (config == null)
-        {
-            return BadRequest(new { message = "GitHub configuration not found" });
-        }
-
         try
         {
-            var success = await gitHubService.DeletePendingReviewCommentAsync(
-                config.Organization,
-                pr.Repository,
-                commentId,
-                user.AccessToken
-            );
-
-            if (success)
-            {
-                var pendingComment = await _context.PendingComments
-                    .FirstOrDefaultAsync(c => c.PendingReview.PullRequestId == id && c.PendingReview.UserId == userId);
-                if (pendingComment != null)
-                {
-                    _context.PendingComments.Remove(pendingComment);
-                    await _context.SaveChangesAsync();
-                }
-                return Ok(new { message = "Comment deleted successfully" });
-            }
-
-            return BadRequest(new { message = "Failed to delete comment" });
+            var result = await mediator.Send(new DeletePendingReviewCommentCommand(id, commentId, User));
+            
+            if (!result.Success)
+                return BadRequest(new { message = result.Message });
+            
+            return Ok(new { message = result.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {
@@ -1028,117 +533,31 @@ public class PullRequestsController(
     [Authorize]
     public async Task<IActionResult> SubmitPendingReview(int id, [FromBody] SubmitPendingReviewRequest request)
     {
-        var userIdClaim = User.FindFirst("UserId")?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+        var result = await mediator.Send(new SubmitPendingReviewCommand(id, request.State, request.Body, User));
+        
+        if (!result.Success)
         {
-            return Unauthorized(new { message = "User not authenticated" });
+            if (result.Error != null)
+                return StatusCode(500, new { message = result.Message, error = result.Error });
+            return BadRequest(new { message = result.Message });
         }
 
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
-        if (user == null || string.IsNullOrEmpty(user.AccessToken))
-        {
-            return Unauthorized(new { message = "User token not available" });
-        }
-
-        var pr = await _context.PullRequests.FindAsync(id);
-        if (pr == null)
-        {
-            return NotFound(new { message = "Pull request not found" });
-        }
-
-        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
-        if (config == null)
-        {
-            return BadRequest(new { message = "GitHub configuration not found" });
-        }
-
-        try
-        {
-            var pendingReview = await gitHubService.GetPendingReviewAsync(
-                config.Organization,
-                pr.Repository,
-                pr.GitHubId,
-                user.Username,
-                user.AccessToken
-            );
-
-            if (pendingReview == null)
-            {
-                return BadRequest(new { message = "No pending review found to submit" });
-            }
-
-            await gitHubService.SubmitPendingReviewAsync(
-                config.Organization,
-                pr.Repository,
-                pendingReview.GitHubId,
-                request.State,
-                request.Body,
-                user.AccessToken
-            );
-
-            return Ok(new { message = "Pending review submitted successfully" });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "Failed to submit pending review", error = ex.Message });
-        }
+        return Ok(new { message = result.Message });
     }
 
     [HttpDelete("{id}/pending-review")]
     [Authorize]
     public async Task<IActionResult> DeletePendingReview(int id)
     {
-        var userIdClaim = User.FindFirst("UserId")?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+        var result = await mediator.Send(new DeletePendingReviewCommand(id, User));
+        
+        if (!result.Success)
         {
-            return Unauthorized(new { message = "User not authenticated" });
+            if (result.Error != null)
+                return StatusCode(500, new { message = result.Message, error = result.Error });
+            return BadRequest(new { message = result.Message });
         }
 
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
-        if (user == null || string.IsNullOrEmpty(user.AccessToken))
-        {
-            return Unauthorized(new { message = "User token not available" });
-        }
-
-        var pr = await _context.PullRequests.FindAsync(id);
-        if (pr == null)
-        {
-            return NotFound(new { message = "Pull request not found" });
-        }
-
-        var config = await _context.GitHubConfigs.FirstOrDefaultAsync();
-        if (config == null)
-        {
-            return BadRequest(new { message = "GitHub configuration not found" });
-        }
-
-        try
-        {
-            var pendingReview = await gitHubService.GetPendingReviewAsync(
-                config.Organization,
-                pr.Repository,
-                pr.GitHubId,
-                user.Username,
-                user.AccessToken
-            );
-
-            if (pendingReview == null)
-            {
-                return BadRequest(new { message = "No pending review found to delete" });
-            }
-
-            await gitHubService.DeletePendingReviewAsync(
-                config.Organization,
-                pr.Repository,
-                pendingReview.GitHubId,
-                user.AccessToken
-            );
-
-            return Ok(new { message = "Pending review deleted successfully" });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "Failed to delete pending review", error = ex.Message });
-        }
+        return Ok(new { message = result.Message });
     }
 }

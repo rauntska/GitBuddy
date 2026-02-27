@@ -9,40 +9,28 @@ namespace Graphite.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class ImagesController : ControllerBase
+public class ImagesController(
+    IHttpClientFactory httpClientFactory,
+    AppDbContext context,
+    ILogger<ImagesController> logger,
+    IConfiguration configuration)
+    : ControllerBase
 {
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly AppDbContext _context;
-    private readonly ILogger<ImagesController> _logger;
-    private readonly IConfiguration _configuration;
-
-    public ImagesController(
-        IHttpClientFactory httpClientFactory,
-        AppDbContext context,
-        ILogger<ImagesController> logger,
-        IConfiguration configuration)
-    {
-        _httpClientFactory = httpClientFactory;
-        _context = context;
-        _logger = logger;
-        _configuration = configuration;
-    }
-
     [HttpGet("proxy")]
     public async Task<IActionResult> ProxyImage([FromQuery] string url)
     {
-        _logger.LogInformation("Image proxy request received for URL: {Url}", url);
+        logger.LogInformation("Image proxy request received for URL: {Url}", url);
 
         if (string.IsNullOrWhiteSpace(url))
         {
-            _logger.LogWarning("Empty URL provided");
+            logger.LogWarning("Empty URL provided");
             return BadRequest("URL is required");
         }
 
         // Validate that URL is from GitHub
         if (!url.StartsWith("https://github.com/") && !url.StartsWith("https://github.com/user-attachments"))
         {
-            _logger.LogWarning("Invalid URL provided: {Url}", url);
+            logger.LogWarning("Invalid URL provided: {Url}", url);
             return BadRequest("Only GitHub URLs are allowed");
         }
 
@@ -52,42 +40,42 @@ public class ImagesController : ControllerBase
 
         if (!string.IsNullOrEmpty(userIdClaim) && int.TryParse(userIdClaim, out var userId))
         {
-            _logger.LogInformation("User ID found: {UserId}, checking for personal access token", userId);
-            var user = await _context.Users.FindAsync(userId);
+            logger.LogInformation("User ID found: {UserId}, checking for personal access token", userId);
+            var user = await context.Users.FindAsync(userId);
             
             if (user?.AccessToken != null && user.AccessToken.Length > 0)
             {
-                _logger.LogInformation("User has personal access token, using it");
+                logger.LogInformation("User has personal access token, using it");
                 accessToken = user.AccessToken;
             }
             else
             {
-                _logger.LogWarning("User {UserId} does not have a GitHub access token", userId);
+                logger.LogWarning("User {UserId} does not have a GitHub access token", userId);
             }
         }
         else
         {
-            _logger.LogWarning("UserId claim not found in token");
+            logger.LogWarning("UserId claim not found in token");
         }
 
         // Fallback to app's GitHub token if user doesn't have personal token
         if (string.IsNullOrEmpty(accessToken))
         {
-            _logger.LogInformation("No user token found, falling back to app's GitHub token");
-            var personalAccessToken = _configuration["GitHubConfig:PersonalAccessToken"];
+            logger.LogInformation("No user token found, falling back to app's GitHub token");
+            var personalAccessToken = configuration["GitHubConfig:PersonalAccessToken"];
             
             if (!string.IsNullOrEmpty(personalAccessToken))
             {
-                _logger.LogWarning("No app GitHub token configured");
+                logger.LogWarning("No app GitHub token configured");
                 return Unauthorized("GitHub authentication not configured. Please login with your GitHub account.");
             }
             
             accessToken = personalAccessToken;
-            _logger.LogInformation("Using app's GitHub token for image proxy");
+            logger.LogInformation("Using app's GitHub token for image proxy");
         }
 
         // Create HTTP client and fetch image
-        var client = _httpClientFactory.CreateClient();
+        var client = httpClientFactory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         client.DefaultRequestHeaders.UserAgent.ParseAdd("Graphite-PR-Dashboard");
         client.Timeout = TimeSpan.FromSeconds(30);
@@ -98,7 +86,7 @@ public class ImagesController : ControllerBase
             var response = await client.GetAsync(url);
             stopwatch.Stop();
 
-            _logger.LogInformation("GitHub image fetch completed in {Ms}ms with status {StatusCode}",
+            logger.LogInformation("GitHub image fetch completed in {Ms}ms with status {StatusCode}",
                 stopwatch.ElapsedMilliseconds, response.StatusCode);
 
             response.EnsureSuccessStatusCode();
@@ -106,7 +94,7 @@ public class ImagesController : ControllerBase
             var contentType = response.Content.Headers.ContentType?.MediaType ?? "image/png";
             var imageBytes = await response.Content.ReadAsByteArrayAsync();
 
-            _logger.LogInformation("Successfully fetched image: {Bytes} bytes, Content-Type: {ContentType}",
+            logger.LogInformation("Successfully fetched image: {Bytes} bytes, Content-Type: {ContentType}",
                 imageBytes.Length, contentType);
 
             // Cache for 1 hour
@@ -116,17 +104,17 @@ public class ImagesController : ControllerBase
         }
         catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
         {
-            _logger.LogError(ex, "GitHub returned 401 Unauthorized when fetching image. Token may be expired.");
+            logger.LogError(ex, "GitHub returned 401 Unauthorized when fetching image. Token may be expired.");
             return Unauthorized("GitHub access token is invalid or expired. Please login again with your GitHub account.");
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "Failed to fetch image from GitHub");
+            logger.LogError(ex, "Failed to fetch image from GitHub");
             return StatusCode(500, $"Failed to fetch image: {ex.Message}");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error fetching image");
+            logger.LogError(ex, "Unexpected error fetching image");
             return StatusCode(500, "An unexpected error occurred");
         }
     }

@@ -8,20 +8,13 @@ namespace Graphite.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class SettingsController : ControllerBase
+public class SettingsController(ICacheService cacheService) : ControllerBase
 {
-    private readonly ICacheService _cacheService;
-
-    public SettingsController(ICacheService cacheService)
-    {
-        _cacheService = cacheService;
-    }
-
     [HttpGet]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Get()
     {
-        var config = await _cacheService.GetConfigAsync();
+        var config = await cacheService.GetConfigAsync();
 
         if (config == null)
         {
@@ -77,7 +70,7 @@ public class SettingsController : ControllerBase
             }
         }
 
-        await _cacheService.SaveConfigAsync(
+        await cacheService.SaveConfigAsync(
             request.Organization,
             request.PersonalAccessToken,
             request.RefreshIntervalMinutes,

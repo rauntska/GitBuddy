@@ -8,15 +8,8 @@ namespace Graphite.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class UserPreferencesController : ControllerBase
+public class UserPreferencesController(IUserService userService) : ControllerBase
 {
-    private readonly IUserService _userService;
-
-    public UserPreferencesController(IUserService userService)
-    {
-        _userService = userService;
-    }
-
     [HttpGet]
     public async Task<ActionResult<UserPreferencesDto>> GetPreferences()
     {
@@ -26,7 +19,7 @@ public class UserPreferencesController : ControllerBase
             return Unauthorized();
         }
 
-        var preferences = await _userService.GetPreferencesAsync(userId);
+        var preferences = await userService.GetPreferencesAsync(userId);
         return Ok(preferences);
     }
 
@@ -39,7 +32,7 @@ public class UserPreferencesController : ControllerBase
             return Unauthorized();
         }
 
-        var preferences = await _userService.UpdatePreferencesAsync(userId, request);
+        var preferences = await userService.UpdatePreferencesAsync(userId, request);
         return Ok(preferences);
     }
 }
