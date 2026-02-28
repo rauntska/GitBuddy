@@ -121,7 +121,6 @@ export interface GroupedPRs {
 
 export interface Settings {
   organization: string;
-  personalAccessToken: string;
   refreshIntervalMinutes: number;
   lastRefresh?: string;
   appId: string;
@@ -129,7 +128,11 @@ export interface Settings {
   installationId: string;
   useGitHubApp: boolean;
   deleteOldPRs: boolean;
-  keyboardShortcuts?: KeyboardShortcuts;
+}
+
+export interface UserSettings {
+  personalAccessToken?: string;
+  hasPersonalAccessToken: boolean;
 }
 
 export interface Comment {

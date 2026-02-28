@@ -18,6 +18,9 @@ public interface IUserService
     Task<bool> DeleteUserAsync(int userId);
     Task<bool> HasAnyUsersAsync();
     Task<int> GetUserCountAsync();
+    Task<UserSettingsDto> GetUserSettingsAsync(int userId);
+    Task<UserSettingsDto> UpdateUserSettingsAsync(int userId, UpdateUserSettingsRequest request);
+    Task<string?> GetUserPersonalAccessTokenAsync(int userId);
 }
 
 public class UserService(AppDbContext context) : IUserService
@@ -229,5 +232,47 @@ public class UserService(AppDbContext context) : IUserService
     public async Task<int> GetUserCountAsync()
     {
         return await context.Users.CountAsync();
+    }
+
+    public async Task<UserSettingsDto> GetUserSettingsAsync(int userId)
+    {
+        var user = await context.Users.FindAsync(userId);
+        if (user == null)
+        {
+            throw new InvalidOperationException($"User with ID {userId} not found");
+        }
+
+        return new UserSettingsDto(
+            PersonalAccessToken: null,
+            HasPersonalAccessToken: !string.IsNullOrEmpty(user.PersonalAccessToken)
+        );
+    }
+
+    public async Task<UserSettingsDto> UpdateUserSettingsAsync(int userId, UpdateUserSettingsRequest request)
+    {
+        var user = await context.Users.FindAsync(userId);
+        if (user == null)
+        {
+            throw new InvalidOperationException($"User with ID {userId} not found");
+        }
+
+        if (request.PersonalAccessToken != null)
+        {
+            user.PersonalAccessToken = string.IsNullOrWhiteSpace(request.PersonalAccessToken) 
+                ? null 
+                : request.PersonalAccessToken;
+            await context.SaveChangesAsync();
+        }
+
+        return new UserSettingsDto(
+            PersonalAccessToken: null,
+            HasPersonalAccessToken: !string.IsNullOrEmpty(user.PersonalAccessToken)
+        );
+    }
+
+    public async Task<string?> GetUserPersonalAccessTokenAsync(int userId)
+    {
+        var user = await context.Users.FindAsync(userId);
+        return user?.PersonalAccessToken;
     }
 }

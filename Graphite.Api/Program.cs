@@ -1,4 +1,5 @@
 using Graphite.Api.BackgroundServices;
+using Graphite.Api.Filters;
 using Graphite.Api.Hubs;
 using Graphite.Api.Processors;
 using Graphite.Api.Services;
@@ -82,7 +83,10 @@ builder.Services.AddScoped<WebhookEventProcessor, GitHubWebhookProcessor>();
 builder.Services.AddHostedService<PRRefreshService>();
 builder.Services.AddHostedService<RepositoryRuleSyncWorker>();
 
-builder.Services.AddControllers()
+builder.Services.AddControllers(options =>
+    {
+        options.Filters.Add<ApiExceptionFilterAttribute>();
+    })
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());

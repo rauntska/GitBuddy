@@ -473,7 +473,7 @@ public class CacheService(
         return await context.GitHubConfigs.FirstOrDefaultAsync();
     }
 
-    public async Task SaveConfigAsync(string organization, string token, int refreshIntervalMinutes, string appId = "", string privateKey = "", string installationId = "", bool useGitHubApp = false, bool deleteOldPRs = false)
+    public async Task SaveConfigAsync(string organization, string? token, int refreshIntervalMinutes, string? appId = "", string? privateKey = "", string? installationId = "", bool useGitHubApp = false, bool deleteOldPRs = false)
     {
         var config = await context.GitHubConfigs.FirstOrDefaultAsync();
 
@@ -482,11 +482,10 @@ public class CacheService(
             config = new GitHubConfig
             {
                 Organization = organization,
-                PersonalAccessToken = token,
                 RefreshIntervalMinutes = refreshIntervalMinutes,
-                AppId = appId,
-                PrivateKey = privateKey,
-                InstallationId = installationId,
+                AppId = appId ?? string.Empty,
+                PrivateKey = privateKey ?? string.Empty,
+                InstallationId = installationId ?? string.Empty,
                 UseGitHubApp = useGitHubApp,
                 DeleteOldPRs = deleteOldPRs
             };
@@ -495,11 +494,10 @@ public class CacheService(
         else
         {
             config.Organization = organization;
-            config.PersonalAccessToken = token;
             config.RefreshIntervalMinutes = refreshIntervalMinutes;
-            config.AppId = appId;
-            config.PrivateKey = privateKey;
-            config.InstallationId = installationId;
+            config.AppId = appId ?? string.Empty;
+            config.PrivateKey = privateKey ?? string.Empty;
+            config.InstallationId = installationId ?? string.Empty;
             config.UseGitHubApp = useGitHubApp;
             config.DeleteOldPRs = deleteOldPRs;
         }

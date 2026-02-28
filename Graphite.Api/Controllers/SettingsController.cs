@@ -1,7 +1,6 @@
 using Graphite.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using Graphite.Domain.Models;
 
 namespace Graphite.Api.Controllers;
 
@@ -21,7 +20,6 @@ public class SettingsController(ICacheService cacheService) : ControllerBase
             return Ok(new
             {
                 organization = string.Empty,
-                personalAccessToken = string.Empty,
                 refreshIntervalMinutes = 5,
                 lastRefresh = (DateTime?)null,
                 appId = string.Empty,
@@ -32,18 +30,17 @@ public class SettingsController(ICacheService cacheService) : ControllerBase
             });
         }
 
-            return Ok(new
-            {
-                organization = config.Organization,
-                personalAccessToken = config.PersonalAccessToken,
-                refreshIntervalMinutes = config.RefreshIntervalMinutes,
-                lastRefresh = config.LastRefresh,
-                appId = config.AppId,
-                privateKey = config.PrivateKey,
-                installationId = config.InstallationId,
-                useGitHubApp = config.UseGitHubApp,
-                deleteOldPRs = config.DeleteOldPRs
-            });
+        return Ok(new
+        {
+            organization = config.Organization,
+            refreshIntervalMinutes = config.RefreshIntervalMinutes,
+            lastRefresh = config.LastRefresh,
+            appId = config.AppId,
+            privateKey = config.PrivateKey,
+            installationId = config.InstallationId,
+            useGitHubApp = config.UseGitHubApp,
+            deleteOldPRs = config.DeleteOldPRs
+        });
     }
 
     [HttpPost]
@@ -52,27 +49,20 @@ public class SettingsController(ICacheService cacheService) : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(request.Organization))
         {
-            return BadRequest("Organization is required");
+            return BadRequest(new { message = "Organization is required" });
         }
 
         if (request.UseGitHubApp)
         {
             if (string.IsNullOrWhiteSpace(request.AppId) || string.IsNullOrWhiteSpace(request.PrivateKey) || string.IsNullOrWhiteSpace(request.InstallationId))
             {
-                return BadRequest("App ID, Private Key, and Installation ID are required when using GitHub App");
-            }
-        }
-        else
-        {
-            if (string.IsNullOrWhiteSpace(request.PersonalAccessToken))
-            {
-                return BadRequest("Personal Access Token is required when not using GitHub App");
+                return BadRequest(new { message = "App ID, Private Key, and Installation ID are required when using GitHub App" });
             }
         }
 
         await cacheService.SaveConfigAsync(
             request.Organization,
-            request.PersonalAccessToken,
+            null,
             request.RefreshIntervalMinutes,
             request.AppId,
             request.PrivateKey,
@@ -87,11 +77,10 @@ public class SettingsController(ICacheService cacheService) : ControllerBase
 
 public record SaveSettingsRequest(
     string Organization,
-    string PersonalAccessToken,
     int RefreshIntervalMinutes,
-    string AppId,
-    string PrivateKey,
-    string InstallationId,
+    string? AppId,
+    string? PrivateKey,
+    string? InstallationId,
     bool UseGitHubApp,
     bool DeleteOldPRs
 );

@@ -14,13 +14,11 @@ public class GitHubConfigValidationService : IGitHubConfigValidationService
         if (config == null || string.IsNullOrEmpty(config.Organization))
             return false;
 
-        if (config.UseGitHubApp)
-        {
-            return !string.IsNullOrEmpty(config.AppId) &&
-                   !string.IsNullOrEmpty(config.PrivateKey) &&
-                   !string.IsNullOrEmpty(config.InstallationId);
-        }
+        if (!config.UseGitHubApp)
+            return false;
 
-        return !string.IsNullOrEmpty(config.PersonalAccessToken);
+        return !string.IsNullOrEmpty(config.AppId) &&
+               !string.IsNullOrEmpty(config.PrivateKey) &&
+               !string.IsNullOrEmpty(config.InstallationId);
     }
 }

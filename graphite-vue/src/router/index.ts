@@ -4,7 +4,7 @@ import Dashboard from '../views/Dashboard.vue';
 import PRDetail from '../views/PRDetail.vue';
 import AuthCallback from '../views/AuthCallback.vue';
 import AccessDenied from '../views/AccessDenied.vue';
-import AdminPanel from '../views/AdminPanel.vue';
+import SettingsPage from '../views/SettingsPage.vue';
 
 const router = createRouter({
   history: createWebHistory(),
@@ -39,10 +39,26 @@ const router = createRouter({
       },
     },
     {
-      path: '/admin',
-      name: 'admin',
-      component: AdminPanel,
+      path: '/settings',
+      name: 'settings',
+      component: SettingsPage,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/settings/github-app',
+      name: 'settings-github-app',
+      component: SettingsPage,
       meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/settings/admin',
+      name: 'settings-admin',
+      component: SettingsPage,
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/admin',
+      redirect: '/settings/admin',
     },
   ],
 });

@@ -1,5 +1,5 @@
 import apiClient from '../utils/api';
-import type { GroupedPRs, PRStats, Settings, PRDetail, FileDiff, Comment, UserPreferences, PullRequest, CommentTemplate, CommentDraft, MentionableUser, ReactionGroup, User, UserRole, Invitation, AllowedUser, AdminStats, PendingReview } from '../types';
+import type { GroupedPRs, PRStats, Settings, PRDetail, FileDiff, Comment, UserPreferences, PullRequest, CommentTemplate, CommentDraft, MentionableUser, ReactionGroup, User, UserRole, Invitation, AllowedUser, AdminStats, PendingReview, UserSettings } from '../types';
 
 const api = apiClient;
 
@@ -169,6 +169,17 @@ export const apiService = {
 
   updateUserPreferences: async (preferences: Partial<UserPreferences>): Promise<UserPreferences> => {
     const response = await api.patch<UserPreferences>('/userpreferences', preferences);
+    return response.data;
+  },
+
+  // User Settings (PAT)
+  getUserSettings: async (): Promise<UserSettings> => {
+    const response = await api.get<UserSettings>('/users/me/settings');
+    return response.data;
+  },
+
+  updateUserSettings: async (settings: { personalAccessToken?: string | null }): Promise<UserSettings> => {
+    const response = await api.put<UserSettings>('/users/me/settings', settings);
     return response.data;
   },
 

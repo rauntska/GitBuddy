@@ -81,8 +81,6 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<GitHubConfig>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.PersonalAccessToken)
-                .IsRequired();
         });
 
         modelBuilder.Entity<Comment>(entity =>

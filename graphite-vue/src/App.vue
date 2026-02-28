@@ -5,6 +5,7 @@ import { useAuthStore } from './stores/auth';
 import LoginButton from './components/LoginButton.vue';
 import UserMenu from './components/UserMenu.vue';
 import SettingsModal from './views/SettingsModal.vue';
+import MainLayout from './components/layout/MainLayout.vue';
 import { usePullRequests } from './composables/usePullRequests';
 
 const authStore = useAuthStore();
@@ -43,9 +44,9 @@ const handleSettingsSaved = () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-900 text-slate-100">
-    <header class="sticky top-0 z-20 bg-slate-900/95 backdrop-blur border-b border-slate-800">
-      <div class="max-w-screen-2xl mx-auto px-4 py-4">
+  <MainLayout>
+    <header class="sticky top-0 z-20 bg-slate-900/95 backdrop-blur border-b border-slate-800 pl-14">
+      <div class="px-4 py-4">
         <div class="flex items-center justify-between">
           <router-link to="/" class="text-xl font-semibold text-white flex items-center gap-2 hover:opacity-80 transition-opacity">
             <svg class="w-10 h-10" fill="none" viewBox="0 0 24 24">
@@ -93,7 +94,7 @@ const handleSettingsSaved = () => {
               v-if="shouldShowDashboardControls"
               @click="showSettings = true"
               class="p-2 rounded-lg hover:bg-slate-800 text-slate-400 transition-colors"
-              title="Settings"
+              title="Quick Settings"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -116,10 +117,10 @@ const handleSettingsSaved = () => {
         </div>
       </div>
     </header>
-    <main>
+    <main class="flex-1">
       <RouterView />
     </main>
 
     <SettingsModal v-if="showSettings" @close="showSettings = false" @saved="handleSettingsSaved" />
-  </div>
+  </MainLayout>
 </template>

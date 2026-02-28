@@ -115,16 +115,9 @@ public class PullRequestsController(
         if (config.UseGitHubApp && (string.IsNullOrEmpty(config.AppId) || string.IsNullOrEmpty(config.PrivateKey) || string.IsNullOrEmpty(config.InstallationId)))
             return BadRequest("GitHub App configuration is incomplete. Please configure App ID, Private Key, and Installation ID.");
 
-        try
-        {
-            await cacheService.RefreshPullRequestsAsync(config);
-            await cacheService.UpdateLastRefreshAsync();
-            return Ok(new { message = "Pull requests refreshed successfully" });
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+        await cacheService.RefreshPullRequestsAsync(config);
+        await cacheService.UpdateLastRefreshAsync();
+        return Ok(new { message = "Pull requests refreshed successfully" });
     }
 
     [HttpGet("{id}/files/{*filePath}")]
@@ -153,71 +146,33 @@ public class PullRequestsController(
     [Authorize]
     public async Task<IActionResult> AddComment(int id, [FromBody] AddCommentRequest request)
     {
-        try
-        {
-            var result = await mediator.Send(new AddCommentCommand(id, request.Body, request.Path, request.Line, User));
-            return Ok(result);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "Failed to add comment", error = ex.Message });
-        }
+        var result = await mediator.Send(new AddCommentCommand(id, request.Body, request.Path, request.Line, User));
+        return Ok(result);
     }
 
     [HttpPost("{id}/comments/reply")]
     [Authorize]
     public async Task<IActionResult> AddCommentReply(int id, [FromBody] AddCommentReplyRequest request)
     {
-        try
-        {
-            var result = await mediator.Send(new AddCommentReplyCommand(id, request.ReviewThreadId, request.Body, User));
+        var result = await mediator.Send(new AddCommentReplyCommand(id, request.ReviewThreadId, request.Body, User));
             
-            if (result.IsPending && result.PendingReply != null)
+        if (result.IsPending && result.PendingReply != null)
+        {
+            return Ok(new
             {
-                return Ok(new
-                {
-                    isPending = true,
-                    pendingReviewId = result.PendingReply.PendingReviewId,
-                    commentNodeId = result.PendingReply.CommentNodeId,
-                    reviewThreadId = result.PendingReply.ReviewThreadId,
-                    author = result.PendingReply.Author,
-                    authorAvatar = result.PendingReply.AuthorAvatar,
-                    body = result.PendingReply.Body,
-                    createdAt = result.PendingReply.CreatedAt,
-                    updatedAt = result.PendingReply.UpdatedAt
-                });
-            }
+                isPending = true,
+                pendingReviewId = result.PendingReply.PendingReviewId,
+                commentNodeId = result.PendingReply.CommentNodeId,
+                reviewThreadId = result.PendingReply.ReviewThreadId,
+                author = result.PendingReply.Author,
+                authorAvatar = result.PendingReply.AuthorAvatar,
+                body = result.PendingReply.Body,
+                createdAt = result.PendingReply.CreatedAt,
+                updatedAt = result.PendingReply.UpdatedAt
+            });
+        }
 
-            return Ok(result.Comment);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "Failed to add reply", error = ex.Message });
-        }
+        return Ok(result.Comment);
     }
 
     [HttpPost("{id}/threads/{threadId}/resolve")]
@@ -290,27 +245,8 @@ public class PullRequestsController(
     [Authorize]
     public async Task<IActionResult> GetMergeOptions(int id)
     {
-        try
-        {
-            var result = await mediator.Send(new GetMergeOptionsQuery(id, User));
-            return Ok(result);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "Failed to get merge options", error = ex.Message });
-        }
+        var result = await mediator.Send(new GetMergeOptionsQuery(id, User));
+        return Ok(result);
     }
 
     [HttpPost("{id}/publish")]
@@ -333,68 +269,23 @@ public class PullRequestsController(
     [Authorize]
     public async Task<IActionResult> UpdateFileViewedState(int id, [FromBody] UpdateViewedStateRequest request)
     {
-        try
-        {
-            await mediator.Send(new UpdateFileViewedStateCommand(id, request.Path, request.Viewed, User));
-            return Ok();
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "Failed to update viewed state on GitHub", error = ex.Message });
-        }
+        await mediator.Send(new UpdateFileViewedStateCommand(id, request.Path, request.Viewed, User));
+        return Ok();
     }
 
     [HttpGet("{id}/mentionable-users")]
     public async Task<IActionResult> GetMentionableUsers(int id)
     {
-        try
-        {
-            var result = await mediator.Send(new GetMentionableUsersQuery(id));
-            return Ok(result);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
+        var result = await mediator.Send(new GetMentionableUsersQuery(id));
+        return Ok(result);
     }
 
     [HttpPost("{id}/file-diffs/refresh-viewed-states")]
     [Authorize]
     public async Task<IActionResult> RefreshFileViewedStates(int id)
     {
-        try
-        {
-            var result = await mediator.Send(new RefreshFileViewedStatesCommand(id, User));
-            return Ok(result.Files);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "Failed to fetch file viewed states", error = ex.Message });
-        }
+        var result = await mediator.Send(new RefreshFileViewedStatesCommand(id, User));
+        return Ok(result.Files);
     }
 
     [HttpGet("{id}/files/content")]
@@ -407,126 +298,50 @@ public class PullRequestsController(
         [FromQuery] int? newStartLine,
         [FromQuery] int? newEndLine)
     {
-        try
+        var result = await mediator.Send(new GetFileContentQuery(id, path, oldStartLine, oldEndLine, newStartLine, newEndLine, User));
+        return Ok(new
         {
-            var result = await mediator.Send(new GetFileContentQuery(id, path, oldStartLine, oldEndLine, newStartLine, newEndLine, User));
-            return Ok(new
-            {
-                oldLines = result.OldLines.Select(l => new { lineNumber = l.LineNumber, content = l.Content }),
-                newLines = result.NewLines.Select(l => new { lineNumber = l.LineNumber, content = l.Content })
-            });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "Failed to fetch file content", error = ex.Message });
-        }
+            oldLines = result.OldLines.Select(l => new { lineNumber = l.LineNumber, content = l.Content }),
+            newLines = result.NewLines.Select(l => new { lineNumber = l.LineNumber, content = l.Content })
+        });
     }
 
     [HttpGet("{id}/pending-review")]
     [Authorize]
     public async Task<IActionResult> GetPendingReview(int id)
     {
-        try
-        {
-            var result = await mediator.Send(new GetPendingReviewQuery(id, User));
-            return Ok(result);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "Failed to get pending review", error = ex.Message });
-        }
+        var result = await mediator.Send(new GetPendingReviewQuery(id, User));
+        return Ok(result);
     }
 
     [HttpPost("{id}/pending-review/comments")]
     [Authorize]
     public async Task<IActionResult> AddPendingReviewComment(int id, [FromBody] CreatePendingReviewCommentRequest request)
     {
-        try
+        var result = await mediator.Send(new AddPendingReviewCommentCommand(id, request.Body, request.Path, request.Line, User));
+        return Ok(new
         {
-            var result = await mediator.Send(new AddPendingReviewCommentCommand(id, request.Body, request.Path, request.Line, User));
-            return Ok(new
-            {
-                commentId = result.CommentId,
-                reviewId = result.ReviewId,
-                path = result.Path,
-                line = result.Line,
-                body = result.Body,
-                author = result.Author,
-                authorAvatar = result.AuthorAvatar,
-                createdAt = result.CreatedAt
-            });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "Failed to add pending review comment", error = ex.Message });
-        }
+            commentId = result.CommentId,
+            reviewId = result.ReviewId,
+            path = result.Path,
+            line = result.Line,
+            body = result.Body,
+            author = result.Author,
+            authorAvatar = result.AuthorAvatar,
+            createdAt = result.CreatedAt
+        });
     }
 
     [HttpDelete("{id}/pending-review/comments/{commentId}")]
     [Authorize]
     public async Task<IActionResult> DeletePendingReviewComment(int id, string commentId)
     {
-        try
-        {
-            var result = await mediator.Send(new DeletePendingReviewCommentCommand(id, commentId, User));
-            
-            if (!result.Success)
-                return BadRequest(new { message = result.Message });
-            
-            return Ok(new { message = result.Message });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "Failed to delete pending review comment", error = ex.Message });
-        }
+        var result = await mediator.Send(new DeletePendingReviewCommentCommand(id, commentId, User));
+        
+        if (!result.Success)
+            return BadRequest(new { message = result.Message });
+        
+        return Ok(new { message = result.Message });
     }
 
     [HttpPost("{id}/pending-review/submit")]

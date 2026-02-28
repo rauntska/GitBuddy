@@ -5,12 +5,11 @@ import type { Settings } from '../types';
 export function useSettings() {
   const settings = ref<Settings>({
     organization: '',
-    personalAccessToken: '',
     refreshIntervalMinutes: 5,
     appId: '',
     privateKey: '',
     installationId: '',
-    useGitHubApp: false,
+    useGitHubApp: true,
     deleteOldPRs: false,
   });
   const loading = ref(false);
@@ -30,14 +29,22 @@ export function useSettings() {
     }
   };
 
-  const saveSettings = async (settingsToSave?: Settings) => {
+  const saveSettings = async (settingsToSave?: Partial<Settings>) => {
     loading.value = true;
     error.value = null;
     try {
       const dataToSave = settingsToSave || settings.value;
-      await apiService.saveSettings(dataToSave);
+      await apiService.saveSettings({
+        organization: dataToSave.organization ?? '',
+        refreshIntervalMinutes: dataToSave.refreshIntervalMinutes ?? 5,
+        appId: dataToSave.appId ?? '',
+        privateKey: dataToSave.privateKey ?? '',
+        installationId: dataToSave.installationId ?? '',
+        useGitHubApp: dataToSave.useGitHubApp ?? true,
+        deleteOldPRs: dataToSave.deleteOldPRs ?? false,
+      });
       if (settingsToSave) {
-        settings.value = { ...settingsToSave };
+        settings.value = { ...settings.value, ...settingsToSave };
       }
       return true;
     } catch (err) {

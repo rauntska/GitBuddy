@@ -21,7 +21,7 @@ public class GitHubTokenService(ILogger<GitHubTokenService> logger) : IGitHubTok
             return await GetGitHubAppAccessTokenAsync(config);
         }
 
-        return config.PersonalAccessToken;
+        throw new InvalidOperationException("GitHub App authentication is required. Personal Access Tokens are now configured per-user.");
     }
 
     private async Task<string> GetGitHubAppAccessTokenAsync(GitHubConfig config)

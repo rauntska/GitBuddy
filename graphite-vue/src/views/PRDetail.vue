@@ -13,7 +13,7 @@
         />
         <div v-else class="text-slate-500 text-sm">Loading...</div>
 
-        <div class="flex-1 min-w-0 flex items-center gap-3">
+        <div class="flex-1 min-w-0 flex items-center gap-3 overflow-hidden">
           <StatusBadge v-if="prDetail" :status="prDetail.status" />
           
           <div 
@@ -44,12 +44,12 @@
             </span>
           </div>
 
-          <h1 class="text-lg font-semibold text-slate-100 truncate tracking-tight">
+          <h1 class="text-lg font-semibold text-slate-100 truncate tracking-tight min-w-0 flex-shrink">
             {{ prDetail?.title || 'Loading...' }}
           </h1>
         </div>
 
-<div class="flex items-center gap-3 text-xs">
+<div class="flex items-center gap-3 text-xs flex-shrink-0">
           <span class="text-slate-400 font-medium">{{ prDetail?.repository }} #{{ prDetail?.gitHubId }}</span>
 
           <button
