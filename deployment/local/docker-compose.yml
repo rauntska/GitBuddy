@@ -1,0 +1,48 @@
+services:
+  api:
+    build:
+      context: ../..
+      dockerfile: Graphite.Api/Dockerfile
+    container_name: graphite-api
+    restart: unless-stopped
+    ports:
+      - "5247:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:80
+      - GitHub__ClientId=${GITHUB_CLIENT_ID}
+      - GitHub__ClientSecret=${GITHUB_CLIENT_SECRET}
+      - GitHub__RedirectUri=${GITHUB_REDIRECT_URI}
+      - GitHub__WebhookSecret=${GITHUB_WEBHOOK_SECRET}
+      - Jwt__Key=${JWT_KEY}
+      - Jwt__Issuer=${JWT_ISSUER}
+      - Jwt__Audience=${JWT_AUDIENCE}
+      - Jwt__ExpirationMinutes=${JWT_EXPIRATION_MINUTES}
+      - Frontend__Url=${FRONTEND_URL}
+    volumes:
+      - graphite-db:/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    build:
+      context: ../..
+      dockerfile: graphite-vue/Dockerfile
+    container_name: graphite-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      - NGINX_HOST=localhost
+      - NGINX_PORT=80
+
+volumes:
+  graphite-db:
+    driver: local

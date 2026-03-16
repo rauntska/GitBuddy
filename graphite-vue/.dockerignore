@@ -1,0 +1,14 @@
+**/.dockerignore
+**/.git
+**/.gitignore
+**/.vs
+**/.idea
+**/*.user
+**/*.suo
+**/node_modules
+**/dist
+**/logs
+**/.vite
+Dockerfile
+docker-compose.yml
+.dockerignore
