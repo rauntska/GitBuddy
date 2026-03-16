@@ -328,6 +328,82 @@ export function usePRDetail() {
     }
   };
 
+  const updatePR = async (
+    prId: number,
+    data: { title?: string; body?: string }
+  ): Promise<{ success: boolean; title?: string; body?: string }> => {
+    try {
+      const result = await apiService.updatePullRequest(prId, data);
+      
+      if (prDetail.value) {
+        if (data.title !== undefined) {
+          prDetail.value.title = result.title || data.title;
+        }
+        if (data.body !== undefined) {
+          prDetail.value.description = result.body || data.body;
+        }
+      }
+      
+      return { success: true, title: result.title, body: result.body };
+    } catch (err: any) {
+      error.value = err.response?.data?.message || 'Failed to update pull request';
+      console.error('Error updating pull request:', err);
+      return { success: false };
+    }
+  };
+
+  const addGeneralComment = async (prId: number, body: string): Promise<Comment | null> => {
+    try {
+      const newComment = await apiService.addComment(prId, { body });
+      
+      if (newComment && prDetail.value) {
+        prDetail.value.allComments.push(newComment);
+      }
+      
+      return newComment;
+    } catch (err: any) {
+      error.value = err.response?.data?.message || 'Failed to add comment';
+      console.error('Error adding general comment:', err);
+      return null;
+    }
+  };
+
+  const updateGeneralComment = async (prId: number, gitHubId: string, body: string): Promise<boolean> => {
+    try {
+      await apiService.updateGeneralComment(prId, Number(gitHubId), body);
+      
+      if (prDetail.value) {
+        const comment = prDetail.value.allComments.find(c => c.gitHubId === gitHubId);
+        if (comment) {
+          comment.body = body;
+          comment.updatedAt = new Date().toISOString();
+        }
+      }
+      
+      return true;
+    } catch (err: any) {
+      error.value = err.response?.data?.message || 'Failed to update comment';
+      console.error('Error updating general comment:', err);
+      return false;
+    }
+  };
+
+  const deleteGeneralComment = async (prId: number, gitHubId: string): Promise<boolean> => {
+    try {
+      await apiService.deleteGeneralComment(prId, Number(gitHubId));
+      
+      if (prDetail.value) {
+        prDetail.value.allComments = prDetail.value.allComments.filter(c => c.gitHubId !== gitHubId);
+      }
+      
+      return true;
+    } catch (err: any) {
+      error.value = err.response?.data?.message || 'Failed to delete comment';
+      console.error('Error deleting general comment:', err);
+      return false;
+    }
+  };
+
   return {
     prDetail,
     loading,
@@ -349,5 +425,9 @@ export function usePRDetail() {
     toggleFileTree,
     editComment,
     deleteComment,
+    updatePR,
+    addGeneralComment,
+    updateGeneralComment,
+    deleteGeneralComment,
   };
 }

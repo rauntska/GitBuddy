@@ -1,5 +1,5 @@
 import apiClient from '../utils/api';
-import type { GroupedPRs, PRStats, Settings, PRDetail, FileDiff, Comment, UserPreferences, PullRequest, CommentTemplate, CommentDraft, MentionableUser, ReactionGroup, User, UserRole, Invitation, AllowedUser, AdminStats, PendingReview, UserSettings } from '../types';
+import type { GroupedPRs, PRStats, Settings, PRDetail, FileDiff, Comment, UserPreferences, PullRequest, CommentTemplate, CommentDraft, MentionableUser, ReactionGroup, User, UserRole, Invitation, AllowedUser, AdminStats, PendingReview, UserSettings, ReviewerStatus, ReviewTimeline, PotentialReviewer } from '../types';
 
 const api = apiClient;
 
@@ -68,6 +68,16 @@ export const apiService = {
     return response.data;
   },
 
+  updateGeneralComment: async (prId: number, commentId: number, body: string): Promise<{ message: string }> => {
+    const response = await api.put<{ message: string }>(`/pullrequests/${prId}/general-comments/${commentId}`, { body });
+    return response.data;
+  },
+
+  deleteGeneralComment: async (prId: number, commentId: number): Promise<{ message: string }> => {
+    const response = await api.delete<{ message: string }>(`/pullrequests/${prId}/general-comments/${commentId}`);
+    return response.data;
+  },
+
   addCommentReply: async (prId: number, reply: { reviewThreadId: string; body: string }): Promise<Comment | { isPending: true; pendingReviewId: string; commentNodeId: string; reviewThreadId: string; author: string; authorAvatar?: string; body: string; createdAt: string; updatedAt?: string }> => {
     const response = await api.post(`/pullrequests/${prId}/comments/reply`, reply);
     return response.data;
@@ -110,6 +120,11 @@ export const apiService = {
     isDraft: boolean;
   }> => {
     const response = await api.get(`/pullrequests/${prId}/merge-options`);
+    return response.data;
+  },
+
+  updatePullRequest: async (prId: number, data: { title?: string; body?: string }): Promise<{ message: string; title?: string; body?: string }> => {
+    const response = await api.patch<{ message: string; title?: string; body?: string }>(`/pullrequests/${prId}`, data);
     return response.data;
   },
 
@@ -363,6 +378,31 @@ export const apiService = {
       }
     });
     
+    return response.data;
+  },
+
+  getReviewers: async (prId: number): Promise<ReviewerStatus[]> => {
+    const response = await api.get<ReviewerStatus[]>(`/pullrequests/${prId}/reviewers`);
+    return response.data;
+  },
+
+  addReviewers: async (prId: number, reviewers: string[]): Promise<{ message: string }> => {
+    const response = await api.post<{ message: string }>(`/pullrequests/${prId}/reviewers`, { reviewers });
+    return response.data;
+  },
+
+  removeReviewer: async (prId: number, username: string): Promise<{ message: string }> => {
+    const response = await api.delete<{ message: string }>(`/pullrequests/${prId}/reviewers/${username}`);
+    return response.data;
+  },
+
+  getReviewTimeline: async (prId: number): Promise<ReviewTimeline> => {
+    const response = await api.get<ReviewTimeline>(`/pullrequests/${prId}/timeline`);
+    return response.data;
+  },
+
+  getPotentialReviewers: async (prId: number): Promise<PotentialReviewer[]> => {
+    const response = await api.get<PotentialReviewer[]>(`/pullrequests/${prId}/potential-reviewers`);
     return response.data;
   },
 };

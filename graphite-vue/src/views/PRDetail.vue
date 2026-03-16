@@ -44,9 +44,38 @@
             </span>
           </div>
 
-          <h1 class="text-lg font-semibold text-slate-100 truncate tracking-tight min-w-0 flex-shrink">
-            {{ prDetail?.title || 'Loading...' }}
-          </h1>
+          <div class="flex-1 min-w-0 flex items-center gap-2 group/title">
+            <template v-if="isEditingTitle">
+              <input
+                ref="titleInputRef"
+                v-model="editTitleValue"
+                @keydown="handleTitleKeydown"
+                @blur="savingTitle ? null : saveTitle()"
+                :disabled="savingTitle"
+                class="flex-1 min-w-0 bg-slate-800 border border-blue-500 rounded px-2 py-1 text-lg font-semibold text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                :class="{ 'opacity-50': savingTitle }"
+              />
+              <svg v-if="savingTitle" class="animate-spin h-4 w-4 text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </template>
+            <template v-else>
+              <h1 class="text-lg font-semibold text-slate-100 truncate tracking-tight min-w-0 flex-shrink">
+                {{ prDetail?.title || 'Loading...' }}
+              </h1>
+              <button
+                v-if="prDetail && !prDetail.isMerged"
+                @click="startEditingTitle"
+                class="p-1 rounded opacity-0 group-hover/title:opacity-100 hover:bg-slate-700 text-slate-400 hover:text-white transition-all flex-shrink-0"
+                title="Edit title"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </button>
+            </template>
+          </div>
         </div>
 
 <div class="flex items-center gap-3 text-xs flex-shrink-0">
@@ -286,13 +315,34 @@
 
               <!-- Description -->
               <div class="p-4 bg-gradient-to-br from-slate-800/40 to-slate-800/20 border border-slate-700/30 rounded-xl shadow-sm">
-                <div class="text-xs font-semibold text-slate-200 mb-3">Description</div>
-                <DescriptionRenderer
+                <div class="flex items-center justify-between mb-3">
+                  <div class="text-xs font-semibold text-slate-200">Description</div>
+                  <div v-if="prDetail?.isMerged" class="text-xs text-slate-500 flex items-center gap-1">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    Merged - read only
+                  </div>
+                </div>
+                <EditableDescription
                   v-if="prDetail"
-                  :content="prDetail?.description || ''"
+                  :content="prDetail.description || ''"
+                  @save="handleDescriptionSave"
                 />
-                <p v-else class="text-sm text-slate-500 italic">No description provided</p>
               </div>
+
+              <!-- General Comments -->
+              <GeneralComments
+                v-if="prDetail"
+                :comments="prDetail.allComments"
+                :current-username="authStore.username"
+                :is-merged="prDetail.isMerged"
+                :pr-id="prDetail.id"
+                @add-comment="handleAddGeneralComment"
+                @update-comment="handleUpdateGeneralComment"
+                @delete-comment="handleDeleteGeneralComment"
+                class="mt-4"
+              />
             </div>
 
             <!-- Right: Info & Stats -->
@@ -320,30 +370,20 @@
 <!--                </table>-->
 <!--              </div>-->
 
-                <!-- Reviewers - Compact with Icons -->
-                <div v-if="prDetail.reviews.length > 0" class="p-4 bg-gradient-to-br from-slate-800/40 to-slate-800/20 border border-slate-700/30 rounded-xl shadow-sm">
-                  <div class="text-xs font-medium text-slate-400 mb-3">Reviewers</div>
-                  <div class="space-y-2">
-<div
-                      v-for="review in prDetail.reviews.filter(r => r.reviewer !== prDetail?.author)"
-                      :key="review.id"
-                      class="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-700/30 transition-colors duration-200"
-                    >
-                      <img
-                        v-if="review.reviewerAvatar"
-                        :src="review.reviewerAvatar"
-                        :alt="review.reviewer"
-                        class="w-7 h-7 rounded-full ring-2 ring-slate-600/50"
-                      />
-                      <span class="text-sm text-slate-200 font-medium flex-1 truncate">{{ review.reviewer }}</span>
-                      <component
-                        v-if="getReviewStatusIcon(review.state)"
-                        :is="getReviewStatusIcon(review.state)"
-                        :class="['w-5 h-5', getReviewStatusColor(review.state)]"
-                        :title="getReviewStatusLabel(review.state)"
-                      />
-                    </div>
-                  </div>
+                <!-- Reviewer Manager -->
+                <div class="p-4 bg-gradient-to-br from-slate-800/40 to-slate-800/20 border border-slate-700/30 rounded-xl shadow-sm">
+                  <ReviewerManager 
+                    :pull-request-id="prDetail.id" 
+                    @error="handleReviewerError"
+                  />
+                </div>
+
+                <!-- Review Timeline -->
+                <div class="p-4 bg-gradient-to-br from-slate-800/40 to-slate-800/20 border border-slate-700/30 rounded-xl shadow-sm">
+                  <ReviewTimeline 
+                    :pull-request-id="prDetail.id"
+                    @error="handleTimelineError"
+                  />
                 </div>
 
                 <!-- CI/CD Checks -->
@@ -701,7 +741,7 @@
 </template>
 
 <script setup lang="ts">
- import { ref, onMounted, onUnmounted, computed } from 'vue';
+ import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue';
  import { usePRDetail } from '../composables/usePRDetail';
  import { useUserPreferences } from '../composables/useUserPreferences';
  import { useSignalR, type CommentNotification, type ThreadNotification, type CheckRunsNotification } from '../composables/useSignalR';
@@ -709,11 +749,15 @@
   import FileDiffViewer from '../components/FileDiffViewer.vue';
   import FileTree from '../components/FileTree.vue';
   import CommentsPanel from '../components/CommentsPanel.vue';
+  import GeneralComments from '../components/GeneralComments.vue';
   import StatusBadge from '../components/StatusBadge.vue';
   import Breadcrumb from '../components/Breadcrumb.vue';
   import DescriptionRenderer from '../components/DescriptionRenderer.vue';
-  import CIBadge from '../components/CIBadge.vue';
-  import type { Comment, CheckRun } from '../types';
+ import CIBadge from '../components/CIBadge.vue';
+ import EditableDescription from '../components/EditableDescription.vue';
+ import ReviewerManager from '../components/ReviewerManager.vue';
+ import ReviewTimeline from '../components/ReviewTimeline.vue';
+ import type { Comment, CheckRun } from '../types';
  import { CheckIcon, ChatBubbleLeftIcon, ArrowPathIcon } from '@heroicons/vue/24/outline';
  import { useAuthStore } from '../stores/auth';
 
@@ -744,6 +788,10 @@ const {
   toggleFileTree,
   editComment,
   deleteComment,
+  updatePR,
+  addGeneralComment,
+  updateGeneralComment,
+  deleteGeneralComment,
 } = usePRDetail();
 
 const { preferences, loadPreferences, setFileTreeWidth, setCommentsPanelWidth, updatePreferences, setDiffViewMode, setShowContext } = useUserPreferences();
@@ -770,6 +818,11 @@ const selectedMergeMethod = ref<'merge' | 'squash' | 'rebase'>('squash');
 const mergeError = ref<string | null>(null);
 const fileRefs = ref<Map<string, any>>(new Map());
 const refreshingViewStates = ref(false);
+
+const isEditingTitle = ref(false);
+const editTitleValue = ref('');
+const savingTitle = ref(false);
+const titleInputRef = ref<HTMLInputElement | null>(null);
 
 // Resizable widths
 const fileTreeWidth = ref(256);
@@ -1007,6 +1060,26 @@ const handleClickOutside = (e: MouseEvent) => {
       const hasUnresolved = prDetail.value.reviewThreads.some(t => !t.isResolved && !t.isOutdated);
       prDetail.value.hasUnresolvedThreads = hasUnresolved;
     }
+  };
+
+  const handleAddGeneralComment = async (body: string) => {
+    await addGeneralComment(props.id, body);
+  };
+
+  const handleUpdateGeneralComment = async (gitHubId: string, body: string) => {
+    await updateGeneralComment(props.id, gitHubId, body);
+  };
+
+  const handleDeleteGeneralComment = async (gitHubId: string) => {
+    await deleteGeneralComment(props.id, gitHubId);
+  };
+
+  const handleReviewerError = (message: string) => {
+    console.error('Reviewer error:', message);
+  };
+
+  const handleTimelineError = (message: string) => {
+    console.error('Timeline error:', message);
   };
 
 
@@ -1361,6 +1434,50 @@ const checksStatusLabel = computed(() => {
       return 'Checks running';
   }
 });
+
+const startEditingTitle = () => {
+  if (prDetail.value?.isMerged) return;
+  editTitleValue.value = prDetail.value?.title || '';
+  isEditingTitle.value = true;
+  nextTick(() => {
+    titleInputRef.value?.focus();
+    titleInputRef.value?.select();
+  });
+};
+
+const saveTitle = async () => {
+  if (!editTitleValue.value.trim() || editTitleValue.value === prDetail.value?.title) {
+    cancelEditingTitle();
+    return;
+  }
+  
+  savingTitle.value = true;
+  const result = await updatePR(props.id, { title: editTitleValue.value.trim() });
+  savingTitle.value = false;
+  
+  if (result.success) {
+    isEditingTitle.value = false;
+  }
+};
+
+const cancelEditingTitle = () => {
+  isEditingTitle.value = false;
+  editTitleValue.value = '';
+};
+
+const handleTitleKeydown = (event: KeyboardEvent) => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    saveTitle();
+  }
+  if (event.key === 'Escape') {
+    cancelEditingTitle();
+  }
+};
+
+const handleDescriptionSave = async (body: string) => {
+  await updatePR(props.id, { body });
+};
 
 const getCheckStatusFromCheckRun = (check: CheckRun): 'SUCCESS' | 'FAILURE' | 'PENDING' | 'NEUTRAL' => {
   if (check.status === 'completed') {

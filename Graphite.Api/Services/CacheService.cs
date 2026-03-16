@@ -351,7 +351,7 @@ public class CacheService(
                     r.State,
                     r.SubmittedAt
                 )).ToList();
-                pr.Status = statusService.DeterminePrStatus(pr.Draft, pr.IsMergeReady, reviewData);
+                pr.Status = statusService.DeterminePrStatus(pr.Status, pr.Draft, pr.IsMergeReady, reviewData);
             }
         }
         catch (Exception ex)

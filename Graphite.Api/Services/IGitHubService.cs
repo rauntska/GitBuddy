@@ -34,7 +34,40 @@ public interface IGitHubService
     Task<bool> UpdateReviewCommentAsync(string organization, string repository, long commentId, string body, string userAccessToken);
     Task<bool> DeleteReviewCommentAsync(string organization, string repository, long commentId, string userAccessToken);
     Task<Dictionary<string, GitHubBranchProtectionData?>> GetRepositoryRulesetsAsync(string organization, string repository, GitHubConfig config);
+    Task UpdatePullRequestAsync(string organization, string repository, long pullRequestNumber, string? title, string? body, string userAccessToken);
+    Task<bool> UpdateIssueCommentAsync(string organization, string repository, long commentId, string body, string userAccessToken);
+    Task<bool> DeleteIssueCommentAsync(string organization, string repository, long commentId, string userAccessToken);
+    Task<GitHubRequestedReviewersData> GetRequestedReviewersAsync(string organization, string repository, long pullRequestNumber, GitHubConfig config);
+    Task RequestReviewersAsync(string organization, string repository, long pullRequestNumber, List<string> reviewers, string userAccessToken);
+    Task RemoveReviewersAsync(string organization, string repository, long pullRequestNumber, string username, string userAccessToken);
+    Task<GitHubCollaboratorsAndTeamsData> GetRepositoryCollaboratorsAndTeamsAsync(string organization, string repository, GitHubConfig config);
 }
+
+public record GitHubRequestedReviewersData(
+    List<GitHubRequestedReviewerData> Users,
+    List<GitHubRequestedReviewerData> Teams
+);
+
+public record GitHubRequestedReviewerData(
+    string Username,
+    string? Avatar,
+    string Type
+);
+
+public record GitHubCollaboratorsAndTeamsData(
+    List<GitHubCollaboratorData> Users,
+    List<GitHubTeamData> Teams
+);
+
+public record GitHubCollaboratorData(
+    string Username,
+    string? Avatar
+);
+
+public record GitHubTeamData(
+    string Name,
+    string Slug
+);
 
 public record GitHubPRData(
     long Id,

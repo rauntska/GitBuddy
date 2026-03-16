@@ -329,3 +329,34 @@ export interface ExpandRange {
 }
 
 export type ExpandPosition = 'before' | 'after' | 'between';
+
+export interface ReviewerStatus {
+  username: string;
+  avatar?: string;
+  reviewState?: 'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENTED' | 'PENDING';
+  reviewedAt?: string;
+  isRequested: boolean;
+  requestedAt?: string;
+}
+
+export interface ReviewEvent {
+  id: number;
+  type: 'REVIEW_SUBMITTED' | 'THREAD_CREATED' | 'THREAD_RESOLVED';
+  actor: string;
+  actorAvatar?: string;
+  timestamp: string;
+  state?: string;
+  summary?: string;
+  threadId?: number;
+  filePath?: string;
+}
+
+export interface ReviewTimeline {
+  events: ReviewEvent[];
+}
+
+export interface PotentialReviewer {
+  name: string;
+  avatar?: string;
+  type: 'User' | 'Team';
+}

@@ -19,6 +19,14 @@ using Graphite.Api.Features.PullRequests.SubmitPendingReview;
 using Graphite.Api.Features.PullRequests.SubmitReview;
 using Graphite.Api.Features.PullRequests.UnresolveReviewThread;
 using Graphite.Api.Features.PullRequests.UpdateFileViewedState;
+using Graphite.Api.Features.PullRequests.UpdatePullRequest;
+using Graphite.Api.Features.PullRequests.UpdateIssueComment;
+using Graphite.Api.Features.PullRequests.DeleteIssueComment;
+using Graphite.Api.Features.PullRequests.GetReviewers;
+using Graphite.Api.Features.PullRequests.AddReviewers;
+using Graphite.Api.Features.PullRequests.RemoveReviewer;
+using Graphite.Api.Features.PullRequests.GetReviewTimeline;
+using Graphite.Api.Features.PullRequests.GetPotentialReviewers;
 using Graphite.Api.Services;
 using Graphite.Domain.Data;
 using MediatR;
@@ -60,6 +68,21 @@ public class PullRequestsController(
         if (result == null)
             return NotFound(new { message = "Pull request not found" });
         return Ok(result);
+    }
+
+    [HttpPatch("{id}")]
+    public async Task<IActionResult> UpdatePullRequest(int id, [FromBody] UpdatePullRequestRequest request)
+    {
+        var result = await mediator.Send(new UpdatePullRequestCommand(id, request.Title, request.Body, User));
+        
+        if (!result.Success)
+        {
+            if (result.Error != null)
+                return StatusCode(500, new { message = result.Message, error = result.Error });
+            return BadRequest(new { message = result.Message });
+        }
+
+        return Ok(new { message = result.Message, title = result.Title, body = result.Body });
     }
 
     [HttpGet("stats")]
@@ -374,5 +397,90 @@ public class PullRequestsController(
         }
 
         return Ok(new { message = result.Message });
+    }
+
+    [HttpPut("{id}/general-comments/{commentId}")]
+    [Authorize]
+    public async Task<IActionResult> UpdateIssueComment(int id, long commentId, [FromBody] UpdateIssueCommentRequest request)
+    {
+        var result = await mediator.Send(new UpdateIssueCommentCommand(id, commentId, request.Body, User));
+        
+        if (!result.Success)
+        {
+            if (result.Error != null)
+                return StatusCode(500, new { message = result.Message, error = result.Error });
+            return BadRequest(new { message = result.Message });
+        }
+
+        return Ok(new { message = result.Message });
+    }
+
+    [HttpDelete("{id}/general-comments/{commentId}")]
+    [Authorize]
+    public async Task<IActionResult> DeleteIssueComment(int id, long commentId)
+    {
+        var result = await mediator.Send(new DeleteIssueCommentCommand(id, commentId, User));
+        
+        if (!result.Success)
+        {
+            if (result.Error != null)
+                return StatusCode(500, new { message = result.Message, error = result.Error });
+            return BadRequest(new { message = result.Message });
+        }
+
+        return Ok(new { message = result.Message });
+    }
+
+    [HttpGet("{id}/reviewers")]
+    public async Task<IActionResult> GetReviewers(int id)
+    {
+        var result = await mediator.Send(new GetReviewersQuery(id));
+        return Ok(result);
+    }
+
+    [HttpPost("{id}/reviewers")]
+    [Authorize]
+    public async Task<IActionResult> AddReviewers(int id, [FromBody] AddReviewersRequest request)
+    {
+        var result = await mediator.Send(new AddReviewersCommand(id, request.Reviewers, User));
+        
+        if (!result.Success)
+        {
+            if (result.Error != null)
+                return StatusCode(500, new { message = result.Message, error = result.Error });
+            return BadRequest(new { message = result.Message });
+        }
+
+        return Ok(new { message = result.Message });
+    }
+
+    [HttpDelete("{id}/reviewers/{username}")]
+    [Authorize]
+    public async Task<IActionResult> RemoveReviewer(int id, string username)
+    {
+        var result = await mediator.Send(new RemoveReviewerCommand(id, username, User));
+        
+        if (!result.Success)
+        {
+            if (result.Error != null)
+                return StatusCode(500, new { message = result.Message, error = result.Error });
+            return BadRequest(new { message = result.Message });
+        }
+
+        return Ok(new { message = result.Message });
+    }
+
+    [HttpGet("{id}/timeline")]
+    public async Task<IActionResult> GetReviewTimeline(int id)
+    {
+        var result = await mediator.Send(new GetReviewTimelineQuery(id));
+        return Ok(result);
+    }
+
+    [HttpGet("{id}/potential-reviewers")]
+    public async Task<IActionResult> GetPotentialReviewers(int id)
+    {
+        var result = await mediator.Send(new GetPotentialReviewersQuery(id));
+        return Ok(result);
     }
 }

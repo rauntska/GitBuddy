@@ -209,3 +209,51 @@ public record SubmitPendingReviewRequest(
 public record DeletePendingReviewCommentRequest(
     string CommentId
 );
+
+public record UpdatePullRequestRequest(
+    string? Title,
+    string? Body
+);
+
+public record UpdateIssueCommentRequest(
+    string Body
+);
+
+public record ReviewerStatusDto(
+    string Username,
+    string? Avatar,
+    string? ReviewState,
+    DateTime? ReviewedAt,
+    bool IsRequested,
+    DateTime? RequestedAt
+);
+
+public record AddReviewersRequest(
+    List<string> Reviewers
+);
+
+public record RemoveReviewerRequest(
+    string Username
+);
+
+public record ReviewEventDto(
+    int Id,
+    string Type,
+    string Actor,
+    string? ActorAvatar,
+    DateTime Timestamp,
+    string? State,
+    string? Summary,
+    int? ThreadId,
+    string? FilePath
+);
+
+public record ReviewTimelineDto(
+    List<ReviewEventDto> Events
+);
+
+public record PotentialReviewerDto(
+    string Name,
+    string? Avatar,
+    string Type
+);

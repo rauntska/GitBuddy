@@ -38,7 +38,7 @@ public class GitHubService(
 
         var prQuery = new GraphQLQuery()
             .Repository(repository, organization)
-            .PullRequest((Arg<int>)pullRequestNumber)
+            .PullRequest((Arg<int>)pullRequestNumber) 
             .Select(pr => new
             {
                 pr.Number,
@@ -131,7 +131,7 @@ public class GitHubService(
     private async Task<GitHubPRData> CreatePullRequestDataAsync(string organization, string repoName, dynamic pr, GitHubConfig config)
     {
         var reviews = await GetReviewsAsync(organization, repoName, pr.Number, config);
-        var status = statusService.DeterminePrStatus(pr.IsDraft, false, reviews);
+        var status = statusService.DeterminePrStatus("",pr.IsDraft, false, reviews);
         var reviewThreads = await GetReviewThreadsAsync(organization, repoName, pr.Number, config);
 
         var checkResult = await GetCheckStatusAsync(organization, repoName, pr.Number, config);
@@ -545,6 +545,34 @@ public class GitHubService(
         return await graphQlService.DeleteReviewCommentAsync(organization, repository, commentId, userAccessToken);
     }
 
+    public async Task UpdatePullRequestAsync(string organization, string repository, long pullRequestNumber, string? title, string? body, string userAccessToken)
+    {
+        var restClient = new GitHubClient(new Octokit.ProductHeaderValue("Graphite-PR-Dashboard"))
+        {
+            Credentials = new Octokit.Credentials(userAccessToken)
+        };
+
+        var update = new PullRequestUpdate();
+        if (title != null)
+            update.Title = title;
+        if (body != null)
+            update.Body = body;
+
+        await restClient.PullRequest.Update(organization, repository, (int)pullRequestNumber, update);
+
+        logger.LogInformation("Successfully updated PR {Organization}/{Repository}#{PullRequestNumber}", organization, repository, pullRequestNumber);
+    }
+
+    public async Task<bool> UpdateIssueCommentAsync(string organization, string repository, long commentId, string body, string userAccessToken)
+    {
+        return await graphQlService.UpdateIssueCommentAsync(organization, repository, commentId, body, userAccessToken);
+    }
+
+    public async Task<bool> DeleteIssueCommentAsync(string organization, string repository, long commentId, string userAccessToken)
+    {
+        return await graphQlService.DeleteIssueCommentAsync(organization, repository, commentId, userAccessToken);
+    }
+
     public async Task<Dictionary<string, GitHubBranchProtectionData?>> GetRepositoryRulesetsAsync(string organization, string repository, GitHubConfig config)
     {
         var result = new Dictionary<string, GitHubBranchProtectionData?>();
@@ -760,5 +788,105 @@ public class GitHubService(
 
         [System.Text.Json.Serialization.JsonPropertyName("allowed_merge_methods")]
         public List<string>? AllowedMergeMethods { get; set; }
+    }
+
+    public async Task<GitHubRequestedReviewersData> GetRequestedReviewersAsync(string organization, string repository, long pullRequestNumber, GitHubConfig config)
+    {
+        var accessToken = await tokenService.GetAccessTokenAsync(config);
+        var restClient = new GitHubClient(new Octokit.ProductHeaderValue("Graphite-PR-Dashboard"))
+        {
+            Credentials = new Credentials(accessToken)
+        };
+
+        try
+        {
+            var requestedReviewers = await restClient.PullRequest.ReviewRequest.Get(organization, repository, (int)pullRequestNumber);
+            
+            var users = requestedReviewers.Users.Select(u => new GitHubRequestedReviewerData(
+                u.Login,
+                u.AvatarUrl,
+                "User"
+            )).ToList();
+
+            var teams = requestedReviewers.Teams.Select(t => new GitHubRequestedReviewerData(
+                t.Name,
+                null,
+                "Team"
+            )).ToList();
+
+            return new GitHubRequestedReviewersData(users, teams);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error fetching requested reviewers for PR {Organization}/{Repository}#{PullRequestNumber}", organization, repository, pullRequestNumber);
+            return new GitHubRequestedReviewersData(new List<GitHubRequestedReviewerData>(), new List<GitHubRequestedReviewerData>());
+        }
+    }
+
+    public async Task RequestReviewersAsync(string organization, string repository, long pullRequestNumber, List<string> reviewers, string userAccessToken)
+    {
+        var restClient = new GitHubClient(new Octokit.ProductHeaderValue("Graphite-PR-Dashboard"))
+        {
+            Credentials = new Credentials(userAccessToken)
+        };
+
+        var request = new Octokit.PullRequestReviewRequest(reviewers, new List<string>());
+        await restClient.PullRequest.ReviewRequest.Create(organization, repository, (int)pullRequestNumber, request);
+
+        logger.LogInformation("Successfully requested review from {Reviewers} for PR {Organization}/{Repository}#{PullRequestNumber}", 
+            string.Join(", ", reviewers), organization, repository, pullRequestNumber);
+    }
+
+    public async Task RemoveReviewersAsync(string organization, string repository, long pullRequestNumber, string username, string userAccessToken)
+    {
+        var restClient = new GitHubClient(new Octokit.ProductHeaderValue("Graphite-PR-Dashboard"))
+        {
+            Credentials = new Credentials(userAccessToken)
+        };
+
+        var request = new Octokit.PullRequestReviewRequest(new List<string> { username }, new List<string>());
+        await restClient.PullRequest.ReviewRequest.Delete(organization, repository, (int)pullRequestNumber, request);
+
+        logger.LogInformation("Successfully removed reviewer {Username} from PR {Organization}/{Repository}#{PullRequestNumber}", 
+            username, organization, repository, pullRequestNumber);
+    }
+
+    public async Task<GitHubCollaboratorsAndTeamsData> GetRepositoryCollaboratorsAndTeamsAsync(string organization, string repository, GitHubConfig config)
+    {
+        var accessToken = await tokenService.GetAccessTokenAsync(config);
+        var restClient = new GitHubClient(new Octokit.ProductHeaderValue("Graphite-PR-Dashboard"))
+        {
+            Credentials = new Credentials(accessToken)
+        };
+
+        var users = new List<GitHubCollaboratorData>();
+        var teams = new List<GitHubTeamData>();
+
+        try
+        {
+            var collaborators = await restClient.Repository.Collaborator.GetAll(organization, repository);
+            users = collaborators
+                .Where(c => c.Permissions?.Pull == true || c.Permissions?.Push == true || c.Permissions?.Admin == true)
+                .Select(c => new GitHubCollaboratorData(c.Login, c.AvatarUrl))
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error fetching collaborators for {Organization}/{Repository}", organization, repository);
+        }
+
+        try
+        {
+            var repoTeams = await restClient.Repository.GetAllTeams(organization, repository);
+            teams = repoTeams
+                .Select(t => new GitHubTeamData(t.Name, t.Slug))
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error fetching teams for {Organization}/{Repository}", organization, repository);
+        }
+
+        return new GitHubCollaboratorsAndTeamsData(users, teams);
     }
 }

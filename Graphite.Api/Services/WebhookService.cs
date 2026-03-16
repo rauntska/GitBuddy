@@ -43,8 +43,9 @@ public class WebhookService(
                 .Include(pr => pr.Comments)
                 .FirstOrDefaultAsync(pr => pr.GitHubId == prData.Number);
 
-            await ProcessPullRequestActionAsync(action, existingPr, pullRequestEvent, config, repo, prData);
-            await TriggerBackgroundRefreshAsync(config, repo.Name, prData.Number);
+           var needsSync= await ProcessPullRequestActionAsync(action, existingPr, pullRequestEvent, config, repo, prData);
+           if(needsSync)
+               await TriggerBackgroundRefreshAsync(config, repo.Name, prData.Number);
         }
         catch (Exception ex)
         {
@@ -53,7 +54,7 @@ public class WebhookService(
         }
     }
 
-    private async Task ProcessPullRequestActionAsync(
+    private async Task<bool> ProcessPullRequestActionAsync(
         string? action,
         PullRequest? existingPR,
         PullRequestEvent pullRequestEvent,
@@ -111,6 +112,7 @@ public class WebhookService(
 
                     await context.SaveChangesAsync();
                     await notificationService.BroadcastPRClosedAsync(prId, gitHubId, repository, wasMerged);
+                    return false;
                 }
                 break;
 
@@ -118,6 +120,8 @@ public class WebhookService(
                 logger.LogInformation("Unhandled PR action: {Action}", action);
                 break;
         }
+
+        return true;
     }
 
     private async Task CreateNewPrAsync(PullRequestEvent pullRequestEvent, GitHubConfig config)
@@ -130,7 +134,7 @@ public class WebhookService(
         var reviewThreads = await gitHubService.GetReviewThreadsAsync(organization, repo.Name, prData.Number, config);
         var comments = await gitHubService.GetCommentsAsync(organization, repo.Name, prData.Number, config);
 
-        var status = statusService.DeterminePrStatus(prData.Draft, false, reviews);
+        var status = statusService.DeterminePrStatus("", prData.Draft, false, reviews);
 
         var pullRequest = CreatePullRequestEntity(prData, repo, status);
         context.PullRequests.Add(pullRequest);
@@ -303,7 +307,7 @@ public class WebhookService(
             r.SubmittedAt
         )).ToList();
 
-        existingPr.Status = statusService.DeterminePrStatus(prData.Draft, existingPr.IsMergeReady, reviewData);
+        existingPr.Status = statusService.DeterminePrStatus(existingPr.Status, prData.Draft, existingPr.IsMergeReady, reviewData);
 
         await context.SaveChangesAsync();
         logger.LogInformation("Updated PR #{GitHubId}", existingPr.GitHubId);
@@ -351,8 +355,9 @@ public class WebhookService(
 
             logger.LogInformation("Push event: {Repository} - Branch: {Branch}", repo.FullName, branch);
 
-            var affectedPRs = await context.PullRequests
-                .Where(pr => pr.SourceBranch == branch || pr.TargetBranch == branch)
+            var affectedPRs = await context.PullRequests.Where(pr =>
+                    (pr.SourceBranch == branch || pr.TargetBranch == branch) && pr.Status != "Closed" &&
+                    pr.Status != "Merged")
                 .ToListAsync();
 
             if (affectedPRs.Count == 0)
@@ -738,7 +743,7 @@ public class WebhookService(
                 r.SubmittedAt
             )).ToList();
 
-            existingPr.Status = statusService.DeterminePrStatus(existingPr.Draft, existingPr.IsMergeReady, reviewData);
+            existingPr.Status = statusService.DeterminePrStatus(existingPr.Status, existingPr.Draft, existingPr.IsMergeReady, reviewData);
             existingPr.UpdatedAt = DateTime.UtcNow;
             await context.SaveChangesAsync();
 

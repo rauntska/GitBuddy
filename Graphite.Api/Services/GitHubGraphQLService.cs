@@ -28,6 +28,9 @@ public interface IGitHubGraphQLService
     Task<bool> DeletePendingReviewAsync(string organization, string repository, string reviewId, string accessToken);
     Task<bool> UpdateReviewCommentAsync(string organization, string repository, long commentId, string body, string accessToken);
     Task<bool> DeleteReviewCommentAsync(string organization, string repository, long commentId, string accessToken);
+    Task<List<GitHubCommentData>> GetIssueCommentsAsync(string organization, string repository, long pullRequestNumber, string accessToken);
+    Task<bool> UpdateIssueCommentAsync(string organization, string repository, long commentId, string body, string accessToken);
+    Task<bool> DeleteIssueCommentAsync(string organization, string repository, long commentId, string accessToken);
 }
 
 public record FileLineContent(int LineNumber, string Content);
@@ -142,6 +145,8 @@ public class GitHubGraphQLService : IGitHubGraphQLService
 
     public async Task<List<GitHubCommentData>> GetCommentsAsync(string organization, string repository, long pullRequestNumber, string accessToken)
     {
+        var allComments = new List<GitHubCommentData>();
+
         try
         {
             var connection = CreateConnection(accessToken);
@@ -173,13 +178,11 @@ public class GitHubGraphQLService : IGitHubGraphQLService
 
             var reviewThreads = await connection.Run(query);
 
-            var comments = new List<GitHubCommentData>();
-
             foreach (var thread in reviewThreads)
             {
                 foreach (var comment in thread.Comments)
                 {
-                    comments.Add(new GitHubCommentData(
+                    allComments.Add(new GitHubCommentData(
                         comment.DatabaseId ?? 0,
                         thread.Id,
                         comment.Author,
@@ -193,14 +196,23 @@ public class GitHubGraphQLService : IGitHubGraphQLService
                     ));
                 }
             }
-
-            return comments;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error fetching GitHub comments for PR {Organization}/{Repository}#{PullRequestNumber}", organization, repository, pullRequestNumber);
-            return new List<GitHubCommentData>();
+            _logger.LogError(ex, "Error fetching review thread comments for PR {Organization}/{Repository}#{PullRequestNumber}", organization, repository, pullRequestNumber);
         }
+
+        try
+        {
+            var issueComments = await GetIssueCommentsAsync(organization, repository, pullRequestNumber, accessToken);
+            allComments.AddRange(issueComments);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching issue comments for PR {Organization}/{Repository}#{PullRequestNumber}", organization, repository, pullRequestNumber);
+        }
+
+        return allComments;
     }
 
     private static Connection CreateConnection(string accessToken)
@@ -1257,6 +1269,109 @@ public class GitHubGraphQLService : IGitHubGraphQLService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error deleting review comment {CommentId} for {Organization}/{Repository}", commentId, organization, repository);
+            throw;
+        }
+    }
+
+    public async Task<List<GitHubCommentData>> GetIssueCommentsAsync(string organization, string repository, long pullRequestNumber, string accessToken)
+    {
+        try
+        {
+            var connection = CreateConnection(accessToken);
+
+            var query = new Query()
+                .Repository(repository, organization)
+                .PullRequest((Arg<int>)pullRequestNumber)
+                .Comments(100, null, null, null)
+                .Nodes
+                .Select(c => new
+                {
+                    c.DatabaseId,
+                    Author = c.Author.Login,
+                    AuthorAvatar = c.Author.AvatarUrl(40),
+                    c.Body,
+                    c.CreatedAt,
+                    c.UpdatedAt
+                })
+                .Compile();
+
+            var comments = await connection.Run(query);
+
+            return comments.Select(c => new GitHubCommentData(
+                c.DatabaseId ?? 0,
+                null,
+                c.Author,
+                c.AuthorAvatar,
+                c.Body,
+                null,
+                null,
+                false,
+                c.CreatedAt.UtcDateTime,
+                c.UpdatedAt.UtcDateTime
+            )).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching issue comments for PR {Organization}/{Repository}#{PullRequestNumber}", organization, repository, pullRequestNumber);
+            return new List<GitHubCommentData>();
+        }
+    }
+
+    public async Task<bool> UpdateIssueCommentAsync(string organization, string repository, long commentId, string body, string accessToken)
+    {
+        try
+        {
+            using var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {accessToken}");
+            httpClient.DefaultRequestHeaders.Add("User-Agent", "Graphite-PR-Dashboard");
+            httpClient.DefaultRequestHeaders.Add("Accept", "application/vnd.github+json");
+
+            var payload = new { body };
+            var content = new StringContent(System.Text.Json.JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+            
+            var response = await httpClient.PatchAsync($"https://api.github.com/repos/{organization}/{repository}/issues/comments/{commentId}", content);
+            var responseString = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError("GitHub REST API error updating issue comment: {StatusCode} - {Response}", response.StatusCode, responseString);
+                throw new Exception($"GitHub API error: {response.StatusCode}");
+            }
+
+            _logger.LogInformation("Successfully updated issue comment {CommentId} for {Organization}/{Repository}", commentId, organization, repository);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating issue comment {CommentId} for {Organization}/{Repository}", commentId, organization, repository);
+            throw;
+        }
+    }
+
+    public async Task<bool> DeleteIssueCommentAsync(string organization, string repository, long commentId, string accessToken)
+    {
+        try
+        {
+            using var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {accessToken}");
+            httpClient.DefaultRequestHeaders.Add("User-Agent", "Graphite-PR-Dashboard");
+            httpClient.DefaultRequestHeaders.Add("Accept", "application/vnd.github+json");
+
+            var response = await httpClient.DeleteAsync($"https://api.github.com/repos/{organization}/{repository}/issues/comments/{commentId}");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var responseString = await response.Content.ReadAsStringAsync();
+                _logger.LogError("GitHub REST API error deleting issue comment: {StatusCode} - {Response}", response.StatusCode, responseString);
+                throw new Exception($"GitHub API error: {response.StatusCode}");
+            }
+
+            _logger.LogInformation("Successfully deleted issue comment {CommentId} for {Organization}/{Repository}", commentId, organization, repository);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting issue comment {CommentId} for {Organization}/{Repository}", commentId, organization, repository);
             throw;
         }
     }
