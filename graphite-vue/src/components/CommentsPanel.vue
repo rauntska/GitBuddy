@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full flex flex-col bg-slate-900 border-l border-slate-700">
+  <div class="h-full flex flex-col bg-slate-900 border-l border-slate-700 overflow-hidden">
     <!-- Header -->
     <div class="flex items-center justify-between px-4 py-3 border-b border-slate-700">
       <h3 class="text-sm font-semibold text-slate-200">

@@ -2,7 +2,7 @@
   <div class="flex flex-col bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900 text-slate-200 min-h-screen">
     <!-- Compact Header -->
     <div class="sticky top-20 z-20 bg-gradient-to-r from-slate-900/95 to-slate-900/90 border-b border-slate-700/30 backdrop-blur-md">
-      <div class="px-5 py-3 flex items-center gap-3">
+      <div class="px-3 sm:px-5 py-3 flex flex-wrap items-center gap-2 sm:gap-3">
         <Breadcrumb
           v-if="prDetail"
           :items="[
@@ -13,34 +13,35 @@
         />
         <div v-else class="text-slate-500 text-sm">Loading...</div>
 
-        <div class="flex-1 min-w-0 flex items-center gap-3 overflow-hidden">
+        <div class="flex-1 min-w-0 flex items-center gap-2 sm:gap-3 overflow-hidden">
           <StatusBadge v-if="prDetail" :status="prDetail.status" />
           
           <div 
             v-if="prDetail && !prDetail.isMerged && !prDetail.draft && prDetail.status !== 'Merged' && prDetail.status !== 'Closed'" 
             :class="[
-              'px-3 py-1 rounded-full text-xs font-medium border',
+              'px-2 sm:px-3 py-1 rounded-full text-xs font-medium border',
               prDetail.isMergeReady 
                 ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' 
                 : 'bg-amber-500/20 text-amber-400 border-amber-500/30'
             ]"
             :title="prDetail.mergeBlockReason || 'Ready to merge'"
           >
-            <span v-if="prDetail.isMergeReady" class="flex items-center gap-1.5">
+            <span v-if="prDetail.isMergeReady" class="flex items-center gap-1 sm:gap-1.5">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
               </svg>
-              Ready to merge
+              <span class="hidden sm:inline">Ready to merge</span>
             </span>
-            <span v-else-if="prDetail.requiredApprovingReviews" class="flex items-center gap-1.5">
+            <span v-else-if="prDetail.requiredApprovingReviews" class="flex items-center gap-1 sm:gap-1.5">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              {{ prDetail.currentApprovingReviews }}/{{ prDetail.requiredApprovingReviews }} approvals
-              <span v-if="prDetail.hasUnresolvedThreads" class="ml-1">• {{ prDetail.reviewThreads.filter(rt => !rt.isResolved && !rt.isOutdated).length }} unresolved</span>
+              <span class="hidden sm:inline">{{ prDetail.currentApprovingReviews }}/{{ prDetail.requiredApprovingReviews }} approvals</span>
+              <span class="sm:hidden">{{ prDetail.currentApprovingReviews }}/{{ prDetail.requiredApprovingReviews }}</span>
+              <span v-if="prDetail.hasUnresolvedThreads" class="ml-1 hidden sm:inline">• {{ prDetail.reviewThreads.filter(rt => !rt.isResolved && !rt.isOutdated).length }} unresolved</span>
             </span>
-            <span v-else class="flex items-center gap-1.5">
-              {{ prDetail.mergeBlockReason || 'Review required' }}
+            <span v-else class="flex items-center gap-1 sm:gap-1.5">
+              <span class="hidden sm:inline">{{ prDetail.mergeBlockReason || 'Review required' }}</span>
             </span>
           </div>
 
@@ -78,20 +79,21 @@
           </div>
         </div>
 
-<div class="flex items-center gap-3 text-xs flex-shrink-0">
-          <span class="text-slate-400 font-medium">{{ prDetail?.repository }} #{{ prDetail?.gitHubId }}</span>
+<div class="flex flex-wrap items-center gap-2 sm:gap-3 text-xs flex-shrink-0">
+          <span class="text-slate-400 font-medium hidden sm:inline">{{ prDetail?.repository }} #{{ prDetail?.gitHubId }}</span>
 
           <button
             v-if="!prDetail?.isMerged"
             @click="showReviewModal = true"
             :class="[
-              'px-4 py-2 rounded-lg text-xs font-medium text-white transition-all duration-200 shadow-lg relative',
+              'px-3 sm:px-4 py-2 rounded-lg text-xs font-medium text-white transition-all duration-200 shadow-lg relative',
               prDetail?.pendingReview?.comments?.length 
                 ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-500/20 hover:shadow-amber-500/30' 
                 : 'bg-blue-600 hover:bg-blue-500 shadow-blue-500/20 hover:shadow-blue-500/30'
             ]"
           >
-            {{ prDetail?.pendingReview?.comments?.length ? 'Finish Review' : 'Review' }}
+            <span class="sm:hidden">Review</span>
+            <span class="hidden sm:inline">{{ prDetail?.pendingReview?.comments?.length ? 'Finish Review' : 'Review' }}</span>
             <span
               v-if="prDetail?.pendingReview?.comments?.length"
               class="absolute -top-1.5 -right-1.5 bg-amber-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-0.5 shadow-lg"
@@ -104,19 +106,19 @@
             v-if="prDetail?.draft && !prDetail?.isMerged"
             @click="handlePublishDraft"
             :disabled="publishingDraft"
-            class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-medium text-white transition-all duration-200 shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="px-3 sm:px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-medium text-white transition-all duration-200 shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {{ publishingDraft ? 'Publishing...' : 'Publish' }}
+            <span class="sm:hidden">Pub</span>
+            <span class="hidden sm:inline">{{ publishingDraft ? 'Publishing...' : 'Publish' }}</span>
           </button>
 
-          <!-- Merge Button with Dropdown -->
           <div v-if="prDetail && !prDetail.draft && !prDetail.isMerged" class="relative">
             <div class="flex items-center gap-0">
               <button
                 @click="canMerge && handleMerge()"
                 :disabled="!canMerge || merging"
                 :class="[
-                  'px-4 py-2 rounded-l-lg text-xs font-medium text-white transition-all duration-200',
+                  'px-3 sm:px-4 py-2 rounded-l-lg text-xs font-medium text-white transition-all duration-200',
                   canMerge && !merging
                     ? 'bg-purple-600 hover:bg-purple-500 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30'
                     : 'bg-slate-600 cursor-not-allowed',
@@ -219,7 +221,7 @@
           <button
             @click="refreshFileViewStates"
             :disabled="refreshingViewStates"
-            class="px-3 py-2 bg-slate-800/60 hover:bg-slate-700/60 border border-slate-600/50 rounded-lg text-xs text-slate-200 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 hover:border-slate-500/50"
+            class="hidden sm:flex px-3 py-2 bg-slate-800/60 hover:bg-slate-700/60 border border-slate-600/50 rounded-lg text-xs text-slate-200 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed items-center gap-2 hover:border-slate-500/50"
             title="Refresh file viewed states from GitHub"
           >
             <svg 
@@ -276,11 +278,10 @@
 
     <!-- Main Content - Full Page Layout -->
     <div v-else-if="prDetail" class="flex flex-1">
-      <!-- File Tree Sidebar (Resizable) -->
       <div
         v-if="preferences.fileTreeVisible"
         :style="{ width: `${fileTreeWidth}px` }"
-        class="flex-shrink-0 overflow-auto bg-gradient-to-b from-slate-900/40 to-slate-950/40 border-r border-slate-700/30 relative sticky top-20 h-[calc(100vh-5rem)] backdrop-blur-sm"
+        class="hidden md:block flex-shrink-0 overflow-auto bg-gradient-to-b from-slate-900/40 to-slate-950/40 border-r border-slate-700/30 relative sticky top-20 h-[calc(100vh-5rem)] backdrop-blur-sm"
       >
         <FileTree
           :files="prDetail.files"
@@ -298,18 +299,17 @@
       <div class="flex-1 flex flex-col min-w-0">
         <!-- Top Section: PR Info -->
         <div class="border-b border-slate-700/30 bg-gradient-to-b from-slate-900/30 to-transparent">
-          <div class="flex gap-6 p-6">
-            <!-- Left: Description (Largest) -->
+          <div class="flex flex-col lg:flex-row gap-4 lg:gap-6 p-4 sm:p-6">
             <div class="flex-1 min-w-0">
               <!-- Branch Info -->
               <div class="p-4 bg-gradient-to-br from-slate-800/40 to-slate-800/20 border border-slate-700/30 rounded-xl mb-4 shadow-sm">
                 <div class="text-xs font-medium text-slate-400 mb-2">Branches</div>
-                <div class="flex items-center gap-2 text-sm">
-                  <span class="text-emerald-400 font-mono">{{ prDetail.sourceBranch }}</span>
-                  <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="flex flex-wrap items-center gap-2 text-sm">
+                  <span class="text-emerald-400 font-mono truncate max-w-[200px] sm:max-w-none">{{ prDetail.sourceBranch }}</span>
+                  <svg class="w-4 h-4 text-slate-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                   </svg>
-                  <span class="text-blue-400 font-mono">{{ prDetail.targetBranch }}</span>
+                  <span class="text-blue-400 font-mono truncate max-w-[200px] sm:max-w-none">{{ prDetail.targetBranch }}</span>
                 </div>
               </div>
 
@@ -346,7 +346,7 @@
             </div>
 
             <!-- Right: Info & Stats -->
-            <div class="w-96 flex-shrink-0 space-y-4">
+            <div class="lg:w-96 flex-shrink-0 space-y-4">
 <!--              &lt;!&ndash; Stats - Compact Table &ndash;&gt;-->
 <!--              <div class="p-4 bg-gradient-to-br from-slate-800/40 to-slate-800/20 border border-slate-700/30 rounded-xl shadow-sm">-->
 <!--                <div class="text-xs font-medium text-slate-400 mb-3">Stats</div>-->
@@ -430,16 +430,15 @@
 
         <!-- Bottom Section: File Diffs -->
         <div class="flex-1">
-          <div class="px-6 py-5">
-                <!-- Files Changed Header -->
-               <div class="flex items-center justify-between py-2">
+          <div class="px-3 sm:px-6 py-4 sm:py-5">
+                <div class="flex items-center justify-between py-2">
                   <h2 class="text-base font-semibold text-slate-100">
                     Files Changed <span class="text-slate-500 font-normal">({{ prDetail.files.length }})</span>
                   </h2>
                   <div class="flex items-center gap-2">
                     <button
                       @click="toggleFileTree"
-                      class="flex items-center gap-2 px-3 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg hover:bg-slate-700/60 text-slate-300 text-xs transition-all duration-200 hover:border-slate-500/50"
+                      class="hidden md:flex items-center gap-2 px-3 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg hover:bg-slate-700/60 text-slate-300 text-xs transition-all duration-200 hover:border-slate-500/50"
                     >
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -564,7 +563,20 @@
         </div>
       </div>
 
-      <!-- Comments Panel (Resizable) -->
+      <Transition
+        enter-active-class="transition-opacity duration-300 ease-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition-opacity duration-200 ease-in"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <div
+          v-if="commentsPanel"
+          class="fixed inset-0 bg-black/50 z-20 md:hidden"
+          @click="toggleCommentsPanel"
+        />
+      </Transition>
       <Transition
         enter-active-class="transition-transform duration-300 ease-out"
         enter-from-class="translate-x-full"
@@ -575,8 +587,8 @@
       >
         <div
           v-if="commentsPanel"
-          :style="{ width: `${commentsPanelWidth}px` }"
-          class="flex-shrink-0 relative sticky top-20 h-[calc(100vh-5rem)]"
+          class="fixed right-0 top-0 md:top-20 z-30 h-screen md:h-[calc(100vh-5rem)] w-[90%] sm:w-80 md:w-[320px]"
+          :style="{ width: commentsPanelWidth ? `${commentsPanelWidth}px` : undefined }"
         >
           <CommentsPanel
             :comments="prDetail?.allComments || []"
@@ -589,9 +601,8 @@
             @reply-added="handleReplyAdded"
             @thread-resolved="handleThreadResolved"
           />
-          <!-- Resize Handle -->
           <div
-            class="absolute top-0 left-0 w-1.5 h-full cursor-ew-resize hover:bg-blue-500/50 bg-slate-600/20 hover:bg-blue-500/30 transition-all duration-200"
+            class="hidden md:block absolute top-0 left-0 w-1.5 h-full cursor-ew-resize hover:bg-blue-500/50 bg-slate-600/20 hover:bg-blue-500/30 transition-all duration-200"
             @mousedown="startResizeCommentsPanel"
           />
         </div>
