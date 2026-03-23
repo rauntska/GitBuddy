@@ -463,7 +463,7 @@
                   <!-- Comments for Right Side (New Code - Add/Context lines) -->
                   <tr v-if="row.rightLine?.lineNumber && (getCommentsForLine(row.rightLine.lineNumber, 'right').length > 0 || (commentingLine === row.rightLine.lineNumber && commentingSide === 'right') || getPendingCommentsForLine(row.rightLine.lineNumber).length > 0)">
                     <td colspan="3" class="p-0"></td>
-                    <td colspan="4" class="p-0 bg-gradient-to-b from-slate-900/50 to-slate-950/30 border-t border-slate-700/20">
+                    <td colspan="3" class="p-0 bg-gradient-to-b from-slate-900/50 to-slate-950/30 border-t border-slate-700/20">
                       <!-- Existing Comments -->
                       <div v-if="getCommentsForLine(row.rightLine.lineNumber, 'right').length > 0" class="p-4 space-y-4">
                         <div

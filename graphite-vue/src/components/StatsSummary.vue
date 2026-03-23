@@ -1,21 +1,21 @@
 <template>
-  <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
+  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2 sm:gap-3 mb-4 sm:mb-6">
     <div
       v-for="(stat, key) in statsConfig"
       :key="key"
-      class="flex items-center gap-3 p-4 rounded-lg border border-slate-700/50 bg-slate-800/30"
+      class="flex items-center gap-2 sm:gap-3 p-2 sm:p-4 rounded-lg border border-slate-700/50 bg-slate-800/30"
     >
       <div
-        class="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center"
+        class="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center"
         :class="stat.colorClass"
       >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="stat.icon" />
         </svg>
       </div>
       <div>
-        <div class="text-2xl font-semibold text-slate-100">{{ stats[key] }}</div>
-        <div class="text-xs text-slate-500">{{ stat.label }}</div>
+        <div class="text-xl sm:text-2xl font-semibold text-slate-100">{{ stats[key] }}</div>
+        <div class="text-xs text-slate-500 hidden sm:block">{{ stat.label }}</div>
       </div>
     </div>
   </div>

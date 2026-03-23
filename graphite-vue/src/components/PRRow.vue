@@ -17,26 +17,26 @@
 <!--      <StatusBadge :status="pr.status" />-->
 <!--    </div>-->
 
-    <!-- Repository & PR Number -->
-    <div class="flex-shrink-0" :class="compact ? 'w-[100px]' : 'w-[140px]'">
-      <div :class="compact ? 'text-xs' : 'text-sm'" class="font-medium text-slate-200 truncate">{{ pr.repository }}</div>
-      <div class="text-xs text-slate-500">PR #{{ pr.gitHubId }}</div>
-    </div>
+     <!-- Repository & PR Number -->
+     <div class="flex-shrink-0" :class="compact ? 'w-[80px] sm:w-[100px]' : 'w-[100px] sm:w-[140px]'">
+       <div :class="compact ? 'text-xs' : 'text-sm'" class="font-medium text-slate-200 truncate">{{ pr.repository }}</div>
+       <div class="text-xs text-slate-500">PR #{{ pr.gitHubId }}</div>
+     </div>
 
-    <!-- Author -->
-    <div class="flex-shrink-0" :class="compact ? 'w-[80px]' : 'w-[120px]'">
-      <div :class="compact ? 'text-xs' : 'text-sm'" class="text-slate-300 truncate">{{ pr.author }}</div>
-    </div>
+     <!-- Author (hidden on small screens) -->
+     <div class="hidden md:flex flex-shrink-0" :class="compact ? 'w-[80px]' : 'w-[120px]'">
+       <div :class="compact ? 'text-xs' : 'text-sm'" class="text-slate-300 truncate">{{ pr.author }}</div>
+     </div>
 
-    <!-- PR Title (Flexible) -->
-    <div class="flex-1 min-w-0">
-      <div :class="compact ? 'text-xs' : 'text-sm'" class="text-slate-300 truncate group-hover:text-white transition-colors">
-        {{ pr.title }}
-      </div>
-    </div>
+     <!-- PR Title (Flexible) -->
+     <div class="flex-1 min-w-0">
+       <div :class="compact ? 'text-xs' : 'text-sm'" class="text-slate-300 truncate group-hover:text-white transition-colors">
+         {{ pr.title }}
+       </div>
+     </div>
 
-     <!-- Metadata Section -->
-     <div class="flex items-center flex-shrink-0 justify-end" :class="compact ? 'gap-2 w-[420px]' : 'gap-3 w-[550px]'">
+      <!-- Metadata Section -->
+      <div class="flex items-center flex-shrink-0 flex-wrap justify-end gap-1 sm:gap-2 md:gap-3">
       <!-- PR Size Badge -->
       <div :class="compact ? 'w-[50px]' : 'w-[60px]'" class="flex justify-center">
         <PRSizeBadge :additions="pr.additions" :deletions="pr.deletions" :compact="compact" />
@@ -63,29 +63,29 @@
         />
       </div>
 
-      <!-- Stale Indicator / Spacer -->
-      <div :class="compact ? 'w-[35px]' : 'w-[50px]'" class="flex justify-center">
+      <!-- Stale Indicator / Spacer (hidden on small screens) -->
+      <div :class="compact ? 'w-[30px]' : 'w-[45px]'" class="hidden md:flex justify-center">
         <div
           v-if="isStale(pr.createdAt)"
-          :class="compact ? 'text-xs' : 'text-xs'"
-          class="flex items-center gap-1 text-red-400"
-          :title="`Created ${formatAge(pr.createdAt)} ago`"
+          :class="compact ? 'px-1 py-0.5' : 'px-1.5 py-0.5'"
+          class="flex items-center gap-1 rounded bg-amber-500/10 border border-amber-500/30"
+          :title="`Stale: created ${formatAge(pr.createdAt)} ago`"
         >
-          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-3 h-3 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span v-if="!compact" class="font-medium">{{ formatAge(pr.createdAt) }}</span>
+          <span v-if="!compact" class="text-xs text-amber-300 font-medium">{{ formatAge(pr.createdAt) }}</span>
         </div>
       </div>
 
-      <!-- Reviewer Avatars -->
-      <div :class="compact ? 'w-[60px]' : 'w-[80px]'" class="flex justify-center">
+      <!-- Reviewer Avatars (hidden on small screens) -->
+      <div :class="compact ? 'w-[60px]' : 'w-[80px]'" class="hidden lg:flex justify-center">
         <ReviewerAvatars :reviews="pr.reviews.filter(r => r.reviewer !== pr.author)" :max-display="compact ? 2 : 3" :size="compact ? 'sm' : 'md'" />
       </div>
 
-      <!-- Comments (Resolved/Total) -->
-      <div :class="compact ? 'w-[40px]' : 'w-[50px]'" class="flex justify-center">
+      <!-- Comments (Resolved/Total) (hidden on small screens) -->
+      <div :class="compact ? 'w-[40px]' : 'w-[50px]'" class="hidden md:flex justify-center">
         <div
           v-if="pendingThreadsCount > 0"
           :class="compact ? 'px-1 py-0.5' : 'px-1.5 py-0.5'"
@@ -102,8 +102,8 @@
         </div>
       </div>
 
-      <!-- Files Changed -->
-      <div :class="compact ? 'w-[35px]' : 'w-[45px]'" class="flex justify-center">
+      <!-- Files Changed (hidden on small screens) -->
+      <div :class="compact ? 'w-[35px]' : 'w-[45px]'" class="hidden md:flex justify-center">
         <div
           :class="compact ? 'px-1 py-0.5' : 'px-1.5 py-0.5'"
           class="flex items-center gap-1 rounded bg-slate-700/30 text-xs text-slate-300"
@@ -117,8 +117,8 @@
         </div>
       </div>
 
-      <!-- Line Changes -->
-      <div :class="compact ? 'w-[70px]' : 'w-[90px]'" class="flex justify-center">
+      <!-- Line Changes (hidden on small screens) -->
+      <div :class="compact ? 'w-[70px]' : 'w-[90px]'" class="hidden sm:flex justify-center">
         <div
           class="flex items-center gap-1 text-xs font-mono"
           title="Lines changed"
@@ -129,24 +129,9 @@
         </div>
       </div>
 
-      <!-- Last Updated Time -->
-      <div :class="compact ? 'w-[40px]' : 'w-[50px]'" class="text-xs text-slate-500 text-right">
+      <!-- Last Updated Time (hidden on small screens) -->
+      <div :class="compact ? 'w-[40px]' : 'w-[50px]'" class="hidden md:block text-xs text-slate-500 text-right">
         {{ formatRelativeTime(pr.updatedAt) }}
-      </div>
-    </div>
-
-    <!-- Hover Details (Expandable) -->
-    <div
-      v-if="!compact"
-      class="absolute left-0 right-0 bottom-0 translate-y-full opacity-0 group-hover:opacity-100
-             transition-opacity duration-200 pointer-events-none z-10"
-    >
-      <div class="mt-1 px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 shadow-xl text-xs text-slate-400">
-        <div class="flex items-center justify-between gap-4">
-          <span>Created: {{ formatDate(pr.createdAt) }}</span>
-          <span>Last synced: {{ formatRelativeTime(pr.lastSyncedAt) }}</span>
-          <span class="text-slate-500">Click to view details →</span>
-        </div>
       </div>
     </div>
   </router-link>
@@ -162,7 +147,6 @@ import MergeReadyBadge from './MergeReadyBadge.vue';
 import {
   isStale,
   formatAge,
-  formatDate,
   getStatusBorderClass,
   getStatusShadowClass,
 } from '../utils/prHelpers';

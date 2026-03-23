@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen bg-slate-900 text-slate-100">
-    <main class="max-w-screen-2xl mx-auto px-4 py-6">
+    <main class="max-w-screen-2xl mx-auto px-4 py-6 overflow-x-hidden">
       <!-- Auth Required State -->
       <div
         v-if="!authStore.isAuthenticated"
@@ -42,9 +42,9 @@
       <!-- Authenticated Content -->
       <template v-if="authStore.isAuthenticated">
         <!-- Connection Status + Stats Summary (hide during initial load) -->
-        <div v-if="!loading || hasPRData" class="flex items-center justify-between mb-4">
+        <div v-if="!loading || hasPRData" class="flex flex-wrap items-center justify-between gap-4 mb-4">
           <StatsSummary :stats="stats" />
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 flex-shrink-0">
             <button
               @click="toggleCompactMode"
               :title="isCompactMode ? 'Switch to normal view' : 'Switch to compact view'"
