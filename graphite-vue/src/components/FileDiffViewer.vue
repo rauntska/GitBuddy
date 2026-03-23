@@ -78,7 +78,8 @@
           <table class="w-full border-collapse table-fixed">
             <colgroup>
               <col style="width: 56px;">
-              <col style="width: calc(50% - 85px);">
+              <col style="width: 32px;">
+              <col style="width: calc(50% - 117px);">
               <col style="width: 56px;">
               <col style="width: 32px;">
               <col style="width: calc(50% - 59px);">
@@ -87,7 +88,7 @@
               <template v-if="hunks.length > 0">
                 <!-- Expand Before First Hunk -->
                 <tr v-if="canExpandBefore && fileContent" class="bg-slate-900/50">
-                  <td colspan="5" class="px-4 py-2">
+                  <td colspan="6" class="px-4 py-2">
                     <button
                       @click="handleExpand('before')"
                       :disabled="expandingPositions.has('before-0')"
@@ -109,7 +110,7 @@
               <template v-for="(hunk, hunkIndex) in hunks" :key="hunkIndex">
                 <!-- Hunk Header -->
                 <tr class="bg-gradient-to-r from-slate-800/40 to-slate-800/30 border-y border-slate-700/30">
-                  <td colspan="5" class="px-4 py-2 text-slate-400 text-xs font-mono">
+                  <td colspan="6" class="px-4 py-2 text-slate-400 text-xs font-mono">
                     <span class="text-slate-500">@</span>@ -{{ hunk.oldStart }},{{ hunk.oldLines }} <span class="text-blue-400">+</span>{{ hunk.newStart }},{{ hunk.newLines }} <span class="text-slate-500">@</span>@
                   </td>
                 </tr>
@@ -131,6 +132,18 @@
                     <!-- Old Side (Left) -->
                     <td class="px-3 py-1 text-slate-600 text-right select-none border-r border-slate-800 bg-slate-950/50">
                       {{ row.leftLine?.type === 'delete' || row.leftLine?.type === 'context' ? row.leftLine.lineNumber : '' }}
+                    </td>
+                    <td class="px-1.5 bg-slate-950/50">
+                      <button
+                        v-if="row.leftLine?.lineNumber && (row.leftLine.type === 'delete' || row.leftLine.type === 'context')"
+                        @click="startComment(row.leftLine.lineNumber!, 'left')"
+                        class="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-700 rounded-md transition-all duration-200"
+                        title="Add comment on left side (old file)"
+                      >
+                        <svg class="w-3.5 h-3.5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                      </button>
                     </td>
                     <td
                       :class="[
@@ -155,10 +168,10 @@
                     </td>
                     <td class="px-1.5 bg-slate-950/50">
                       <button
-                        v-if="row.rightLine?.lineNumber && row.rightLine.type !== 'spacer'"
-                        @click="startComment(row.rightLine.lineNumber!)"
+                        v-if="row.rightLine?.lineNumber && (row.rightLine.type === 'add' || row.rightLine.type === 'context')"
+                        @click="startComment(row.rightLine.lineNumber!, 'right')"
                         class="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-700 rounded-md transition-all duration-200"
-                        title="Add comment"
+                        title="Add comment on right side (new file)"
                       >
                         <svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -184,8 +197,8 @@
                   </tr>
 
                   <!-- Comments for Left Side (Old Code) -->
-                  <tr v-if="row.leftLine?.type === 'delete' && (getCommentsForLine(row.leftLine.lineNumber, 'left').length > 0 || (commentingLine === row.leftLine.lineNumber && getCommentsForLine(row.leftLine.lineNumber, 'left').length >= 0))">
-                    <td colspan="2" class="p-0 bg-gradient-to-b from-slate-900/50 to-slate-950/30 border-t border-slate-700/20">
+                  <tr v-if="row.leftLine?.lineNumber && (getCommentsForLine(row.leftLine.lineNumber, 'left').length > 0 || (commentingLine === row.leftLine.lineNumber && commentingSide === 'left'))">
+                    <td colspan="3" class="p-0 bg-gradient-to-b from-slate-900/50 to-slate-950/30 border-t border-slate-700/20">
                       <div v-if="getCommentsForLine(row.leftLine.lineNumber, 'left').length > 0" class="p-4 space-y-4">
                          <!-- Comment Threads -->
                         <div
@@ -418,7 +431,7 @@
                         </div>
                       </div>
                       <!-- New Comment Form for Left Side (deleted lines) -->
-                      <div v-if="commentingLine === row.leftLine.lineNumber" class="p-4 border-t border-slate-700/20">
+                      <div v-if="commentingLine === row.leftLine.lineNumber && commentingSide === 'left'" class="p-4 border-t border-slate-700/20">
                         <RichTextEditor
                           v-model="newCommentText"
                           ref="newCommentEditorRef"
@@ -448,9 +461,9 @@
                   </tr>
 
                   <!-- Comments for Right Side (New Code - Add/Context lines) -->
-                  <tr v-if="row.rightLine?.lineNumber && row.leftLine?.type !== 'delete' && (getCommentsForLine(row.rightLine.lineNumber, 'right').length > 0 || commentingLine === row.rightLine.lineNumber || getPendingCommentsForLine(row.rightLine.lineNumber).length > 0)">
-                    <td colspan="2" class="p-0"></td>
-                    <td colspan="3" class="p-0 bg-gradient-to-b from-slate-900/50 to-slate-950/30 border-t border-slate-700/20">
+                  <tr v-if="row.rightLine?.lineNumber && (getCommentsForLine(row.rightLine.lineNumber, 'right').length > 0 || (commentingLine === row.rightLine.lineNumber && commentingSide === 'right') || getPendingCommentsForLine(row.rightLine.lineNumber).length > 0)">
+                    <td colspan="3" class="p-0"></td>
+                    <td colspan="4" class="p-0 bg-gradient-to-b from-slate-900/50 to-slate-950/30 border-t border-slate-700/20">
                       <!-- Existing Comments -->
                       <div v-if="getCommentsForLine(row.rightLine.lineNumber, 'right').length > 0" class="p-4 space-y-4">
                         <div
@@ -667,7 +680,7 @@
                       </div>
 
                       <!-- New Comment Form -->
-                      <div v-if="commentingLine === row.rightLine.lineNumber" class="p-4 border-t border-slate-700/20">
+                      <div v-if="commentingLine === row.rightLine.lineNumber && commentingSide === 'right'" class="p-4 border-t border-slate-700/20">
                         <RichTextEditor
                           v-model="newCommentText"
                           ref="newCommentEditorRef"
@@ -700,7 +713,7 @@
                 <!-- Expand Between Hunks -->
                 <template v-if="hunkIndex < hunks.length - 1 && getGapInfo(hunkIndex) && fileContent">
                   <tr class="bg-slate-900/50">
-                    <td colspan="5" class="px-4 py-2">
+                    <td colspan="6" class="px-4 py-2">
                       <button
                         @click="handleExpand('between', hunkIndex)"
                         :disabled="expandingPositions.has(`between-${hunkIndex}`)"
@@ -723,7 +736,7 @@
               <!-- Expand After Last Hunk -->
               <template v-if="hunks.length > 0 && canExpandAfter && fileContent">
                 <tr class="bg-slate-900/50">
-                  <td colspan="5" class="px-4 py-2">
+                  <td colspan="6" class="px-4 py-2">
                     <button
                       @click="handleExpand('after')"
                       :disabled="expandingPositions.has('after-0')"
@@ -745,6 +758,100 @@
           </table>
         </div>
       </template>
+    </div>
+
+    <!-- Orphaned Comments (comments whose line numbers don't appear in visible diff) -->
+    <div v-if="expanded && !loading && orphanedComments.length > 0" class="border-t border-slate-700/30 bg-slate-950/50">
+      <div class="px-4 py-2 bg-slate-800/40 border-b border-slate-700/30 flex items-center gap-2">
+        <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <span class="text-xs font-medium text-slate-300">Comments on lines not visible in diff</span>
+      </div>
+      <div class="p-4 space-y-4">
+        <div
+          v-for="[threadId, comments] in orphanedCommentsGroupedByThread"
+          :key="threadId || 'standalone'"
+          class="border border-slate-700/30 rounded-xl overflow-hidden"
+          :class="{ 'opacity-50': threadId && getThreadInfo(threadId)?.isResolved && !expandedThreads.has(getThreadInfo(threadId)?.gitHubId || '') }"
+        >
+          <div
+            v-if="threadId"
+            class="px-4 py-3 bg-slate-800/60 border-b border-slate-700/30 flex items-center justify-between"
+          >
+            <div class="flex items-center gap-2">
+              <button
+                @click="toggleThreadExpanded(threadId)"
+                class="text-slate-400 hover:text-slate-200 transition-colors p-1 -ml-2"
+                title="Toggle thread"
+              >
+                <svg
+                  :class="['w-4 h-4 transition-transform', { 'rotate-90': !expandedThreads.has(getThreadInfo(threadId)?.gitHubId || '') }]"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+              <span class="text-xs font-medium text-slate-300">{{ comments.length }} comment{{ comments.length > 1 ? 's' : '' }}</span>
+              <span class="text-xs text-slate-500">Line {{ comments[0]?.line }}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span
+                v-if="getThreadInfo(threadId)?.isOutdated"
+                class="px-2 py-0.5 text-xs bg-amber-900/30 text-amber-400 rounded-full border border-amber-700/50"
+              >
+                Outdated
+              </span>
+              <button
+                v-if="getThreadInfo(threadId)"
+                @click="handleResolveThread(threadId, !getThreadInfo(threadId)?.isResolved)"
+                :disabled="resolvingThreads.has(getThreadInfo(threadId)?.gitHubId || '')"
+                class="flex items-center gap-1 px-2 py-0.5 text-xs rounded-full border transition-all disabled:opacity-50"
+                :class="[
+                  getThreadInfo(threadId)?.isResolved
+                    ? 'bg-emerald-900/30 text-emerald-400 border-emerald-700/50'
+                    : 'bg-slate-700/30 text-slate-400 border-slate-600/50 hover:bg-slate-600/30'
+                ]"
+                :title="getThreadInfo(threadId)?.isResolved ? 'Mark as unresolved' : 'Mark as resolved'"
+              >
+                <svg v-if="getThreadInfo(threadId)?.isResolved" class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L14.586 9H4a1 1 0 110-2h10.586l-4.293 4.293z" clip-rule="evenodd" />
+                </svg>
+                <svg v-else class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div v-if="!threadId || expandedThreads.has(getThreadInfo(threadId)?.gitHubId || '')" class="p-4 space-y-4">
+            <div
+              v-for="(comment, index) in comments"
+              :key="comment.id"
+              class="flex gap-3 relative"
+              :class="{ 'ml-8': index > 0 }"
+            >
+              <img
+                v-if="comment.authorAvatar"
+                :src="comment.authorAvatar"
+                :alt="comment.author"
+                class="w-8 h-8 rounded-full flex-shrink-0 ring-2 ring-slate-700"
+              />
+              <div v-else class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center flex-shrink-0">
+                <span class="text-sm font-medium text-slate-300">{{ comment.author?.charAt(0)?.toUpperCase() }}</span>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="font-medium text-slate-200">{{ comment.author }}</span>
+                  <span class="text-xs text-slate-500">{{ formatRelativeTime(comment.createdAt) }}</span>
+                </div>
+                <p class="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{{ comment.body }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Loading State -->
@@ -775,7 +882,7 @@ const props = defineProps<{
   reviewThreads: ReviewThread[];
   pendingReviewComments?: PendingReviewComment[];
   currentUsername?: string;
-  onAddComment: (line: number, body: string) => Promise<void>;
+  onAddComment: (line: number, body: string, side: string) => Promise<void>;
   onDeletePendingComment?: (commentId: string) => Promise<void>;
   onReplyToThread?: (threadId: string, line: number, body: string) => Promise<void>;
   onResolveThread?: (threadId: string, resolved: boolean) => Promise<void>;
@@ -811,6 +918,7 @@ const expandedBefore = ref(false);
 const expandedAfter = ref(false);
 const expandingPositions = ref<Set<string>>(new Set());
 const commentingLine = ref<number | null>(null);
+const commentingSide = ref<'left' | 'right'>('right');
 const lineRefs = ref<Map<number, HTMLElement>>(new Map());
 const language = ref(props.file.path ? detectLanguageFromPath(props.file.path) : 'text');
 const highlightedLine = ref<number | null>(null);
@@ -840,6 +948,42 @@ const canExpandBefore = computed(() => {
 const canExpandAfter = computed(() => {
   if (hunks.value.length === 0 || expandedAfter.value) return false;
   return true;
+});
+
+const visibleLineNumbers = computed(() => {
+  const lines = new Set<number>();
+  hunks.value.forEach(hunk => {
+    hunk.lines.forEach(line => {
+      if (line.newLineNumber) lines.add(line.newLineNumber);
+      if (line.oldLineNumber) lines.add(line.oldLineNumber);
+    });
+  });
+  return lines;
+});
+
+const orphanedComments = computed(() => {
+  return fileComments.value.filter(comment => {
+    if (!comment.line) return false;
+    return !visibleLineNumbers.value.has(comment.line);
+  });
+});
+
+const orphanedCommentsGroupedByThread = computed(() => {
+  const threadMap = new Map<number | null, Comment[]>();
+  
+  orphanedComments.value.forEach(comment => {
+    const threadId = comment.reviewThreadId ?? null;
+    if (!threadMap.has(threadId)) {
+      threadMap.set(threadId, []);
+    }
+    threadMap.get(threadId)!.push(comment);
+  });
+  
+  threadMap.forEach(comments => {
+    comments.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  });
+  
+  return Array.from(threadMap.entries());
 });
 
 // Cache for aligned rows per hunk
@@ -951,8 +1095,9 @@ const getStatusBadgeClass = (status: string) => {
   return classes[status] || 'bg-slate-500/10 text-slate-400 border border-slate-500/30';
 };
 
-const startComment = async (line: number) => {
+const startComment = async (line: number, side: 'left' | 'right' = 'right') => {
   commentingLine.value = line;
+  commentingSide.value = side;
   newCommentText.value = '';
   commentError.value = '';
   await nextTick();
@@ -961,6 +1106,7 @@ const startComment = async (line: number) => {
 
 const cancelNewComment = () => {
   commentingLine.value = null;
+  commentingSide.value = 'right';
   newCommentText.value = '';
   commentError.value = '';
 };
@@ -969,9 +1115,10 @@ const submitNewComment = async () => {
   if (!newCommentText.value.trim() || commentingLine.value === null) return;
 
   try {
-    await props.onAddComment(commentingLine.value, newCommentText.value);
+    await props.onAddComment(commentingLine.value, newCommentText.value, commentingSide.value.toUpperCase());
     newCommentText.value = '';
     commentingLine.value = null;
+    commentingSide.value = 'right';
     commentError.value = '';
   } catch (error) {
     commentError.value = 'Failed to add comment';
@@ -995,25 +1142,12 @@ const getCommentsForLine = (line: number | undefined, side?: 'left' | 'right'): 
 
     const reviewThread = fileReviewThreads.value.find(rt => rt.id === comment.reviewThreadId);
     if (!reviewThread) {
-      console.log('Comment has reviewThreadId but no matching review thread found:', {
-        commentReviewThreadId: comment.reviewThreadId,
-        allReviewThreadIds: fileReviewThreads.value.map(rt => rt.id)
-      });
       return true;
     }
 
-    const diffSideMatch = !reviewThread.diffSide || reviewThread.diffSide.toUpperCase() === expectedSide;
+    if (!reviewThread.diffSide) return true;
 
-    if (!diffSideMatch) {
-      console.log('Comment filtered by diffSide:', {
-        commentId: comment.id,
-        reviewThreadId: reviewThread.id,
-        reviewThreadDiffSide: reviewThread.diffSide,
-        expectedSide
-      });
-    }
-
-    return diffSideMatch;
+    return reviewThread.diffSide.toUpperCase() === expectedSide;
   });
 };
 
@@ -1096,7 +1230,7 @@ const highlightLine = (lineNumber: number) => {
   highlightedLine.value = lineNumber;
   setTimeout(() => {
     highlightedLine.value = null;
-  }, 2000);
+  }, 5000);
 };
 
 const setLineRef = (lineNumber: number | undefined, el: any) => {
@@ -1105,9 +1239,22 @@ const setLineRef = (lineNumber: number | undefined, el: any) => {
   }
 };
 
+const scrollToThread = async (threadGitId: string) => {
+  const thread = fileReviewThreads.value.find(rt => rt.gitHubId === threadGitId);
+  if (!thread || !thread.line) return;
+
+  if (!expandedThreads.value.has(threadGitId)) {
+    expandedThreads.value.add(threadGitId);
+  }
+
+  await nextTick();
+  scrollToLine(thread.line);
+};
+
 defineExpose({
   highlightLine,
   expanded,
+  scrollToThread,
 });
 
   const formatRelativeTime = (dateString: string): string => {

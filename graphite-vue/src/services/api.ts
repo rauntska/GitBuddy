@@ -147,7 +147,7 @@ export const apiService = {
     return response.data;
   },
 
-  addPendingReviewComment: async (prId: number, comment: { body: string; path: string; line: number }): Promise<{
+  addPendingReviewComment: async (prId: number, comment: { body: string; path: string; line: number; side?: string }): Promise<{
     commentId: string;
     reviewId: string;
     path: string;

@@ -198,7 +198,8 @@ public record PendingReviewCommentDto(
 public record CreatePendingReviewCommentRequest(
     string Body,
     string Path,
-    int Line
+    int Line,
+    string Side = "RIGHT"
 );
 
 public record SubmitPendingReviewRequest(

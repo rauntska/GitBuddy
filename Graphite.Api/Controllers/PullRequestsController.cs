@@ -341,7 +341,7 @@ public class PullRequestsController(
     [Authorize]
     public async Task<IActionResult> AddPendingReviewComment(int id, [FromBody] CreatePendingReviewCommentRequest request)
     {
-        var result = await mediator.Send(new AddPendingReviewCommentCommand(id, request.Body, request.Path, request.Line, User));
+        var result = await mediator.Send(new AddPendingReviewCommentCommand(id, request.Body, request.Path, request.Line, request.Side, User));
         return Ok(new
         {
             commentId = result.CommentId,

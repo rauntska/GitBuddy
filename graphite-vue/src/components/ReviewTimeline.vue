@@ -55,7 +55,7 @@
               <div v-else class="w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center flex-shrink-0">
                 <span class="text-[10px] text-slate-400">{{ event.actor[0]?.toUpperCase() }}</span>
               </div>
-              <div class="flex-1 min-w-0">
+              <div class="flex-1 min-w-0 overflow-hidden">
                 <div class="text-sm text-slate-200">
                   <span class="font-medium">{{ event.actor }}</span>
                   <span class="text-slate-400 ml-1">{{ event.summary }}</span>
@@ -69,7 +69,7 @@
                     {{ event.state }}
                   </span>
                 </div>
-                <div v-if="event.filePath" class="mt-1">
+                <div v-if="event.filePath" class="mt-1 overflow-hidden">
                   <span class="text-xs text-slate-500 font-mono truncate block">{{ event.filePath }}</span>
                 </div>
               </div>
@@ -98,7 +98,7 @@ const events = ref<ReviewEvent[]>([]);
 const loading = ref(true);
 const expanded = ref(false);
 
-const maxDisplay = 5;
+const maxDisplay = 2;
 
 const displayedEvents = computed(() => {
   const sorted = [...events.value].sort((a, b) => 

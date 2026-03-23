@@ -34,6 +34,7 @@ public class AddCommentHandler(
                 request.Body,
                 request.Path,
                 request.Line.Value,
+                "RIGHT",
                 config,
                 accessToken!
             );

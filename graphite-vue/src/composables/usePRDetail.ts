@@ -72,7 +72,7 @@ export function usePRDetail() {
 
   const addPendingReviewComment = async (
     prId: number,
-    comment: { body: string; path: string; line: number }
+    comment: { body: string; path: string; line: number; side?: string }
   ): Promise<PendingReviewComment | null> => {
     try {
       const result = await apiService.addPendingReviewComment(prId, comment);

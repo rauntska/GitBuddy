@@ -663,6 +663,12 @@ public class WebhookService(
                 return;
             }
 
+            if (thread == null)
+            {
+                logger.LogWarning("Thread data is null in review thread event for PR {Number}", pr.Number);
+                return;
+            }
+
             var existingThread = existingPr.ReviewThreads.FirstOrDefault(rt => rt.GitHubId == thread.Id.ToString());
             await ProcessReviewThreadActionAsync(action, existingThread, thread.Id);
 

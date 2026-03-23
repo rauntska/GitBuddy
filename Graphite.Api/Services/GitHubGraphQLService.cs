@@ -22,7 +22,6 @@ public interface IGitHubGraphQLService
     Task<bool> ConvertPullRequestToReadyForReviewAsync(string organization, string repository, long pullRequestNumber, string accessToken);
     Task<string?> GetFileContentAsync(string organization, string repository, string branch, string path, string accessToken);
     Task<GitHubPendingReviewData?> GetPendingReviewAsync(string organization, string repository, long pullRequestNumber, string userLogin, string accessToken);
-    Task<GitHubPendingReviewCommentData> AddPendingReviewCommentAsync(string organization, string repository, long pullRequestNumber, string body, string path, int line, string accessToken);
     Task<bool> DeletePendingReviewCommentAsync(string organization, string repository, string commentId, string accessToken);
     Task<bool> SubmitPendingReviewAsync(string organization, string repository, string reviewId, string state, string? body, string accessToken);
     Task<bool> DeletePendingReviewAsync(string organization, string repository, string reviewId, string accessToken);
@@ -944,108 +943,6 @@ public class GitHubGraphQLService : IGitHubGraphQLService
         {
             _logger.LogError(ex, "Error fetching pending review for PR {Organization}/{Repository}#{PullRequestNumber}", organization, repository, pullRequestNumber);
             return null;
-        }
-    }
-
-    public async Task<GitHubPendingReviewCommentData> AddPendingReviewCommentAsync(string organization, string repository, long pullRequestNumber, string body, string path, int line, string accessToken)
-    {
-        try
-        {
-            var prNodeId = await GetPullRequestIdAsync(organization, repository, (int)pullRequestNumber, accessToken);
-
-            using var httpClient = new HttpClient();
-            httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {accessToken}");
-            httpClient.DefaultRequestHeaders.Add("User-Agent", "Graphite-PR-Dashboard");
-
-            var bodyEscaped = body.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n").Replace("\r", "\\r");
-            var pathEscaped = path.Replace("\\", "\\\\").Replace("\"", "\\\"");
-
-            var query = new
-            {
-                query = $@"
-                    mutation {{
-                        addPullRequestReviewThread(input: {{
-                            pullRequestId: ""{prNodeId}"",
-                            path: ""{pathEscaped}"",
-                            line: {line},
-                            side: RIGHT,
-                            body: ""{bodyEscaped}""
-                        }}) {{
-                            thread {{
-                                id
-                                path
-                                line
-                                comments(first: 1) {{
-                                    nodes {{
-                                        id
-                                        databaseId
-                                        body
-                                        createdAt
-                                        updatedAt
-                                        pullRequestReview {{
-                                            id
-                                            state
-                                        }}
-                                        author {{
-                                            login
-                                            avatarUrl(size: 40)
-                                        }}
-                                    }}
-                                }}
-                            }}
-                        }}
-                    }}
-                "
-            };
-
-            var content = new StringContent(System.Text.Json.JsonSerializer.Serialize(query), Encoding.UTF8, "application/json");
-            var response = await httpClient.PostAsync("https://api.github.com/graphql", content);
-            var responseString = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogError("GitHub GraphQL API error: {StatusCode} - {Response}", response.StatusCode, responseString);
-                throw new Exception($"GitHub API error: {response.StatusCode}");
-            }
-
-            var jsonResponse = JsonSerializer.Deserialize<JsonElement>(responseString);
-
-            if (jsonResponse.TryGetProperty("errors", out var errors))
-            {
-                var errorMessage = errors.EnumerateArray().FirstOrDefault().GetProperty("message").GetString();
-                _logger.LogError("GitHub GraphQL mutation error: {Errors}", errorMessage);
-                throw new Exception($"GitHub GraphQL error: {errorMessage}");
-            }
-
-            var data = jsonResponse.GetProperty("data");
-            var mutationData = data.GetProperty("addPullRequestReviewThread");
-            var threadData = mutationData.GetProperty("thread");
-            var commentsData = threadData.GetProperty("comments").GetProperty("nodes");
-            var commentData = commentsData.EnumerateArray().First();
-            var authorData = commentData.GetProperty("author");
-
-            string? reviewId = null;
-            if (commentData.TryGetProperty("pullRequestReview", out var reviewData) && reviewData.ValueKind != JsonValueKind.Null)
-            {
-                reviewId = reviewData.GetProperty("id").GetString();
-            }
-
-            return new GitHubPendingReviewCommentData(
-                commentData.GetProperty("id").GetString() ?? string.Empty,
-                threadData.GetProperty("path").GetString(),
-                threadData.GetProperty("line").GetInt32(),
-                commentData.GetProperty("body").GetString() ?? string.Empty,
-                authorData.GetProperty("login").GetString() ?? string.Empty,
-                authorData.GetProperty("avatarUrl").GetString() ?? string.Empty,
-                DateTime.Parse(commentData.GetProperty("createdAt").GetString() ?? string.Empty),
-                DateTime.Parse(commentData.GetProperty("updatedAt").GetString() ?? string.Empty),
-                reviewId
-            );
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error adding pending review comment to PR {Organization}/{Repository}#{PullRequestNumber} at {Path}:{Line}", organization, repository, pullRequestNumber, path, line);
-            throw;
         }
     }
 

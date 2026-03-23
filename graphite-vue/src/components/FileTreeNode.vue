@@ -6,40 +6,60 @@
         { 'bg-slate-800': isSelected }
       ]"
       :style="{ paddingLeft: `${depth * 12 + 8}px` }"
+      role="treeitem"
+      :aria-selected="isSelected"
+      :aria-expanded="node.type === 'folder' ? isExpanded : undefined"
+      :tabindex="isSelected ? 0 : -1"
       @click="handleClick"
+      @keydown.enter="handleClick"
     >
-      <!-- Folder Icon or File Icon -->
       <svg
         v-if="node.type === 'folder'"
         :class="['w-4 h-4 text-slate-400 transition-transform flex-shrink-0', { 'rotate-90': isExpanded }]"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
+        aria-hidden="true"
       >
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
       </svg>
       
-      <span
-        v-else
-        :class="['text-xs font-medium flex-shrink-0', getStatusColor(node.status)]"
-      >
-        {{ getStatusIcon(node.status) }}
-      </span>
+      <template v-else>
+        <span
+          :class="['w-2 h-2 rounded-full flex-shrink-0', statusIndicator.color]"
+          :title="statusIndicator.label"
+          aria-hidden="true"
+        />
+        <span :class="['text-xs font-medium flex-shrink-0', fileIcon.color]" aria-hidden="true">
+          {{ fileIcon.icon }}
+        </span>
+      </template>
 
-      <!-- Name -->
       <span
         :class="[
-          'text-sm truncate',
+          'text-sm truncate flex-1',
           node.type === 'folder' ? 'text-slate-300 font-medium' : 'text-slate-400'
         ]"
         :title="node.name"
       >
         {{ node.name }}
       </span>
+
+      <span
+        v-if="node.type === 'file' && hasComments"
+        class="text-xs text-blue-400 flex items-center gap-1"
+        title="Has comments"
+      >
+        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd" />
+        </svg>
+      </span>
     </div>
 
-    <!-- Children -->
-    <template v-if="node.type === 'folder' && isExpanded && node.children">
+    <div
+      v-if="node.type === 'folder' && isExpanded && node.children"
+      role="group"
+    >
       <FileTreeNode
         v-for="child in Object.values(node.children)"
         :key="child.path"
@@ -47,22 +67,25 @@
         :depth="depth + 1"
         :selected-file="selectedFile"
         :expanded-folders="expandedFolders"
+        :files-with-comments="filesWithComments"
         @select="$emit('select', $event)"
         @toggle-folder="$emit('toggleFolder', $event)"
       />
-    </template>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { FileTreeNode as TreeNode } from '../utils/diffHelpers';
+import { useFileIcons } from '../composables/useFileIcons';
 
 const props = defineProps<{
   node: TreeNode;
   depth?: number;
   selectedFile?: string;
   expandedFolders: Set<string>;
+  filesWithComments?: Set<string>;
 }>();
 
 const emit = defineEmits<{
@@ -70,9 +93,15 @@ const emit = defineEmits<{
   toggleFolder: [path: string];
 }>();
 
+const { getFileIcon, getStatusIndicator } = useFileIcons();
+
 const depth = computed(() => props.depth || 0);
 const isSelected = computed(() => props.node.path === props.selectedFile && props.node.type === 'file');
 const isExpanded = computed(() => props.expandedFolders.has(props.node.path));
+const hasComments = computed(() => props.filesWithComments?.has(props.node.path) ?? false);
+
+const fileIcon = computed(() => getFileIcon(props.node.name));
+const statusIndicator = computed(() => getStatusIndicator(props.node.status));
 
 const handleClick = () => {
   if (props.node.type === 'folder') {
@@ -80,25 +109,5 @@ const handleClick = () => {
   } else {
     emit('select', props.node.path);
   }
-};
-
-const getStatusIcon = (status: string) => {
-  const icons: Record<string, string> = {
-    added: 'A',
-    modified: 'M',
-    deleted: 'D',
-    renamed: 'R',
-  };
-  return icons[status] || 'M';
-};
-
-const getStatusColor = (status: string) => {
-  const colors: Record<string, string> = {
-    added: 'text-green-400',
-    modified: 'text-yellow-400',
-    deleted: 'text-red-400',
-    renamed: 'text-blue-400',
-  };
-  return colors[status] || 'text-slate-400';
 };
 </script>

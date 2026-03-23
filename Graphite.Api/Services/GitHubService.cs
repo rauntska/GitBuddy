@@ -515,9 +515,67 @@ public class GitHubService(
         return await graphQlService.GetPendingReviewAsync(organization, repository, pullRequestNumber, userLogin, userAccessToken);
     }
 
-    public async Task<GitHubPendingReviewCommentData> AddPendingReviewCommentAsync(string organization, string repository, long pullRequestNumber, string body, string path, int line, GitHubConfig config, string userAccessToken)
+    public async Task<GitHubPendingReviewCommentData> AddPendingReviewCommentAsync(string organization, string repository, long pullRequestNumber, string body, string path, int line, string side, GitHubConfig config, string userAccessToken)
     {
-        return await graphQlService.AddPendingReviewCommentAsync(organization, repository, pullRequestNumber, body, path, line, userAccessToken);
+        var restClient = new GitHubClient(new Octokit.ProductHeaderValue("Graphite-PR-Dashboard"))
+        {
+            Credentials = new Octokit.Credentials(userAccessToken)
+        };
+
+        var pr = await restClient.PullRequest.Get(organization, repository, (int)pullRequestNumber);
+        var commitId = pr.Head.Sha;
+
+        var sideValue = side.ToUpperInvariant() == "LEFT" ? "LEFT" : "RIGHT";
+        
+        var commentRequest = new
+        {
+            body,
+            commit_id = commitId,
+            path,
+            line,
+            side = sideValue
+        };
+
+        using var httpClient = new HttpClient();
+        httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {userAccessToken}");
+        httpClient.DefaultRequestHeaders.Add("Accept", "application/vnd.github+json");
+        httpClient.DefaultRequestHeaders.Add("User-Agent", "Graphite-PR-Dashboard");
+        httpClient.DefaultRequestHeaders.Add("X-GitHub-Api-Version", "2022-11-28");
+
+        var url = $"https://api.github.com/repos/{organization}/{repository}/pulls/{pullRequestNumber}/comments";
+        var jsonContent = System.Text.Json.JsonSerializer.Serialize(commentRequest);
+        var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
+        
+        var response = await httpClient.PostAsync(url, content);
+        var responseString = await response.Content.ReadAsStringAsync();
+
+        if (!response.IsSuccessStatusCode)
+        {
+            logger.LogError("GitHub REST API error creating pending review comment: {StatusCode} - {Response}", response.StatusCode, responseString);
+            throw new Exception($"GitHub API error: {response.StatusCode}");
+        }
+
+        var jsonResponse = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(responseString);
+        
+        var user = jsonResponse.GetProperty("user");
+        
+        string? reviewId = null;
+        if (jsonResponse.TryGetProperty("pull_request_review_id", out var reviewIdElement))
+        {
+            reviewId = reviewIdElement.GetInt64().ToString();
+        }
+
+        return new GitHubPendingReviewCommentData(
+            jsonResponse.GetProperty("node_id").GetString() ?? string.Empty,
+            jsonResponse.GetProperty("path").GetString(),
+            jsonResponse.GetProperty("line").GetInt32(),
+            jsonResponse.GetProperty("body").GetString() ?? string.Empty,
+            user.GetProperty("login").GetString() ?? string.Empty,
+            user.GetProperty("avatar_url").GetString() ?? string.Empty,
+            DateTime.Parse(jsonResponse.GetProperty("created_at").GetString() ?? string.Empty),
+            DateTime.Parse(jsonResponse.GetProperty("updated_at").GetString() ?? string.Empty),
+            reviewId
+        );
     }
 
     public async Task<bool> DeletePendingReviewCommentAsync(string organization, string repository, string commentId, string userAccessToken)

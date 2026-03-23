@@ -8,6 +8,7 @@ public record AddPendingReviewCommentCommand(
     string Body,
     string Path,
     int Line,
+    string Side,
     ClaimsPrincipal User) : IRequest<AddPendingReviewCommentResult>;
 
 public record AddPendingReviewCommentResult(

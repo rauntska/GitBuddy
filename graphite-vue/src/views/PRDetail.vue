@@ -549,7 +549,7 @@
                   :review-threads="prDetail.reviewThreads"
                   :pending-review-comments="prDetail.pendingReview?.comments"
                   :current-username="authStore.username"
-                  :on-add-comment="(line: number, body: string) => handleAddComment(file.path!, line, body)"
+                  :on-add-comment="(line: number, body: string, side: string) => handleAddComment(file.path!, line, body, side)"
                   :on-delete-pending-comment="handleDeletePendingComment"
                   :on-reply-to-thread="(threadId: string, line: number, body: string) => handleReplyToThread(threadId, line, body)"
                   :on-resolve-thread="(threadId: string, resolved: boolean) => handleResolveThread(threadId, resolved)"
@@ -1004,8 +1004,8 @@ const handleClickOutside = (e: MouseEvent) => {
   }
 };
 
-  const handleAddComment = async (path: string, line: number, body: string) => {
-    const comment = await addPendingReviewComment(props.id, { path, line, body });
+  const handleAddComment = async (path: string, line: number, body: string, side: string = 'RIGHT') => {
+    const comment = await addPendingReviewComment(props.id, { path, line, body, side });
     if (comment) {
       console.log('Pending review comment added successfully');
     }
@@ -1027,7 +1027,14 @@ const handleClickOutside = (e: MouseEvent) => {
         await apiService.unresolveReviewThread(props.id, threadId);
         console.log('Thread unresolved successfully');
       }
-      await fetchPRDetail(props.id);
+      
+      if (prDetail.value) {
+        const thread = prDetail.value.reviewThreads.find(t => t.gitHubId === threadId);
+        if (thread) {
+          thread.isResolved = resolved;
+          thread.state = resolved ? 'RESOLVED' : 'UNRESOLVED';
+        }
+      }
     } catch (error) {
       console.error('Failed to resolve/unresolve thread:', error);
     }
@@ -1261,10 +1268,23 @@ const scrollToComment = (comment: Comment, line?: number) => {
   }
 };
 
-const scrollToThread = (threadId: string, line?: number) => {
+const scrollToThread = async (threadId: string, line?: number) => {
   const thread = prDetail.value?.reviewThreads.find(rt => rt.gitHubId === threadId);
-  if (thread?.path) {
-    scrollToFile(thread.path, line ?? undefined);
+  if (!thread?.path) return;
+
+  const fileRef = fileRefs.value.get(thread.path);
+  if (fileRef) {
+    if (fileRef.expanded !== undefined && !fileRef.expanded) {
+      fileRef.expanded = true;
+      await nextTick();
+    }
+
+    if (fileRef.scrollToThread) {
+      await nextTick();
+      fileRef.scrollToThread(threadId);
+    } else {
+      scrollToFile(thread.path, line ?? undefined);
+    }
   }
 };
 

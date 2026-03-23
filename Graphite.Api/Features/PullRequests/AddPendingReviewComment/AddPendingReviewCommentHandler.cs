@@ -27,6 +27,7 @@ public class AddPendingReviewCommentHandler(
             request.Body,
             request.Path,
             request.Line,
+            request.Side,
             config,
             accessToken!
         );
