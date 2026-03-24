@@ -616,10 +616,10 @@ const handleReplyInputWithResize = (threadId: number, event: Event) => {
   autoResizeTextarea(event);
 };
 
-const handleEnterKey = (threadId: number, event: KeyboardEvent) => {
+const handleEnterKey = (threadId: number, _event: KeyboardEvent) => {
   if (showMentions.value[threadId]) {
     const users = filteredMentionableUsers(threadId);
-    if (users.length === 1) {
+    if (users.length === 1 && users[0]) {
       selectMention(threadId, users[0].username);
       return;
     }
