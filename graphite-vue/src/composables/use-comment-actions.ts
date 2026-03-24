@@ -25,6 +25,7 @@ export function useCommentActions(props: CommentActionsProps) {
   const replyErrors = ref<Map<number, string>>(new Map());
   
   const deletingCommentId = ref<number | null>(null);
+  const isSubmitting = ref(false);
 
   const isOwnComment = (comment: Comment): boolean => {
     return props.currentUsername !== undefined && 
@@ -71,17 +72,19 @@ export function useCommentActions(props: CommentActionsProps) {
     editText.value = '';
   };
 
-  const submitEdit = async () => {
-    if (!editText.value.trim() || editingCommentId.value === null) return;
+  const submitEdit = async (text: string) => {
+    if (!text.trim() || editingCommentId.value === null) return;
 
+    isSubmitting.value = true;
     try {
       if (props.onEditComment) {
-        await props.onEditComment(editingCommentId.value, editText.value);
+        await props.onEditComment(editingCommentId.value, text);
         editingCommentId.value = null;
-        editText.value = '';
       }
     } catch (error) {
       console.error('Failed to edit comment:', error);
+    } finally {
+      isSubmitting.value = false;
     }
   };
 
@@ -101,17 +104,17 @@ export function useCommentActions(props: CommentActionsProps) {
     replyText.value = '';
   };
 
-  const submitReply = async () => {
-    if (!replyText.value.trim() || !replyingToCommentId.value) return;
+  const submitReply = async (text: string) => {
+    if (!text.trim() || !replyingToCommentId.value) return;
     if (!replyingToThread.value) {
       console.error('No thread ID for reply');
       return;
     }
 
+    isSubmitting.value = true;
     try {
       if (props.onReplyToThread) {
-        await props.onReplyToThread(replyingToThread.value, commentingLine.value ?? 0, replyText.value);
-        replyText.value = '';
+        await props.onReplyToThread(replyingToThread.value, commentingLine.value ?? 0, text);
         replyingToCommentId.value = null;
         replyingToThread.value = null;
       }
@@ -120,6 +123,8 @@ export function useCommentActions(props: CommentActionsProps) {
       if (replyingToCommentId.value !== null) {
         replyErrors.value.set(replyingToCommentId.value, 'Failed to add reply');
       }
+    } finally {
+      isSubmitting.value = false;
     }
   };
 
@@ -185,6 +190,7 @@ export function useCommentActions(props: CommentActionsProps) {
     replyText,
     replyErrors,
     deletingCommentId,
+    isSubmitting,
     
     isOwnComment,
     startComment,

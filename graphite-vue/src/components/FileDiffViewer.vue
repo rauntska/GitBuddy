@@ -78,7 +78,7 @@
 
                   <tr v-if="row.leftLine?.lineNumber && (getCommentsForLine(row.leftLine.lineNumber, 'left').length > 0 || (commentingLine === row.leftLine.lineNumber && commentingSide === 'left'))">
                     <td colspan="3" class="p-0 bg-gradient-to-b from-slate-900/50 to-slate-950/30 border-t border-slate-700/20">
-                      <div v-if="getCommentsForLine(row.leftLine.lineNumber, 'left').length > 0" class="p-4 space-y-4">
+                      <div v-if="getCommentsForLine(row.leftLine.lineNumber, 'left').length > 0" class="p-2">
                         <CommentThread
                           v-for="[threadId, comments] in getCommentsGroupedByThread(row.leftLine.lineNumber, 'left')"
                           :key="threadId || 'standalone-' + comments[0]?.id"
@@ -91,7 +91,8 @@
                           :replying-to-comment-id="replyingToCommentId"
                           :deleting-comment-id="deletingCommentId"
                           :reply-error="replyErrors.get(replyingToCommentId ?? 0)"
-                          :is-last-in-thread="isLastCommentInThread(fileComments, threadId, comments.map(c => c.id))"
+                          :is-submitting="isSubmitting"
+                          :expanded="isThreadExpanded(threadId)"
                           @toggle-thread="toggleThreadExpanded"
                           @resolve-thread="handleResolveThread"
                           @start-edit="startEditComment"
@@ -117,7 +118,7 @@
                   <tr v-if="row.rightLine?.lineNumber && (getCommentsForLine(row.rightLine.lineNumber, 'right').length > 0 || (commentingLine === row.rightLine.lineNumber && commentingSide === 'right') || getPendingCommentsForLine(row.rightLine.lineNumber).length > 0)">
                     <td colspan="3" class="p-0"></td>
                     <td colspan="3" class="p-0 bg-gradient-to-b from-slate-900/50 to-slate-950/30 border-t border-slate-700/20">
-                      <div v-if="getCommentsForLine(row.rightLine.lineNumber, 'right').length > 0" class="p-4 space-y-4">
+                      <div v-if="getCommentsForLine(row.rightLine.lineNumber, 'right').length > 0" class="p-2">
                         <CommentThread
                           v-for="[threadId, comments] in getCommentsGroupedByThread(row.rightLine.lineNumber, 'right')"
                           :key="threadId || 'standalone-' + comments[0]?.id"
@@ -130,7 +131,8 @@
                           :replying-to-comment-id="replyingToCommentId"
                           :deleting-comment-id="deletingCommentId"
                           :reply-error="replyErrors.get(replyingToCommentId ?? 0)"
-                          :is-last-in-thread="isLastCommentInThread(fileComments, threadId, comments.map(c => c.id))"
+                          :is-submitting="isSubmitting"
+                          :expanded="isThreadExpanded(threadId)"
                           @toggle-thread="toggleThreadExpanded"
                           @resolve-thread="handleResolveThread"
                           @start-edit="startEditComment"
@@ -243,6 +245,7 @@
       :replying-to-comment-id="replyingToCommentId"
       :deleting-comment-id="deletingCommentId"
       :expanded-threads="expandedThreads"
+      :is-submitting="isSubmitting"
       @toggle-thread="toggleThreadExpanded"
       @resolve-thread="handleResolveThread"
       @start-edit="startEditComment"
@@ -274,7 +277,7 @@ import { highlightCode, detectLanguageFromPath } from '../utils/syntaxHighlight'
 import { useUserPreferences } from '../composables/useUserPreferences';
 import { useFileContent } from '../composables/useFileContent';
 import { useCommentActions, getPendingCommentsForLine as getPendingForLine, getPendingRepliesForThread as getPendingReplies } from '../composables/use-comment-actions';
-import { useThreadActions, getCommentsForLine as getLineComments, getCommentsGroupedByThread as getGroupedThreads, isLastCommentInThread } from '../composables/use-thread-actions';
+import { useThreadActions, getCommentsForLine as getLineComments, getCommentsGroupedByThread as getGroupedThreads } from '../composables/use-thread-actions';
 import FileDiffHeader from './file-diff-header.vue';
 import DiffMinimap from './diff-minimap.vue';
 import DiffLineRow from './diff-line-row.vue';
@@ -333,6 +336,7 @@ const {
   replyingToCommentId,
   replyErrors,
   deletingCommentId,
+  isSubmitting,
   startComment,
   cancelNewComment,
   submitNewComment,
@@ -358,6 +362,7 @@ const {
   getThreadInfo,
   toggleThreadExpanded,
   handleResolveThread,
+  isThreadExpanded,
 } = useThreadActions({
   reviewThreads: props.reviewThreads,
   onResolveThread: props.onResolveThread,

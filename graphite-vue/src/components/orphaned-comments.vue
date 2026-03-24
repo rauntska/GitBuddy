@@ -1,12 +1,12 @@
 <template>
   <div v-if="groupedThreads.length > 0" class="border-t border-slate-700/30 bg-slate-950/50">
-    <div class="px-4 py-2 bg-slate-800/40 border-b border-slate-700/30 flex items-center gap-2">
-      <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div class="px-3 py-1.5 bg-slate-800/40 border-b border-slate-700/30 flex items-center gap-2">
+      <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
       </svg>
-      <span class="text-xs font-medium text-slate-300">Comments on lines not visible in diff</span>
+      <span class="text-[11px] font-medium text-slate-300">Comments on lines not visible in diff</span>
     </div>
-    <div class="p-4 space-y-4">
+    <div class="p-2 space-y-2">
       <CommentThread
         v-for="[threadId, comments] in groupedThreads"
         :key="threadId || 'standalone'"
@@ -18,7 +18,8 @@
         :editing-comment-id="editingCommentId"
         :replying-to-comment-id="replyingToCommentId"
         :deleting-comment-id="deletingCommentId"
-        :is-last-in-thread="true"
+        :is-submitting="isSubmitting"
+        :expanded="isThreadExpanded(threadId)"
         @toggle-thread="toggleThread"
         @resolve-thread="resolveThread"
         @start-edit="startEdit"
@@ -46,6 +47,7 @@ const props = defineProps<{
   replyingToCommentId: number | null;
   deletingCommentId: number | null;
   expandedThreads: Set<string>;
+  isSubmitting?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -53,10 +55,10 @@ const emit = defineEmits<{
   resolveThread: [threadId: number, resolved: boolean];
   startEdit: [commentId: number, body: string];
   cancelEdit: [];
-  submitEdit: [];
+  submitEdit: [text: string];
   startReply: [commentId: number, threadGitId: string | null];
   cancelReply: [];
-  submitReply: [];
+  submitReply: [text: string];
   deleteComment: [commentId: number];
 }>();
 
@@ -83,6 +85,13 @@ const getThreadInfo = (threadId: number | null): ReviewThread | null => {
   return props.reviewThreads.find(rt => rt.id === threadId) ?? null;
 };
 
+const isThreadExpanded = (threadId: number | null): boolean => {
+  if (!threadId) return true;
+  const threadInfo = getThreadInfo(threadId);
+  if (!threadInfo) return true;
+  return props.expandedThreads.has(threadInfo.gitHubId);
+};
+
 const toggleThread = (threadId: number) => {
   emit('toggleThread', threadId);
 };
@@ -99,8 +108,8 @@ const cancelEdit = () => {
   emit('cancelEdit');
 };
 
-const submitEdit = () => {
-  emit('submitEdit');
+const submitEdit = (text: string) => {
+  emit('submitEdit', text);
 };
 
 const startReply = (commentId: number, threadGitId: string | null) => {
@@ -111,8 +120,8 @@ const cancelReply = () => {
   emit('cancelReply');
 };
 
-const submitReply = () => {
-  emit('submitReply');
+const submitReply = (text: string) => {
+  emit('submitReply', text);
 };
 
 const deleteComment = (commentId: number) => {
