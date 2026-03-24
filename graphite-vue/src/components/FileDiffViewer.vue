@@ -1,53 +1,16 @@
 <template>
   <div class="border border-slate-700/30 rounded-xl bg-gradient-to-b from-slate-900/80 to-slate-950/80 shadow-lg mb-4">
-    <!-- File Header -->
-    <button
-      class="sticky top-[8.5rem] z-10 flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-slate-800/60 to-slate-800/40 border-b border-slate-700/30 cursor-pointer hover:from-slate-800/80 hover:to-slate-800/60 select-none w-full text-left transition-all duration-200 backdrop-blur-sm"
-      type="button"
-      @click="onHeaderClick"
-    >
-      <div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-        <!-- Expand/Collapse Icon -->
-        <svg
-          :class="['w-4 h-4 text-blue-400 transition-transform flex-shrink-0', { 'rotate-90': expanded }]"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
-        </svg>
+    <FileDiffHeader
+      :path="file.path || ''"
+      :status="file.status"
+      :additions="file.additions || 0"
+      :deletions="file.deletions || 0"
+      :expanded="expanded"
+      :viewed="file.viewedState === 'VIEWED' || file.viewed === true"
+      @toggle="onHeaderClick"
+      @toggle-viewed="toggleViewed"
+    />
 
-        <!-- File Status Badge -->
-        <span :class="['text-xs font-bold px-2 py-0.5 rounded flex-shrink-0', getStatusBadgeClass(file.status || 'modified')]">
-          {{ getStatusIcon(file.status || 'modified') }}
-        </span>
-
-        <!-- File Path -->
-        <span class="text-sm font-mono text-slate-100 truncate tracking-wide">{{ file.path }}</span>
-      </div>
-
-      <!-- File Stats -->
-      <div class="flex items-center gap-2 sm:gap-4 text-xs flex-shrink-0">
-        <div class="flex items-center gap-1 sm:gap-2">
-          <span class="text-emerald-400 font-semibold text-xs px-1.5 sm:px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">+{{ file.additions }}</span>
-          <span class="text-rose-400 font-semibold text-xs px-1.5 sm:px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/20">-{{ file.deletions }}</span>
-        </div>
-        <div class="flex items-center gap-2 pl-2 sm:pl-3 border-l border-slate-600/50">
-          <label class="flex items-center gap-1 sm:gap-2 cursor-pointer group">
-            <input
-              type="checkbox"
-              :checked="file.viewedState === 'VIEWED'"
-              @click.stop="toggleViewed"
-              class="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded border-slate-600 bg-slate-800 text-emerald-500 focus:ring-emerald-500/50 focus:ring-offset-slate-900 cursor-pointer transition-all"
-              title="Mark as viewed"
-            />
-            <span class="text-xs text-slate-400 group-hover:text-slate-300 transition-colors hidden sm:inline">Viewed</span>
-          </label>
-        </div>
-      </div>
-    </button>
-
-    <!-- File Diff Content -->
     <div v-if="expanded && !loading" class="relative bg-slate-950/50 backdrop-blur">
       <div v-if="hunks.length === 0" class="p-8 text-center">
         <div class="flex flex-col items-center gap-3">
@@ -59,21 +22,12 @@
       </div>
 
       <template v-if="hunks.length > 0">
-        <!-- Minimap -->
-        <div
-          class="absolute right-0 top-0 bottom-0 w-1.5 bg-slate-800/40 border-l border-slate-700/30 z-20 rounded-l overflow-hidden"
-        >
-          <div
-            v-for="(comment, index) in fileComments"
-            :key="index"
-            :style="{ top: getCommentPosition(comment.line) + '%' }"
-            class="absolute w-full h-1.5 bg-gradient-to-b from-blue-500/80 to-blue-600/80 cursor-pointer hover:from-blue-400 hover:to-blue-500 transition-all shadow-sm"
-            :title="`Comment by ${comment.author}`"
-            @click="scrollToLine(comment.line)"
-          />
-        </div>
+        <DiffMinimap
+          :comments="fileComments"
+          :hunks="hunks"
+          @scroll-to="scrollToLine"
+        />
 
-        <!-- Split View -->
         <div v-if="viewMode === 'split'" class="overflow-x-auto text-xs font-mono" ref="diffContainer">
           <table class="w-full border-collapse table-fixed">
             <colgroup>
@@ -86,7 +40,6 @@
             </colgroup>
             <tbody>
               <template v-if="hunks.length > 0">
-                <!-- Expand Before First Hunk -->
                 <tr v-if="canExpandBefore && fileContent" class="bg-slate-900/50">
                   <td colspan="6" class="px-4 py-2">
                     <button
@@ -108,7 +61,6 @@
               </template>
 
               <template v-for="(hunk, hunkIndex) in hunks" :key="hunkIndex">
-                <!-- Hunk Header -->
                 <tr class="bg-gradient-to-r from-slate-800/40 to-slate-800/30 border-y border-slate-700/30">
                   <td colspan="6" class="px-4 py-2 text-slate-400 text-xs font-mono">
                     <span class="text-slate-500">@</span>@ -{{ hunk.oldStart }},{{ hunk.oldLines }} <span class="text-blue-400">+</span>{{ hunk.newStart }},{{ hunk.newLines }} <span class="text-slate-500">@</span>@
@@ -116,538 +68,82 @@
                 </tr>
 
                 <template v-for="(row, rowIndex) in getAlignedRows(hunk, hunkIndex)" :key="`${hunkIndex}-${rowIndex}`">
-                  <tr
-                    :ref="el => setLineRef(row.rightLine?.lineNumber || row.leftLine?.lineNumber, el)"
-                    :class="[
-                      'hover:bg-slate-800/40 group transition-colors duration-150',
-                      {
-                        'bg-emerald-500/5 border-l-2 border-emerald-500/50': row.rightLine?.type === 'add' && row.leftLine?.type !== 'delete',
-                        'bg-rose-500/5 border-l-2 border-rose-500/50': row.leftLine?.type === 'delete' && row.rightLine?.type !== 'add',
-                        'bg-gradient-to-r from-rose-500/5 to-emerald-500/5': row.leftLine?.type === 'delete' && row.rightLine?.type === 'add',
-                        'bg-amber-500/10 border-l-2 border-amber-500/50': highlightedLine === row.rightLine?.lineNumber || highlightedLine === row.leftLine?.lineNumber,
-                        'border-l-2 border-transparent': !((row.rightLine?.type === 'add') || (row.leftLine?.type === 'delete')) && highlightedLine !== row.rightLine?.lineNumber && highlightedLine !== row.leftLine?.lineNumber
-                      }
-                    ]"
-                  >
-                    <!-- Old Side (Left) -->
-                    <td class="px-3 py-1 text-slate-600 text-right select-none border-r border-slate-800 bg-slate-950/50">
-                      {{ row.leftLine?.type === 'delete' || row.leftLine?.type === 'context' ? row.leftLine.lineNumber : '' }}
-                    </td>
-                    <td class="px-1.5 bg-slate-950/50">
-                      <button
-                        v-if="row.leftLine?.lineNumber && (row.leftLine.type === 'delete' || row.leftLine.type === 'context')"
-                        @click="startComment(row.leftLine.lineNumber!, 'left')"
-                        class="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-700 rounded-md transition-all duration-200"
-                        title="Add comment on left side (old file)"
-                      >
-                        <svg class="w-3.5 h-3.5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
-                      </button>
-                    </td>
-                    <td
-                      :class="[
-                        'px-4 py-1 font-mono text-sm overflow-hidden',
-                        row.leftLine?.type === 'delete' ? 'bg-rose-950/10' : row.leftLine?.type === 'spacer' ? 'bg-slate-950/10 diff-spacer' : 'bg-slate-950/20'
-                      ]"
-                    >
-                      <span v-if="row.leftLine?.type === 'delete'" class="text-rose-400 select-none mr-1">-</span>
-                      <span v-else-if="row.leftLine?.type === 'context'" class="opacity-0 select-none mr-1">·</span>
-                      <span v-else class="select-none mr-1">&nbsp;</span>
-                      <code
-                        v-if="row.leftLine && row.leftLine.type !== 'spacer'"
-                        :class="row.leftLine.type === 'delete' ? 'diff-line-deleted' : 'diff-line-default'"
-                        style="white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;"
-                        v-html="renderAlignedLineContent(row.leftLine)"
-                      />
-                    </td>
+                  <DiffLineRow
+                    :row="row"
+                    :highlighted-line="highlightedLine"
+                    :render-line-content="renderAlignedLineContent"
+                    :set-line-ref="setLineRef"
+                    @add-comment="(line, side) => startComment(line!, side)"
+                  />
 
-                    <!-- New Side (Right) -->
-                    <td class="px-3 py-1 text-slate-600 text-right select-none border-x border-slate-800 bg-slate-950/50">
-                      {{ row.rightLine?.type === 'add' || row.rightLine?.type === 'context' ? row.rightLine.lineNumber : '' }}
-                    </td>
-                    <td class="px-1.5 bg-slate-950/50">
-                      <button
-                        v-if="row.rightLine?.lineNumber && (row.rightLine.type === 'add' || row.rightLine.type === 'context')"
-                        @click="startComment(row.rightLine.lineNumber!, 'right')"
-                        class="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-700 rounded-md transition-all duration-200"
-                        title="Add comment on right side (new file)"
-                      >
-                        <svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
-                      </button>
-                    </td>
-                    <td
-                      :class="[
-                        'px-4 py-1 font-mono text-sm overflow-hidden',
-                        row.rightLine?.type === 'add' ? 'bg-emerald-950/10' : row.rightLine?.type === 'spacer' ? 'bg-slate-950/10 diff-spacer' : 'bg-slate-950/30'
-                      ]"
-                    >
-                      <span v-if="row.rightLine?.type === 'add'" class="text-emerald-400 select-none mr-1">+</span>
-                      <span v-else-if="row.rightLine?.type === 'context'" class="opacity-0 select-none mr-1">·</span>
-                      <span v-else class="select-none mr-1">&nbsp;</span>
-                      <code
-                        v-if="row.rightLine && row.rightLine.type !== 'spacer'"
-                        :class="row.rightLine.type === 'add' ? 'diff-line-added' : 'diff-line-default'"
-                        style="white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word;"
-                        v-html="renderAlignedLineContent(row.rightLine)"
-                      />
-                    </td>
-                  </tr>
-
-                  <!-- Comments for Left Side (Old Code) -->
                   <tr v-if="row.leftLine?.lineNumber && (getCommentsForLine(row.leftLine.lineNumber, 'left').length > 0 || (commentingLine === row.leftLine.lineNumber && commentingSide === 'left'))">
                     <td colspan="3" class="p-0 bg-gradient-to-b from-slate-900/50 to-slate-950/30 border-t border-slate-700/20">
                       <div v-if="getCommentsForLine(row.leftLine.lineNumber, 'left').length > 0" class="p-4 space-y-4">
-                         <!-- Comment Threads -->
-                        <div
+                        <CommentThread
                           v-for="[threadId, comments] in getCommentsGroupedByThread(row.leftLine.lineNumber, 'left')"
                           :key="threadId || 'standalone-' + comments[0]?.id"
-                          class="border border-slate-700/30 rounded-xl overflow-hidden"
-                          :class="{ 'opacity-50': threadId && getThreadInfo(threadId)?.isResolved && !expandedThreads.has(getThreadInfo(threadId)?.gitHubId || '') }"
-                        >
-                          <!-- Thread Header -->
-                          <div
-                            v-if="threadId"
-                            class="px-4 py-3 bg-slate-800/60 border-b border-slate-700/30 flex items-center justify-between"
-                          >
-                            <div class="flex items-center gap-2">
-                              <button
-                                @click="toggleThreadExpanded(threadId)"
-                                class="text-slate-400 hover:text-slate-200 transition-colors p-1 -ml-2"
-                                title="Toggle thread"
-                              >
-                                <svg
-                                  :class="['w-4 h-4 transition-transform', { 'rotate-90': !expandedThreads.has(getThreadInfo(threadId)?.gitHubId || '') }]"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                                </svg>
-                              </button>
-                              <span class="text-xs font-medium text-slate-300">{{ comments.length }} comment{{ comments.length > 1 ? 's' : '' }}</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                              <span
-                                v-if="getThreadInfo(threadId)?.isOutdated"
-                                class="px-2 py-0.5 text-xs bg-amber-900/30 text-amber-400 rounded-full border border-amber-700/50"
-                              >
-                                Outdated
-                              </span>
-                              <button
-                                v-if="getThreadInfo(threadId)"
-                                @click="handleResolveThread(threadId, !getThreadInfo(threadId)?.isResolved)"
-                                :disabled="resolvingThreads.has(getThreadInfo(threadId)?.gitHubId || '')"
-                                class="flex items-center gap-1 px-2 py-0.5 text-xs rounded-full border transition-all disabled:opacity-50"
-                                :class="[
-                                  getThreadInfo(threadId)?.isResolved
-                                    ? 'bg-emerald-900/30 text-emerald-400 border-emerald-700/50'
-                                    : 'bg-slate-700/30 text-slate-400 border-slate-600/50 hover:bg-slate-600/30'
-                                ]"
-                                :title="getThreadInfo(threadId)?.isResolved ? 'Mark as unresolved' : 'Mark as resolved'"
-                              >
-                                <svg v-if="getThreadInfo(threadId)?.isResolved" class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L14.586 9H4a1 1 0 110-2h10.586l-4.293 4.293z" clip-rule="evenodd" />
-                                </svg>
-                                <svg v-else class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                </svg>
-                              </button>
-                            </div>
-                          </div>
-
-
-                           <!-- Comments in Thread -->
-                           <div v-if="!threadId || expandedThreads.has(getThreadInfo(threadId)?.gitHubId || '')" class="p-4 space-y-4">
-
-                            <div
-                              v-for="(comment, index) in comments"
-                              :key="comment.id"
-                              class="flex gap-3 relative"
-                              :class="{ 'ml-8': index > 0 }"
-                            >
-                              <!-- Thread Connector Line -->
-                              <div
-                                v-if="index > 0"
-                                class="absolute left-4 top-0 bottom-0 w-0.5 bg-slate-700/30"
-                                style="margin-left: -2px;"
-                              ></div>
-
-                              <img
-                                v-if="comment.authorAvatar"
-                                :src="comment.authorAvatar"
-                                :alt="comment.author"
-                                class="w-8 h-8 rounded-full flex-shrink-0 ring-2 ring-slate-700/50 z-10 relative"
-                                :class="{ 'w-6 h-6': index > 0 }"
-                              />
-                              <div class="flex-1 min-w-0">
-                                <div class="flex items-center gap-2 mb-1">
-                                  <span class="text-sm font-medium text-slate-200">{{ comment.author }}</span>
-                                  <span class="text-xs text-slate-500">{{ formatTimeAgo(comment.createdAt) }}</span>
-                                  <!-- Outdated Badge -->
-                                  <span
-                                    v-if="comment.isOutdated && !threadId"
-                                    class="px-2 py-0.5 text-xs bg-amber-900/30 text-amber-400 rounded-full border border-amber-700/50"
-                                  >
-                                    Outdated
-                                  </span>
-                                  <!-- Edit/Delete buttons for own comments -->
-                                  <template v-if="isOwnComment(comment) && editingCommentId !== comment.id && replyingToCommentId !== comment.id">
-                                    <button
-                                      @click="startEditComment(comment.id, comment.body)"
-                                      class="p-1 text-slate-500 hover:text-slate-300 hover:bg-slate-700/50 rounded transition-colors"
-                                      title="Edit comment"
-                                    >
-                                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                      </svg>
-                                    </button>
-                                    <button
-                                      @click="handleDeleteComment(comment.id)"
-                                      :disabled="deletingCommentId === comment.id"
-                                      class="p-1 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-colors disabled:opacity-50"
-                                      title="Delete comment"
-                                    >
-                                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                      </svg>
-                                    </button>
-                                  </template>
-                                </div>
-
-                                <!-- Edit Form -->
-                                <div v-if="editingCommentId === comment.id" class="mt-2">
-                                  <RichTextEditor
-                                    v-model="editText"
-                                    ref="editEditorRef"
-                                    placeholder="Edit your comment..."
-                                    :min-height="80"
-                                    @save="submitEdit"
-                                    @cancel="cancelEdit"
-                                  />
-                                  <div class="flex gap-2 justify-end mt-3">
-                                    <button
-                                      @click="cancelEdit"
-                                      class="px-4 py-2 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-xs text-slate-200 transition-all duration-200 border border-slate-600/50 hover:border-slate-500/50"
-                                    >
-                                      Cancel
-                                    </button>
-                                    <button
-                                      @click="submitEdit"
-                                      :disabled="!editText.trim()"
-                                      class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-xs text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30"
-                                    >
-                                      Save
-                                    </button>
-                                  </div>
-                                </div>
-
-                                <!-- Comment Body (when not editing) -->
-                                <p v-else class="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{{ comment.body }}</p>
-
-                                <!-- Reply Form -->
-                                <div v-if="replyingToCommentId === comment.id" class="mt-3">
-                                  <RichTextEditor
-                                    v-model="replyText"
-                                    ref="replyEditorRef"
-                                    placeholder="Add your reply..."
-                                    :min-height="80"
-                                    @save="submitReply"
-                                    @cancel="cancelReply"
-                                  />
-                                  <div v-if="replyErrors.get(comment.id)" class="mt-2 text-xs text-rose-400">{{ replyErrors.get(comment.id) }}</div>
-                                  <div class="flex gap-2 justify-end mt-3">
-                                    <button
-                                      @click="cancelReply"
-                                      class="px-4 py-2 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-xs text-slate-200 transition-all duration-200 border border-slate-600/50 hover:border-slate-500/50"
-                                    >
-                                      Cancel
-                                    </button>
-                                    <button
-                                      @click="submitReply"
-                                      :disabled="!replyText.trim()"
-                                      class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-xs text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30"
-                                    >
-                                      Reply
-                                    </button>
-                                  </div>
-                                </div>
-
-                                <!-- Reply Button (only on last comment) -->
-                                <div
-                                  v-if="isLastCommentInThread(threadId, comments.map(c => c.id)) && index === comments.length - 1 && replyingToCommentId !== comment.id && editingCommentId !== comment.id"
-                                  class="flex-shrink-0 mt-2"
-                                >
-                                  <button
-                                    @click="startReplyToComment(comment.id, threadId)"
-                                    class="flex items-center gap-1 px-3 py-1 text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition-all duration-200"
-                                  >
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v10M3 10l6 6m-6-6v6" />
-                                    </svg>
-                                    Reply
-                                  </button>
-                                </div>
-
-                              </div>
-                            </div>
-                            
-                            <!-- Pending Replies for this thread -->
-                            <template v-if="threadId && getPendingRepliesForThread(getThreadInfo(threadId)?.gitHubId).length > 0">
-                              <div
-                                v-for="pendingReply in getPendingRepliesForThread(getThreadInfo(threadId)?.gitHubId)"
-                                :key="pendingReply.gitHubId"
-                                class="flex gap-3 relative ml-8 group"
-                              >
-                                <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-amber-500/30" style="margin-left: -2px;"></div>
-                                <img
-                                  v-if="pendingReply.authorAvatar"
-                                  :src="pendingReply.authorAvatar"
-                                  :alt="pendingReply.author"
-                                  class="w-6 h-6 rounded-full flex-shrink-0 ring-2 ring-amber-500/30 z-10 relative"
-                                />
-                                <div class="flex-1 min-w-0 bg-amber-500/5 border border-amber-500/20 rounded-lg p-3">
-                                  <div class="flex items-center gap-2 mb-1">
-                                    <span class="text-sm font-medium text-amber-300">{{ pendingReply.author }}</span>
-                                    <span class="text-xs text-amber-500/60">{{ formatTimeAgo(pendingReply.createdAt) }}</span>
-                                    <span class="px-1.5 py-0.5 text-[10px] bg-amber-500/20 text-amber-400 rounded border border-amber-500/30">Pending</span>
-                                  </div>
-                                  <p class="text-sm text-slate-300 whitespace-pre-wrap">{{ pendingReply.body }}</p>
-                                </div>
-                                <button
-                                  @click="handleDeletePendingComment(pendingReply.gitHubId)"
-                                  class="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-rose-500/20 rounded-lg transition-all self-start"
-                                  title="Delete pending reply"
-                                >
-                                  <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                  </svg>
-                                </button>
-                              </div>
-                            </template>
-                          </div>
-                        </div>
-                      </div>
-                      <!-- New Comment Form for Left Side (deleted lines) -->
-                      <div v-if="commentingLine === row.leftLine.lineNumber && commentingSide === 'left'" class="p-4 border-t border-slate-700/20">
-                        <RichTextEditor
-                          v-model="newCommentText"
-                          ref="newCommentEditorRef"
-                          placeholder="Add your comment..."
-                          :min-height="100"
-                          @save="submitNewComment"
-                          @cancel="cancelNewComment"
+                          :comments="comments"
+                          :thread-id="threadId"
+                          :thread-info="getThreadInfo(threadId)"
+                          :current-username="currentUsername"
+                          :pending-replies="getPendingRepliesForThread(getThreadInfo(threadId)?.gitHubId)"
+                          :editing-comment-id="editingCommentId"
+                          :replying-to-comment-id="replyingToCommentId"
+                          :deleting-comment-id="deletingCommentId"
+                          :reply-error="replyErrors.get(replyingToCommentId ?? 0)"
+                          :is-last-in-thread="isLastCommentInThread(fileComments, threadId, comments.map(c => c.id))"
+                          @toggle-thread="toggleThreadExpanded"
+                          @resolve-thread="handleResolveThread"
+                          @start-edit="startEditComment"
+                          @cancel-edit="cancelEdit"
+                          @submit-edit="submitEdit"
+                          @start-reply="(id) => startReplyToComment(id, getThreadInfo(threadId)?.gitHubId ?? null)"
+                          @cancel-reply="cancelReply"
+                          @submit-reply="submitReply"
+                          @delete-comment="handleDeleteComment"
+                          @delete-pending-comment="handleDeletePendingComment"
                         />
-                        <div v-if="commentError" class="mt-2 text-xs text-rose-400">{{ commentError }}</div>
-                        <div class="flex gap-2 justify-end mt-3">
-                          <button
-                            @click="cancelNewComment"
-                            class="px-4 py-2 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-xs text-slate-200 transition-all duration-200 border border-slate-600/50 hover:border-slate-500/50"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            @click="submitNewComment"
-                            :disabled="!newCommentText.trim()"
-                            class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-xs text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30"
-                          >
-                            Add Comment
-                          </button>
-                        </div>
                       </div>
+                      <CommentForm
+                        v-if="commentingLine === row.leftLine.lineNumber && commentingSide === 'left'"
+                        v-model="newCommentText"
+                        :error="commentError"
+                        @submit="submitNewComment"
+                        @cancel="cancelNewComment"
+                      />
                     </td>
                   </tr>
 
-                  <!-- Comments for Right Side (New Code - Add/Context lines) -->
                   <tr v-if="row.rightLine?.lineNumber && (getCommentsForLine(row.rightLine.lineNumber, 'right').length > 0 || (commentingLine === row.rightLine.lineNumber && commentingSide === 'right') || getPendingCommentsForLine(row.rightLine.lineNumber).length > 0)">
                     <td colspan="3" class="p-0"></td>
                     <td colspan="3" class="p-0 bg-gradient-to-b from-slate-900/50 to-slate-950/30 border-t border-slate-700/20">
-                      <!-- Existing Comments -->
                       <div v-if="getCommentsForLine(row.rightLine.lineNumber, 'right').length > 0" class="p-4 space-y-4">
-                        <div
+                        <CommentThread
                           v-for="[threadId, comments] in getCommentsGroupedByThread(row.rightLine.lineNumber, 'right')"
                           :key="threadId || 'standalone-' + comments[0]?.id"
-                          class="border border-slate-700/30 rounded-xl overflow-hidden"
-                          :class="{ 'opacity-50': threadId && getThreadInfo(threadId)?.isResolved && !expandedThreads.has(getThreadInfo(threadId)?.gitHubId || '') }"
-                        >
-                          <!-- Thread Header -->
-                          <div
-                            v-if="threadId"
-                            class="px-4 py-3 bg-slate-800/60 border-b border-slate-700/30 flex items-center justify-between"
-                          >
-                            <div class="flex items-center gap-2">
-                              <button
-                                @click="toggleThreadExpanded(threadId)"
-                                class="text-slate-400 hover:text-slate-200 transition-colors p-1 -ml-2"
-                                title="Toggle thread"
-                              >
-                                <svg
-                                  :class="['w-4 h-4 transition-transform', { 'rotate-90': !expandedThreads.has(getThreadInfo(threadId)?.gitHubId || '') }]"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                                </svg>
-                              </button>
-                              <span class="text-xs font-medium text-slate-300">{{ comments.length }} comment{{ comments.length > 1 ? 's' : '' }}</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                              <span
-                                v-if="getThreadInfo(threadId)?.isOutdated"
-                                class="px-2 py-0.5 text-xs bg-amber-900/30 text-amber-400 rounded-full border border-amber-700/50"
-                              >
-                                Outdated
-                              </span>
-                              <button
-                                v-if="getThreadInfo(threadId)"
-                                @click="handleResolveThread(threadId, !getThreadInfo(threadId)?.isResolved)"
-                                :disabled="resolvingThreads.has(getThreadInfo(threadId)?.gitHubId || '')"
-                                class="flex items-center gap-1 px-2 py-0.5 text-xs rounded-full border transition-all disabled:opacity-50"
-                                :class="[
-                                  getThreadInfo(threadId)?.isResolved
-                                    ? 'bg-emerald-900/30 text-emerald-400 border-emerald-700/50'
-                                    : 'bg-slate-700/30 text-slate-400 border-slate-600/50 hover:bg-slate-600/30'
-                                ]"
-                                :title="getThreadInfo(threadId)?.isResolved ? 'Mark as unresolved' : 'Mark as resolved'"
-                              >
-                                <svg v-if="getThreadInfo(threadId)?.isResolved" class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L14.586 9H4a1 1 0 110-2h10.586l-4.293 4.293z" clip-rule="evenodd" />
-                                </svg>
-                                <svg v-else class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                </svg>
-                              </button>
-                            </div>
-                          </div>
-
-                            <!-- Comments in Thread -->
-                          <div v-if="!threadId || expandedThreads.has(getThreadInfo(threadId)?.gitHubId || '')" class="p-4 space-y-4">
-                            <div
-                              v-for="(comment, index) in comments"
-                              :key="comment.id"
-                              class="flex gap-3 relative"
-                              :class="{ 'ml-8': index > 0 }"
-                            >
-                              <img
-                                v-if="comment.authorAvatar"
-                                :src="comment.authorAvatar"
-                                :alt="comment.author"
-                                class="w-8 h-8 rounded-full flex-shrink-0 ring-2 ring-slate-700"
-                              />
-                              <div v-else class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center flex-shrink-0">
-                                <span class="text-sm font-medium text-slate-300">{{ comment.author?.charAt(0)?.toUpperCase() }}</span>
-                              </div>
-                              <div class="flex-1 min-w-0">
-                                <div class="flex items-center gap-2 mb-1">
-                                  <span class="font-medium text-slate-200">{{ comment.author }}</span>
-                                  <span class="text-xs text-slate-500">{{ formatRelativeTime(comment.createdAt) }}</span>
-                                  <!-- Edit/Delete buttons for own comments -->
-                                  <template v-if="isOwnComment(comment) && editingCommentId !== comment.id && replyingToCommentId !== comment.id">
-                                    <button
-                                      @click="startEditComment(comment.id, comment.body)"
-                                      class="p-1 text-slate-500 hover:text-slate-300 hover:bg-slate-700/50 rounded transition-colors"
-                                      title="Edit comment"
-                                    >
-                                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                      </svg>
-                                    </button>
-                                    <button
-                                      @click="handleDeleteComment(comment.id)"
-                                      :disabled="deletingCommentId === comment.id"
-                                      class="p-1 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-colors disabled:opacity-50"
-                                      title="Delete comment"
-                                    >
-                                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                      </svg>
-                                    </button>
-                                  </template>
-                                </div>
-
-                                <!-- Edit Form -->
-                                <div v-if="editingCommentId === comment.id" class="mt-2">
-                                  <RichTextEditor
-                                    v-model="editText"
-                                    ref="editEditorRef"
-                                    placeholder="Edit your comment..."
-                                    :min-height="80"
-                                    @save="submitEdit"
-                                    @cancel="cancelEdit"
-                                  />
-                                  <div class="flex gap-2 justify-end mt-3">
-                                    <button
-                                      @click="cancelEdit"
-                                      class="px-4 py-2 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-xs text-slate-200 transition-all duration-200 border border-slate-600/50 hover:border-slate-500/50"
-                                    >
-                                      Cancel
-                                    </button>
-                                    <button
-                                      @click="submitEdit"
-                                      :disabled="!editText.trim()"
-                                      class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-xs text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30"
-                                    >
-                                      Save
-                                    </button>
-                                  </div>
-                                </div>
-
-                                <!-- Comment Body (when not editing) -->
-                                <p v-else class="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{{ comment.body }}</p>
-
-                                <!-- Reply Form -->
-                                <div v-if="replyingToCommentId === comment.id" class="mt-3">
-                                  <RichTextEditor
-                                    v-model="replyText"
-                                    ref="replyEditorRef"
-                                    placeholder="Add your reply..."
-                                    :min-height="80"
-                                    @save="submitReply"
-                                    @cancel="cancelReply"
-                                  />
-                                  <div v-if="replyErrors.get(comment.id)" class="mt-2 text-xs text-rose-400">{{ replyErrors.get(comment.id) }}</div>
-                                  <div class="flex gap-2 justify-end mt-3">
-                                    <button
-                                      @click="cancelReply"
-                                      class="px-4 py-2 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-xs text-slate-200 transition-all duration-200 border border-slate-600/50 hover:border-slate-500/50"
-                                    >
-                                      Cancel
-                                    </button>
-                                    <button
-                                      @click="submitReply"
-                                      :disabled="!replyText.trim()"
-                                      class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-xs text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30"
-                                    >
-                                      Reply
-                                    </button>
-                                  </div>
-                                </div>
-
-                                <!-- Reply Button (only on last comment) -->
-                                <div
-                                  v-if="isLastCommentInThread(threadId, comments.map(c => c.id)) && index === comments.length - 1 && replyingToCommentId !== comment.id && editingCommentId !== comment.id"
-                                  class="flex-shrink-0 mt-2"
-                                >
-                                  <button
-                                    @click="startReplyToComment(comment.id, threadId)"
-                                    class="flex items-center gap-1 px-3 py-1 text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition-all duration-200"
-                                  >
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                                    </svg>
-                                    Reply
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
+                          :comments="comments"
+                          :thread-id="threadId"
+                          :thread-info="getThreadInfo(threadId)"
+                          :current-username="currentUsername"
+                          :pending-replies="getPendingRepliesForThread(getThreadInfo(threadId)?.gitHubId)"
+                          :editing-comment-id="editingCommentId"
+                          :replying-to-comment-id="replyingToCommentId"
+                          :deleting-comment-id="deletingCommentId"
+                          :reply-error="replyErrors.get(replyingToCommentId ?? 0)"
+                          :is-last-in-thread="isLastCommentInThread(fileComments, threadId, comments.map(c => c.id))"
+                          @toggle-thread="toggleThreadExpanded"
+                          @resolve-thread="handleResolveThread"
+                          @start-edit="startEditComment"
+                          @cancel-edit="cancelEdit"
+                          @submit-edit="submitEdit"
+                          @start-reply="(id) => startReplyToComment(id, getThreadInfo(threadId)?.gitHubId ?? null)"
+                          @cancel-reply="cancelReply"
+                          @submit-reply="submitReply"
+                          @delete-comment="handleDeleteComment"
+                          @delete-pending-comment="handleDeletePendingComment"
+                        />
                       </div>
 
-                      <!-- Pending Comments for this line -->
                       <div v-if="getPendingCommentsForLine(row.rightLine.lineNumber).length > 0" class="p-4 space-y-3 border-t border-slate-700/20">
                         <div
                           v-for="pendingComment in getPendingCommentsForLine(row.rightLine.lineNumber)"
@@ -679,38 +175,17 @@
                         </div>
                       </div>
 
-                      <!-- New Comment Form -->
-                      <div v-if="commentingLine === row.rightLine.lineNumber && commentingSide === 'right'" class="p-4 border-t border-slate-700/20">
-                        <RichTextEditor
-                          v-model="newCommentText"
-                          ref="newCommentEditorRef"
-                          placeholder="Add your comment..."
-                          :min-height="100"
-                          @save="submitNewComment"
-                          @cancel="cancelNewComment"
-                        />
-                        <div v-if="commentError" class="mt-2 text-xs text-rose-400">{{ commentError }}</div>
-                        <div class="flex gap-2 justify-end mt-3">
-                          <button
-                            @click="cancelNewComment"
-                            class="px-4 py-2 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-xs text-slate-200 transition-all duration-200 border border-slate-600/50 hover:border-slate-500/50"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            @click="submitNewComment"
-                            :disabled="!newCommentText.trim()"
-                            class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-xs text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30"
-                          >
-                            Add Comment
-                          </button>
-                        </div>
-                      </div>
+                      <CommentForm
+                        v-if="commentingLine === row.rightLine.lineNumber && commentingSide === 'right'"
+                        v-model="newCommentText"
+                        :error="commentError"
+                        @submit="submitNewComment"
+                        @cancel="cancelNewComment"
+                      />
                     </td>
                   </tr>
                 </template>
 
-                <!-- Expand Between Hunks -->
                 <template v-if="hunkIndex < hunks.length - 1 && getGapInfo(hunkIndex) && fileContent">
                   <tr class="bg-slate-900/50">
                     <td colspan="6" class="px-4 py-2">
@@ -733,7 +208,6 @@
                 </template>
               </template>
 
-              <!-- Expand After Last Hunk -->
               <template v-if="hunks.length > 0 && canExpandAfter && fileContent">
                 <tr class="bg-slate-900/50">
                   <td colspan="6" class="px-4 py-2">
@@ -760,106 +234,31 @@
       </template>
     </div>
 
-    <!-- Orphaned Comments (comments whose line numbers don't appear in visible diff) -->
-    <div v-if="expanded && !loading && orphanedComments.length > 0" class="border-t border-slate-700/30 bg-slate-950/50">
-      <div class="px-4 py-2 bg-slate-800/40 border-b border-slate-700/30 flex items-center gap-2">
-        <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-        </svg>
-        <span class="text-xs font-medium text-slate-300">Comments on lines not visible in diff</span>
-      </div>
-      <div class="p-4 space-y-4">
-        <div
-          v-for="[threadId, comments] in orphanedCommentsGroupedByThread"
-          :key="threadId || 'standalone'"
-          class="border border-slate-700/30 rounded-xl overflow-hidden"
-          :class="{ 'opacity-50': threadId && getThreadInfo(threadId)?.isResolved && !expandedThreads.has(getThreadInfo(threadId)?.gitHubId || '') }"
-        >
-          <div
-            v-if="threadId"
-            class="px-4 py-3 bg-slate-800/60 border-b border-slate-700/30 flex items-center justify-between"
-          >
-            <div class="flex items-center gap-2">
-              <button
-                @click="toggleThreadExpanded(threadId)"
-                class="text-slate-400 hover:text-slate-200 transition-colors p-1 -ml-2"
-                title="Toggle thread"
-              >
-                <svg
-                  :class="['w-4 h-4 transition-transform', { 'rotate-90': !expandedThreads.has(getThreadInfo(threadId)?.gitHubId || '') }]"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-              <span class="text-xs font-medium text-slate-300">{{ comments.length }} comment{{ comments.length > 1 ? 's' : '' }}</span>
-              <span class="text-xs text-slate-500">Line {{ comments[0]?.line }}</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <span
-                v-if="getThreadInfo(threadId)?.isOutdated"
-                class="px-2 py-0.5 text-xs bg-amber-900/30 text-amber-400 rounded-full border border-amber-700/50"
-              >
-                Outdated
-              </span>
-              <button
-                v-if="getThreadInfo(threadId)"
-                @click="handleResolveThread(threadId, !getThreadInfo(threadId)?.isResolved)"
-                :disabled="resolvingThreads.has(getThreadInfo(threadId)?.gitHubId || '')"
-                class="flex items-center gap-1 px-2 py-0.5 text-xs rounded-full border transition-all disabled:opacity-50"
-                :class="[
-                  getThreadInfo(threadId)?.isResolved
-                    ? 'bg-emerald-900/30 text-emerald-400 border-emerald-700/50'
-                    : 'bg-slate-700/30 text-slate-400 border-slate-600/50 hover:bg-slate-600/30'
-                ]"
-                :title="getThreadInfo(threadId)?.isResolved ? 'Mark as unresolved' : 'Mark as resolved'"
-              >
-                <svg v-if="getThreadInfo(threadId)?.isResolved" class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L14.586 9H4a1 1 0 110-2h10.586l-4.293 4.293z" clip-rule="evenodd" />
-                </svg>
-                <svg v-else class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg>
-              </button>
-            </div>
-          </div>
-          <div v-if="!threadId || expandedThreads.has(getThreadInfo(threadId)?.gitHubId || '')" class="p-4 space-y-4">
-            <div
-              v-for="(comment, index) in comments"
-              :key="comment.id"
-              class="flex gap-3 relative"
-              :class="{ 'ml-8': index > 0 }"
-            >
-              <img
-                v-if="comment.authorAvatar"
-                :src="comment.authorAvatar"
-                :alt="comment.author"
-                class="w-8 h-8 rounded-full flex-shrink-0 ring-2 ring-slate-700"
-              />
-              <div v-else class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center flex-shrink-0">
-                <span class="text-sm font-medium text-slate-300">{{ comment.author?.charAt(0)?.toUpperCase() }}</span>
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 mb-1">
-                  <span class="font-medium text-slate-200">{{ comment.author }}</span>
-                  <span class="text-xs text-slate-500">{{ formatRelativeTime(comment.createdAt) }}</span>
-                </div>
-                <p class="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{{ comment.body }}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <OrphanedComments
+      v-if="expanded && !loading"
+      :comments="orphanedComments"
+      :review-threads="fileReviewThreads"
+      :current-username="currentUsername"
+      :editing-comment-id="editingCommentId"
+      :replying-to-comment-id="replyingToCommentId"
+      :deleting-comment-id="deletingCommentId"
+      :expanded-threads="expandedThreads"
+      @toggle-thread="toggleThreadExpanded"
+      @resolve-thread="handleResolveThread"
+      @start-edit="startEditComment"
+      @cancel-edit="cancelEdit"
+      @submit-edit="submitEdit"
+      @start-reply="startReplyToComment"
+      @cancel-reply="cancelReply"
+      @submit-reply="submitReply"
+      @delete-comment="handleDeleteComment"
+    />
 
-    <!-- Loading State -->
     <div v-if="loading" class="p-8 text-center bg-slate-950/30">
       <div class="flex flex-col items-center gap-3">
         <svg class="animate-spin h-8 w-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0-3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135-5.824 3-7.938l3 2.647z"></path>
         </svg>
         <span class="text-sm text-slate-400">Loading diff...</span>
       </div>
@@ -874,7 +273,14 @@ import { parsePatch, alignDiffLines, renderInlineDiffSegments, calculateExpandRa
 import { highlightCode, detectLanguageFromPath } from '../utils/syntaxHighlight';
 import { useUserPreferences } from '../composables/useUserPreferences';
 import { useFileContent } from '../composables/useFileContent';
-import RichTextEditor from './RichTextEditor.vue';
+import { useCommentActions, getPendingCommentsForLine as getPendingForLine, getPendingRepliesForThread as getPendingReplies } from '../composables/use-comment-actions';
+import { useThreadActions, getCommentsForLine as getLineComments, getCommentsGroupedByThread as getGroupedThreads, isLastCommentInThread } from '../composables/use-thread-actions';
+import FileDiffHeader from './file-diff-header.vue';
+import DiffMinimap from './diff-minimap.vue';
+import DiffLineRow from './diff-line-row.vue';
+import CommentThread from './comment-thread.vue';
+import CommentForm from './comment-form.vue';
+import OrphanedComments from './orphaned-comments.vue';
 
 const props = defineProps<{
   file: FileDiff;
@@ -898,13 +304,6 @@ const emit = defineEmits<{
   toggleViewed: [path: string, viewed: boolean];
 }>();
 
-// Helper to convert thread database ID to GitHub Node ID (not currently used)
-// const getThreadNodeId = (threadId: number | null): string | null => {
-//   if (!threadId) return null;
-//   const thread = fileReviewThreads.value.find(rt => rt.id === threadId);
-//   return thread?.gitHubId ?? null;
-// };
-
 const { preferences } = useUserPreferences();
 
 const expanded = ref(props.file.viewedState !== 'VIEWED' && !props.file.viewed);
@@ -912,37 +311,62 @@ const expanded = ref(props.file.viewedState !== 'VIEWED' && !props.file.viewed);
 watch(() => [props.file.viewedState, props.file.viewed] as const, ([newViewedState, newViewed]) => {
   expanded.value = newViewedState !== 'VIEWED' && newViewed !== true;
 }, { deep: true, immediate: true });
- const loading = ref(false);
+
+const loading = ref(false);
 const hunks = ref<DiffHunk[]>([]);
 const expandedBefore = ref(false);
 const expandedAfter = ref(false);
 const expandingPositions = ref<Set<string>>(new Set());
-const commentingLine = ref<number | null>(null);
-const commentingSide = ref<'left' | 'right'>('right');
 const lineRefs = ref<Map<number, HTMLElement>>(new Map());
 const language = ref(props.file.path ? detectLanguageFromPath(props.file.path) : 'text');
 const highlightedLine = ref<number | null>(null);
-const replyingToCommentId = ref<number | null>(null);
-const replyingToThread = ref<string | null>(null);
-const replyText = ref('');
-const replyEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(null);
-const expandedThreads = ref<Set<string>>(new Set());
-const replyErrors = ref<Map<number, string>>(new Map());
-const resolvingThreads = ref<Set<string>>(new Set());
-const newCommentText = ref('');
-const commentError = ref('');
-const newCommentEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(null);
-const editingCommentId = ref<number | null>(null);
-const editText = ref('');
-const editEditorRef = ref<InstanceType<typeof RichTextEditor> | null>(null);
-const deletingCommentId = ref<number | null>(null);
+const alignedRowsCache = ref<Map<number, AlignedRow[]>>(new Map());
 
 const fileContent = props.prId ? useFileContent(props.prId) : null;
+
+const {
+  commentingLine,
+  commentingSide,
+  newCommentText,
+  commentError,
+  editingCommentId,
+  replyingToCommentId,
+  replyErrors,
+  deletingCommentId,
+  startComment,
+  cancelNewComment,
+  submitNewComment,
+  startEditComment,
+  cancelEdit,
+  submitEdit,
+  startReplyToComment,
+  cancelReply,
+  submitReply,
+  handleDeleteComment,
+  handleDeletePendingComment,
+} = useCommentActions({
+  currentUsername: props.currentUsername,
+  onAddComment: props.onAddComment,
+  onReplyToThread: props.onReplyToThread,
+  onEditComment: props.onEditComment,
+  onDeleteComment: props.onDeleteComment,
+  onDeletePendingComment: props.onDeletePendingComment,
+});
+
+const {
+  expandedThreads,
+  getThreadInfo,
+  toggleThreadExpanded,
+  handleResolveThread,
+} = useThreadActions({
+  reviewThreads: props.reviewThreads,
+  onResolveThread: props.onResolveThread,
+});
 
 const canExpandBefore = computed(() => {
   if (hunks.value.length === 0 || expandedBefore.value) return false;
   const firstHunk = hunks.value[0];
-  return firstHunk.oldStart > 1 || firstHunk.newStart > 1;
+  return (firstHunk?.oldStart ?? 0) > 1 || (firstHunk?.newStart ?? 0) > 1;
 });
 
 const canExpandAfter = computed(() => {
@@ -961,6 +385,14 @@ const visibleLineNumbers = computed(() => {
   return lines;
 });
 
+const fileComments = computed(() =>
+  props.comments.filter(c => c.path === props.file.path && c.line)
+);
+
+const fileReviewThreads = computed(() =>
+  props.reviewThreads.filter(rt => rt.path === props.file.path)
+);
+
 const orphanedComments = computed(() => {
   return fileComments.value.filter(comment => {
     if (!comment.line) return false;
@@ -968,28 +400,8 @@ const orphanedComments = computed(() => {
   });
 });
 
-const orphanedCommentsGroupedByThread = computed(() => {
-  const threadMap = new Map<number | null, Comment[]>();
-  
-  orphanedComments.value.forEach(comment => {
-    const threadId = comment.reviewThreadId ?? null;
-    if (!threadMap.has(threadId)) {
-      threadMap.set(threadId, []);
-    }
-    threadMap.get(threadId)!.push(comment);
-  });
-  
-  threadMap.forEach(comments => {
-    comments.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-  });
-  
-  return Array.from(threadMap.entries());
-});
+const viewMode = computed(() => preferences.value.diffViewMode);
 
-// Cache for aligned rows per hunk
-const alignedRowsCache = ref<Map<number, AlignedRow[]>>(new Map());
-
-// Get aligned rows for a hunk (with caching)
 const getAlignedRows = (hunk: DiffHunk, hunkIndex: number): AlignedRow[] => {
   if (alignedRowsCache.value.has(hunkIndex)) {
     return alignedRowsCache.value.get(hunkIndex)!;
@@ -999,7 +411,6 @@ const getAlignedRows = (hunk: DiffHunk, hunkIndex: number): AlignedRow[] => {
   return rows;
 };
 
-// Render line content with inline diff highlighting when available
 const renderAlignedLineContent = (line: AlignedLine | undefined): string => {
   if (!line || line.type === 'spacer') {
     return '';
@@ -1010,6 +421,25 @@ const renderAlignedLineContent = (line: AlignedLine | undefined): string => {
   return highlightSyntax(line.content);
 };
 
+const highlightSyntax = (code: string): string => {
+  return highlightCode(code, language.value);
+};
+
+const getCommentsForLine = (line: number | undefined, side?: 'left' | 'right'): Comment[] => {
+  return getLineComments(props.comments, props.file.path || '', line, props.reviewThreads, side);
+};
+
+const getCommentsGroupedByThread = (line: number | undefined, side?: 'left' | 'right') => {
+  return getGroupedThreads(props.comments, line, props.file.path || '', props.reviewThreads, side);
+};
+
+const getPendingCommentsForLine = (line: number | undefined): PendingReviewComment[] => {
+  return getPendingForLine(props.pendingReviewComments || [], props.file.path || '', line);
+};
+
+const getPendingRepliesForThread = (threadGitId: string | undefined): PendingReviewComment[] => {
+  return getPendingReplies(props.pendingReviewComments || [], threadGitId);
+};
 
 const loadHunks = async () => {
   if (hunks.value.length === 0) {
@@ -1037,184 +467,27 @@ watch(expanded, (newValue) => {
   }
 });
 
-// Clear cache when hunks change
 watch(hunks, () => {
   alignedRowsCache.value.clear();
 }, { deep: true });
-
-const viewMode = computed(() => preferences.value.diffViewMode);
-
-const fileComments = computed(() =>
-  props.comments.filter(c => c.path === props.file.path && c.line)
-);
-
-const filePendingComments = computed(() =>
-  (props.pendingReviewComments || []).filter(c => c.path === props.file.path && c.line)
-);
-
-const fileReviewThreads = computed(() =>
-  props.reviewThreads.filter(rt => rt.path === props.file.path)
-);
 
 const onHeaderClick = () => {
   expanded.value = !expanded.value;
 };
 
-const toggleViewed = (event: Event) => {
-  const target = event.target as HTMLInputElement;
-  const newViewed = target.checked;
+const toggleViewed = (viewed: boolean) => {
   if (props.file.path) {
-    emit('toggleViewed', props.file.path, newViewed);
+    emit('toggleViewed', props.file.path, viewed);
     if (props.onToggleViewed) {
-      props.onToggleViewed(props.file.path, newViewed);
+      props.onToggleViewed(props.file.path, viewed);
     }
   }
 };
 
-const highlightSyntax = (code: string): string => {
-  return highlightCode(code, language.value);
-};
-
-const getStatusIcon = (status: string) => {
-  const icons: Record<string, string> = {
-    added: 'A',
-    modified: 'M',
-    deleted: 'D',
-    renamed: 'R',
-  };
-  return icons[status] || 'M';
-};
-
-const getStatusBadgeClass = (status: string) => {
-  const classes: Record<string, string> = {
-    added: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30',
-    modified: 'bg-amber-500/10 text-amber-400 border border-amber-500/30',
-    deleted: 'bg-rose-500/10 text-rose-400 border border-rose-500/30',
-    renamed: 'bg-blue-500/10 text-blue-400 border border-blue-500/30',
-  };
-  return classes[status] || 'bg-slate-500/10 text-slate-400 border border-slate-500/30';
-};
-
-const startComment = async (line: number, side: 'left' | 'right' = 'right') => {
-  commentingLine.value = line;
-  commentingSide.value = side;
-  newCommentText.value = '';
-  commentError.value = '';
-  await nextTick();
-  newCommentEditorRef.value?.focus();
-};
-
-const cancelNewComment = () => {
-  commentingLine.value = null;
-  commentingSide.value = 'right';
-  newCommentText.value = '';
-  commentError.value = '';
-};
-
-const submitNewComment = async () => {
-  if (!newCommentText.value.trim() || commentingLine.value === null) return;
-
-  try {
-    await props.onAddComment(commentingLine.value, newCommentText.value, commentingSide.value.toUpperCase());
-    newCommentText.value = '';
-    commentingLine.value = null;
-    commentingSide.value = 'right';
-    commentError.value = '';
-  } catch (error) {
-    commentError.value = 'Failed to add comment';
-    console.error('Failed to add comment:', error);
+const setLineRef = (lineNumber: number | undefined, el: HTMLElement | null) => {
+  if (lineNumber && el) {
+    lineRefs.value.set(lineNumber, el);
   }
-};
-
-
-
-const getCommentsForLine = (line: number | undefined, side?: 'left' | 'right'): Comment[] => {
-  if (!line) return [];
-
-  const comments = fileComments.value.filter(c => c.line === line);
-
-  if (!side) return comments;
-
-  const expectedSide = side === 'left' ? 'LEFT' : 'RIGHT';
-
-  return comments.filter(comment => {
-    if (!comment.reviewThreadId) return true;
-
-    const reviewThread = fileReviewThreads.value.find(rt => rt.id === comment.reviewThreadId);
-    if (!reviewThread) {
-      return true;
-    }
-
-    if (!reviewThread.diffSide) return true;
-
-    return reviewThread.diffSide.toUpperCase() === expectedSide;
-  });
-};
-
-const getPendingCommentsForLine = (line: number | undefined): PendingReviewComment[] => {
-  if (!line) return [];
-  return filePendingComments.value.filter(c => c.line === line);
-};
-
-const getPendingRepliesForThread = (threadGitId: string | undefined): PendingReviewComment[] => {
-  if (!threadGitId || !props.pendingReviewComments) return [];
-  return props.pendingReviewComments.filter(c => c.threadId === threadGitId);
-};
-
-const handleDeletePendingComment = async (commentId: string) => {
-  if (props.onDeletePendingComment) {
-    await props.onDeletePendingComment(commentId);
-  }
-};
-
-const formatTimeAgo = (dateString: string): string => {
-  const date = new Date(dateString);
-  const now = new Date();
-  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-  if (seconds < 60) return 'just now';
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
-  return date.toLocaleDateString();
-};
-
-const getCommentsGroupedByThread = (line: number | undefined, side?: 'left' | 'right') => {
-  const comments = getCommentsForLine(line, side);
-
-  const threadMap = new Map<number | null, Comment[]>();
-
-  comments.forEach(comment => {
-    const threadId = comment.reviewThreadId ?? null;
-    if (!threadMap.has(threadId)) {
-      threadMap.set(threadId, []);
-    }
-    threadMap.get(threadId)!.push(comment);
-  });
-
-  threadMap.forEach(comments => {
-    comments.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-  });
-
-  return Array.from(threadMap.entries());
-};
-
-const getThreadInfo = (threadId: number | null) => {
-  if (!threadId) return null;
-  return fileReviewThreads.value.find(rt => rt.id === threadId);
-};
-
-const getCommentPosition = (line: number | undefined): number => {
-  if (!line) return 0;
-  const totalLines = hunks.value.reduce((sum, hunk) => sum + hunk.lines.length, 0);
-  const lineIndex = hunks.value.reduce((sum, hunk) => {
-    const lineInHunk = hunk.lines.findIndex((l: any) => l.newLineNumber === line);
-    return lineInHunk >= 0 ? sum + lineInHunk : sum + hunk.lines.length;
-  }, 0);
-  return (lineIndex / totalLines) * 100;
 };
 
 const scrollToLine = (line: number | undefined) => {
@@ -1233,12 +506,6 @@ const highlightLine = (lineNumber: number) => {
   }, 5000);
 };
 
-const setLineRef = (lineNumber: number | undefined, el: any) => {
-  if (lineNumber && el) {
-    lineRefs.value.set(lineNumber, el);
-  }
-};
-
 const scrollToThread = async (threadGitId: string) => {
   const thread = fileReviewThreads.value.find(rt => rt.gitHubId === threadGitId);
   if (!thread || !thread.line) return;
@@ -1249,151 +516,6 @@ const scrollToThread = async (threadGitId: string) => {
 
   await nextTick();
   scrollToLine(thread.line);
-};
-
-defineExpose({
-  highlightLine,
-  expanded,
-  scrollToThread,
-});
-
-  const formatRelativeTime = (dateString: string): string => {
-  const date = new Date(dateString);
-  const now = new Date();
-  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-  if (seconds < 60) return 'just now';
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-};
-
-const isLastCommentInThread = (threadId: number | null, commentIds: number[]): boolean => {
-  if (!threadId) return true;
-  const threadComments = fileComments.value.filter(c => c.reviewThreadId === threadId);
-  if (threadComments.length === 0) return true;
-  const lastComment = threadComments[threadComments.length - 1];
-  return lastComment ? commentIds.includes(lastComment.id) : false;
-};
-
-const startReplyToComment = (commentId: number, threadId: number | null) => {
-  replyingToCommentId.value = commentId;
-  const thread = threadId ? getThreadInfo(threadId) : null;
-  replyingToThread.value = thread?.gitHubId || null;
-  replyText.value = '';
-  nextTick(() => {
-    replyEditorRef.value?.focus();
-  });
-};
-
-const cancelReply = () => {
-  replyingToCommentId.value = null;
-  replyingToThread.value = null;
-  replyText.value = '';
-  replyErrors.value.delete(replyingToCommentId.value ?? 0);
-};
-
-const submitReply = async () => {
-  if (!replyText.value.trim() || !replyingToCommentId.value) return;
-  if (!replyingToThread.value) {
-    console.error('No thread ID for reply');
-    return;
-  }
-
-  try {
-    if (props.onReplyToThread) {
-      await props.onReplyToThread(replyingToThread.value, commentingLine.value ?? 0, replyText.value);
-      replyText.value = '';
-      replyingToCommentId.value = null;
-      replyingToThread.value = null;
-    }
-  } catch (error) {
-    console.error('Failed to add reply:', error);
-    if (replyingToCommentId.value !== null) {
-      replyErrors.value.set(replyingToCommentId.value, 'Failed to add reply');
-    }
-  }
-};
-
-const startEditComment = (commentId: number, body: string) => {
-  editingCommentId.value = commentId;
-  editText.value = body;
-  nextTick(() => {
-    editEditorRef.value?.focus();
-  });
-};
-
-const cancelEdit = () => {
-  editingCommentId.value = null;
-  editText.value = '';
-};
-
-const submitEdit = async () => {
-  if (!editText.value.trim() || editingCommentId.value === null) return;
-
-  try {
-    if (props.onEditComment) {
-      await props.onEditComment(editingCommentId.value, editText.value);
-      editingCommentId.value = null;
-      editText.value = '';
-    }
-  } catch (error) {
-    console.error('Failed to edit comment:', error);
-  }
-};
-
-const handleDeleteComment = async (commentId: number) => {
-  if (!confirm('Are you sure you want to delete this comment?')) return;
-
-  try {
-    if (props.onDeleteComment) {
-      deletingCommentId.value = commentId;
-      await props.onDeleteComment(commentId);
-      deletingCommentId.value = null;
-    }
-  } catch (error) {
-    console.error('Failed to delete comment:', error);
-    deletingCommentId.value = null;
-  }
-};
-
-const isOwnComment = (comment: Comment): boolean => {
-  return props.currentUsername !== undefined && 
-         comment.author.toLowerCase() === props.currentUsername.toLowerCase();
-};
-
-  const handleResolveThread = async (threadId: number | null, resolved: boolean) => {
-  if (!threadId || !props.onResolveThread) return;
-
-  const threadInfo = getThreadInfo(threadId);
-  if (!threadInfo) return;
-
-  const threadNodeId = threadInfo.gitHubId;
-  resolvingThreads.value.add(threadNodeId);
-
-  try {
-    await props.onResolveThread(threadNodeId, resolved);
-  } catch (error) {
-    console.error('Failed to resolve thread:', error);
-  } finally {
-    resolvingThreads.value.delete(threadNodeId);
-  }
-};
-
-const toggleThreadExpanded = (threadId: number | null) => {
-  if (!threadId) return;
-  const threadInfo = getThreadInfo(threadId);
-  if (!threadInfo) return;
-
-  const threadNodeId = threadInfo.gitHubId;
-  if (expandedThreads.value.has(threadNodeId)) {
-    expandedThreads.value.delete(threadNodeId);
-  } else {
-    expandedThreads.value.add(threadNodeId);
-  }
 };
 
 const handleExpand = async (position: ExpandPosition, hunkIndex?: number) => {
@@ -1446,7 +568,11 @@ const getGapInfo = (hunkIndex: number) => {
   return getGapBetweenHunks(hunks.value, hunkIndex);
 };
 
-
+defineExpose({
+  highlightLine,
+  expanded,
+  scrollToThread,
+});
 </script>
 
 <style scoped>
