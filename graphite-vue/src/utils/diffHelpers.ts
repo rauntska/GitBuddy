@@ -368,6 +368,9 @@ export function calculateExpandRange(
 
   if (position === 'before') {
     const firstHunk = hunks[0];
+    if (!firstHunk) {
+      return { oldStart: null, oldEnd: null, newStart: null, newEnd: null };
+    }
     const oldStart = Math.max(1, firstHunk.oldStart - lineCount);
     const oldEnd = firstHunk.oldStart - 1;
     const newStart = Math.max(1, firstHunk.newStart - lineCount);
@@ -383,6 +386,9 @@ export function calculateExpandRange(
 
   if (position === 'after') {
     const lastHunk = hunks[hunks.length - 1];
+    if (!lastHunk) {
+      return { oldStart: null, oldEnd: null, newStart: null, newEnd: null };
+    }
     const oldEnd = lastHunk.oldStart + lastHunk.oldLines - 1 + lineCount;
     const oldStart = lastHunk.oldStart + lastHunk.oldLines;
     const newEnd = lastHunk.newStart + lastHunk.newLines - 1 + lineCount;
@@ -399,6 +405,9 @@ export function calculateExpandRange(
   if (position === 'between' && hunkIndex >= 0 && hunkIndex < hunks.length - 1) {
     const currentHunk = hunks[hunkIndex];
     const nextHunk = hunks[hunkIndex + 1];
+    if (!currentHunk || !nextHunk) {
+      return { oldStart: null, oldEnd: null, newStart: null, newEnd: null };
+    }
     
     const oldStart = currentHunk.oldStart + currentHunk.oldLines;
     const oldEnd = nextHunk.oldStart - 1;
@@ -423,6 +432,9 @@ export function getGapBetweenHunks(hunks: DiffHunk[], hunkIndex: number): GapInf
 
   const currentHunk = hunks[hunkIndex];
   const nextHunk = hunks[hunkIndex + 1];
+  if (!currentHunk || !nextHunk) {
+    return null;
+  }
 
   const oldStart = currentHunk.oldStart + currentHunk.oldLines;
   const oldEnd = nextHunk.oldStart - 1;
@@ -495,29 +507,34 @@ export function mergeExpandedLines(
 
   if (position === 'before' && newHunks.length > 0) {
     const firstHunk = newHunks[0];
-    firstHunk.lines = [...expandedLines, ...firstHunk.lines];
-    if (oldLines.length > 0) {
-      firstHunk.oldStart = oldLines[0].lineNumber;
+    if (firstHunk) {
+      firstHunk.lines = [...expandedLines, ...firstHunk.lines];
+      if (oldLines.length > 0 && oldLines[0]) {
+        firstHunk.oldStart = oldLines[0].lineNumber;
+      }
+      if (newLines.length > 0 && newLines[0]) {
+        firstHunk.newStart = newLines[0].lineNumber;
+      }
+      firstHunk.oldLines += oldLines.length;
+      firstHunk.newLines += newLines.length;
     }
-    if (newLines.length > 0) {
-      firstHunk.newStart = newLines[0].lineNumber;
-    }
-    firstHunk.oldLines += oldLines.length;
-    firstHunk.newLines += newLines.length;
   } else if (position === 'after' && newHunks.length > 0) {
     const lastHunk = newHunks[newHunks.length - 1];
-    lastHunk.lines = [...lastHunk.lines, ...expandedLines];
-    lastHunk.oldLines += oldLines.length;
-    lastHunk.newLines += newLines.length;
+    if (lastHunk) {
+      lastHunk.lines = [...lastHunk.lines, ...expandedLines];
+      lastHunk.oldLines += oldLines.length;
+      lastHunk.newLines += newLines.length;
+    }
   } else if (position === 'between' && hunkIndex >= 0 && hunkIndex < newHunks.length - 1) {
     const currentHunk = newHunks[hunkIndex];
     const nextHunk = newHunks[hunkIndex + 1];
-    
-    currentHunk.lines = [...currentHunk.lines, ...expandedLines, ...nextHunk.lines];
-    currentHunk.oldLines = currentHunk.oldLines + oldLines.length + nextHunk.oldLines;
-    currentHunk.newLines = currentHunk.newLines + newLines.length + nextHunk.newLines;
-    
-    newHunks.splice(hunkIndex + 1, 1);
+    if (currentHunk && nextHunk) {
+      currentHunk.lines = [...currentHunk.lines, ...expandedLines, ...nextHunk.lines];
+      currentHunk.oldLines = currentHunk.oldLines + oldLines.length + nextHunk.oldLines;
+      currentHunk.newLines = currentHunk.newLines + newLines.length + nextHunk.newLines;
+      
+      newHunks.splice(hunkIndex + 1, 1);
+    }
   }
 
   return newHunks;

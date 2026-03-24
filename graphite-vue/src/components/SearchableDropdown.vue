@@ -189,8 +189,11 @@ const handleKeydown = (e: KeyboardEvent) => {
       break;
     case 'Enter':
       e.preventDefault();
-      if (filteredItems.value[selectedIndex.value]) {
-        selectItem(filteredItems.value[selectedIndex.value]);
+      {
+        const selectedItem = filteredItems.value[selectedIndex.value];
+        if (selectedItem) {
+          selectItem(selectedItem);
+        }
       }
       break;
     case 'Escape':

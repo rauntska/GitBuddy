@@ -6,7 +6,6 @@
       class="cursor-pointer relative"
     >
       <div 
-        ref="container" 
         class="prose prose-invert prose-sm max-w-none text-sm text-slate-300 leading-relaxed markdown-content min-h-[60px]"
         :class="{ 'max-h-96 overflow-y-auto': !expanded }"
       >
@@ -171,7 +170,6 @@ const emit = defineEmits<{
   save: [content: string];
 }>();
 
-const container = ref<HTMLDivElement | null>(null);
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
 const isEditing = ref(false);
 const editContent = ref('');

@@ -552,8 +552,8 @@
                   :on-delete-pending-comment="handleDeletePendingComment"
                   :on-reply-to-thread="(threadId: string, line: number, body: string) => handleReplyToThread(threadId, line, body)"
                   :on-resolve-thread="(threadId: string, resolved: boolean) => handleResolveThread(threadId, resolved)"
-                  :on-edit-comment="editComment"
-                  :on-delete-comment="deleteComment"
+                  :on-edit-comment="handleEditComment"
+                  :on-delete-comment="handleDeleteComment"
                   :on-toggle-viewed="handleToggleViewed"
                   :initial-expanded="!isFileViewed(file.path!)"
                   :pr-id="prDetail.id"
@@ -763,14 +763,12 @@
   import GeneralComments from '../components/GeneralComments.vue';
   import StatusBadge from '../components/StatusBadge.vue';
   import Breadcrumb from '../components/Breadcrumb.vue';
-  import DescriptionRenderer from '../components/DescriptionRenderer.vue';
  import CIBadge from '../components/CIBadge.vue';
  import EditableDescription from '../components/EditableDescription.vue';
  import ReviewerManager from '../components/ReviewerManager.vue';
  import ReviewTimeline from '../components/ReviewTimeline.vue';
- import type { Comment, CheckRun } from '../types';
- import { CheckIcon, ChatBubbleLeftIcon, ArrowPathIcon } from '@heroicons/vue/24/outline';
- import { useAuthStore } from '../stores/auth';
+  import type { Comment, CheckRun } from '../types';
+  import { useAuthStore } from '../stores/auth';
 
  const authStore = useAuthStore();
  const signalR = useSignalR();
@@ -785,7 +783,6 @@ const {
   error,
   commentsPanel,
   fetchPRDetail,
-  addComment,
   addPendingReviewComment,
   deletePendingReviewComment,
   addReply,
@@ -1431,27 +1428,6 @@ const handleToggleViewed = async (filePath: string, viewed: boolean) => {
   await saveViewedFiles(filePath, viewed);
 };
 
-const getReviewStatusIcon = (state: string) => {
-  if (state === 'Approved') return CheckIcon;
-  if (state === 'Commented') return ChatBubbleLeftIcon;
-  if (state === 'ChangesRequested') return ArrowPathIcon;
-  return null;
-};
-
-const getReviewStatusColor = (state: string): string => {
-  if (state === 'Approved') return 'text-emerald-500';
-  if (state === 'Commented') return 'text-amber-500';
-  if (state === 'ChangesRequested') return 'text-rose-500';
-  return 'text-gray-500';
-};
-
-const getReviewStatusLabel = (state: string): string => {
-  if (state === 'Approved') return 'Accepted';
-  if (state === 'Commented') return 'Commented';
-  if (state === 'ChangesRequested') return 'Requested Changes';
-  return state;
-};
-
 const checksStatusLabel = computed(() => {
   if (!prDetail.value?.checksStatus) return 'No checks';
   switch (prDetail.value.checksStatus) {
@@ -1508,6 +1484,14 @@ const handleTitleKeydown = (event: KeyboardEvent) => {
 
 const handleDescriptionSave = async (body: string) => {
   await updatePR(props.id, { body });
+};
+
+const handleEditComment = async (commentId: number, body: string): Promise<void> => {
+  await editComment(commentId, body);
+};
+
+const handleDeleteComment = async (commentId: number): Promise<void> => {
+  await deleteComment(commentId);
 };
 
 const getCheckStatusFromCheckRun = (check: CheckRun): 'SUCCESS' | 'FAILURE' | 'PENDING' | 'NEUTRAL' => {
