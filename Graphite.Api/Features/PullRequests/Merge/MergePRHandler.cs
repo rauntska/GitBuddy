@@ -1,7 +1,6 @@
 using Graphite.Api.Services;
 using Graphite.Domain.Data;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 
 namespace Graphite.Api.Features.PullRequests.Merge;
 

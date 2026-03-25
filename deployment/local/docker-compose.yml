@@ -1,3 +1,4 @@
+name: git-buddy
 services:
   api:
     build:
@@ -35,7 +36,7 @@ services:
     container_name: graphite-frontend
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "8001:80"
     depends_on:
       api:
         condition: service_healthy
