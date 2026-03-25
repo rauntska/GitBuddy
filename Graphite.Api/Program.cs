@@ -103,6 +103,7 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddSignalR();
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
@@ -119,6 +120,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<PRHub>("/hubs/pr");
+app.MapHealthChecks("/api/health");
 
 var webhookSecret = builder.Configuration["GitHub:WebhookSecret"];
 app.MapGitHubWebhooks(path: "/api/webhooks/github", secret: webhookSecret);
