@@ -1,3 +1,5 @@
+using Graphite.Domain.Classifier;
+
 namespace Graphite.Api.Services;
 
 public interface IPullRequestStatusService
@@ -9,33 +11,33 @@ public class PullRequestStatusService : IPullRequestStatusService
 {
     public string DeterminePrStatus(string currentStatus, bool isDraft, bool isMergeReady, List<GitHubReviewData> reviews)
     {
-        if(currentStatus is "Closed" or "Merged")
+        if(currentStatus is PrStatus.Closed or PrStatus.Merged)
             return currentStatus;
         
         if (isDraft)
-            return "Draft";
+            return PrStatus.Draft;
 
         if (isMergeReady)
-            return "ReadyToMerge";
+            return PrStatus.ReadyToMerge;
 
         var latestReviews = reviews
             .GroupBy(r => r.Reviewer)
             .Select(g => g.OrderByDescending(r => r.SubmittedAt).First())
             .ToList();
 
-        var hasApproved = latestReviews.Any(r => r.State == "Approved");
-        var hasChangesRequested = latestReviews.Any(r => r.State == "ChangesRequested");
+        var hasApproved = latestReviews.Any(r => r.State == PrStatus.Approved);
+        var hasChangesRequested = latestReviews.Any(r => r.State == PrStatus.ChangesRequested);
         var hasComments = latestReviews.Any(r => r.State == "Commented");
 
         if (hasApproved && !hasChangesRequested)
-            return "Approved";
+            return PrStatus.Approved;
 
         if (hasChangesRequested)
-            return "ChangesRequested";
+            return PrStatus.ChangesRequested;
 
         if (hasComments)
-            return "Reviewed";
+            return PrStatus.Reviewed;
 
-        return "AwaitingReview";
+        return PrStatus.AwaitingReview;
     }
 }
