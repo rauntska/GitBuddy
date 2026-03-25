@@ -60,9 +60,9 @@
           </div>
           <div>
             <div class="text-sm text-slate-200">{{ reviewer.username }}</div>
-            <div v-if="reviewer.reviewState" class="text-xs" :class="getStateColor(reviewer.reviewState)">
-              {{ getStateLabel(reviewer.reviewState) }}
-              <span v-if="reviewer.reviewedAt" class="text-slate-500">
+            <div v-if="reviewer.reviewState" class="text-xs font-medium px-1.5 py-0.5 rounded">
+              <span :class="getStateColor(reviewer.reviewState)">{{ getStateLabel(reviewer.reviewState) }}</span>
+              <span v-if="reviewer.reviewedAt" class="text-slate-500 ml-1">
                 {{ formatDate(reviewer.reviewedAt) }}
               </span>
             </div>
@@ -72,21 +72,6 @@
           </div>
         </div>
         <div class="flex items-center gap-2">
-          <span
-            v-if="reviewer.reviewState === 'APPROVED'"
-            class="w-2 h-2 rounded-full bg-green-500"
-            title="Approved"
-          />
-          <span
-            v-else-if="reviewer.reviewState === 'CHANGES_REQUESTED'"
-            class="w-2 h-2 rounded-full bg-orange-500"
-            title="Changes Requested"
-          />
-          <span
-            v-else-if="reviewer.reviewState === 'COMMENTED'"
-            class="w-2 h-2 rounded-full bg-blue-500"
-            title="Commented"
-          />
           <button
             v-if="reviewer.isRequested"
             @click="removeReviewer(reviewer.username)"
@@ -153,18 +138,18 @@ const summary = computed(() => {
 
 const getStateColor = (state: string): string => {
   const colors: Record<string, string> = {
-    APPROVED: 'text-green-400',
-    CHANGES_REQUESTED: 'text-orange-400',
-    COMMENTED: 'text-blue-400',
+    Approved: 'text-emerald-400',
+    ChangesRequested: 'text-amber-400',
+    Commented: 'text-sky-400',
   };
   return colors[state] || 'text-slate-400';
 };
 
 const getStateLabel = (state: string): string => {
   const labels: Record<string, string> = {
-    APPROVED: 'Approved',
-    CHANGES_REQUESTED: 'Changes requested',
-    COMMENTED: 'Reviewed',
+    Approved: 'Approved',
+    ChangesRequested: 'Changes requested',
+    Commented: 'Reviewed',
   };
   return labels[state] || state;
 };
