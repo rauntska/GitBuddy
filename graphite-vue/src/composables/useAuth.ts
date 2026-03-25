@@ -1,6 +1,7 @@
 import { ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import { API_BASE_URL } from '../utils/api';
 
 export function useAuth() {
   const authStore = useAuthStore();
@@ -11,8 +12,8 @@ export function useAuth() {
 
   const login = (inviteToken?: string) => {
     isLoading.value = true;
-    const baseUrl = 'http://localhost:5247/api/auth/github';
-    window.location.href = inviteToken ? `${baseUrl}?invite=${inviteToken}` : baseUrl;
+    const loginUrl = `${API_BASE_URL}/auth/github`;
+    window.location.href = inviteToken ? `${loginUrl}?invite=${inviteToken}` : loginUrl;
   };
 
   const handleCallback = async () => {

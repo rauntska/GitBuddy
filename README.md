@@ -128,9 +128,40 @@ cd graphite-vue
 npm run build
 ```
 
+## Docker
+
+### Full Stack (All services in Docker)
+
+```bash
+cd deployment/local
+docker-compose up
+```
+
+Access the app at `http://localhost` - nginx routes:
+- `/api/*` and `/hubs/*` → Backend API
+- `/*` → Frontend static files
+
+### Local Development (API on host, nginx+frontend in Docker)
+
+Run the API locally with nginx+frontend in Docker:
+
+```bash
+# Terminal 1 - Run API on host
+cd Graphite.Api
+dotnet run
+
+# Terminal 2 - Build frontend and start nginx via Docker
+cd graphite-vue
+npm run build
+cd ..
+docker-compose -f docker-compose.local.yml up
+```
+
+Access the app at `http://localhost`
+
 ## Development
 
-### Run both together
+### Run both together (Development mode)
 
 In separate terminals:
 ```bash
@@ -142,6 +173,8 @@ dotnet run
 cd graphite-vue
 npm run dev
 ```
+
+The Vite dev server proxies `/api` requests to the backend automatically.
 
 ### Database
 The SQLite database (`graphite.db`) is created automatically on first run. Migrations are located in `Graphite.Api/Migrations/`.

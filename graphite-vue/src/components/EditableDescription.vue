@@ -195,8 +195,9 @@ const processImages = async () => {
   loading.value = true;
 
   try {
+    console.log("here")
     const envUrl = import.meta.env.VITE_API_BASE_URL;
-    const apiBaseUrl = typeof envUrl === 'string' ? envUrl : 'http://localhost:5247/api';
+    const apiBaseUrl = typeof envUrl === 'string' ? envUrl : 'http://localhost:5248/api';
     const proxyUrl = `${apiBaseUrl}/images/proxy`;
 
     const html = content.replace(/\r\n/g, '\n');
