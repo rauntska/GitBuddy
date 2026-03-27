@@ -188,8 +188,8 @@ public class WebhookService(
             Additions = prData.Additions,
             Deletions = prData.Deletions,
             ChangedFiles = prData.ChangedFiles,
-            CreatedAt = prData.CreatedAt.DateTime,
-            UpdatedAt = prData.UpdatedAt.DateTime,
+            CreatedAt = prData.CreatedAt.UtcDateTime,
+            UpdatedAt = prData.UpdatedAt.UtcDateTime,
             LastSyncedAt = DateTime.UtcNow,
             Description = prData.Body ?? string.Empty,
             SourceBranch = prData.Head.Ref,
@@ -332,7 +332,7 @@ public class WebhookService(
         existingPr.Additions = prData.Additions;
         existingPr.Deletions = prData.Deletions;
         existingPr.ChangedFiles = prData.ChangedFiles;
-        existingPr.UpdatedAt = prData.UpdatedAt.DateTime;
+        existingPr.UpdatedAt = prData.UpdatedAt.UtcDateTime;
         existingPr.LastSyncedAt = DateTime.UtcNow;
         existingPr.Description = prData.Body ?? string.Empty;
         existingPr.SourceBranch = prData.Head.Ref;
@@ -469,8 +469,8 @@ public class WebhookService(
             commentData.User.Login,
             commentData.User.AvatarUrl,
             commentData.Body,
-            commentData.CreatedAt.DateTime,
-            commentData.UpdatedAt.DateTime,
+            commentData.CreatedAt.UtcDateTime,
+            commentData.UpdatedAt.UtcDateTime,
             null,
             null,
             false
@@ -488,7 +488,7 @@ public class WebhookService(
         }
 
         existingComment.Body = commentData.Body;
-        existingComment.UpdatedAt = commentData.UpdatedAt.DateTime;
+        existingComment.UpdatedAt = commentData.UpdatedAt.UtcDateTime;
 
         await context.SaveChangesAsync();
         logger.LogInformation("Updated comment #{CommentId}", commentData.Id);
@@ -520,8 +520,8 @@ public class WebhookService(
             Path = null,
             Line = null,
             IsOutdated = false,
-            CreatedAt = commentData.CreatedAt.DateTime,
-            UpdatedAt = commentData.UpdatedAt.DateTime
+            CreatedAt = commentData.CreatedAt.UtcDateTime,
+            UpdatedAt = commentData.UpdatedAt.UtcDateTime
         };
     }
 
@@ -598,8 +598,8 @@ public class WebhookService(
             commentData.User.Login,
             commentData.User.AvatarUrl,
             commentData.Body,
-            commentData.CreatedAt.DateTime,
-            commentData.UpdatedAt.DateTime,
+            commentData.CreatedAt.UtcDateTime,
+            commentData.UpdatedAt.UtcDateTime,
             commentData.Path,
             commentData.Line,
             false
@@ -617,7 +617,7 @@ public class WebhookService(
         }
 
         existingComment.Body = commentData.Body;
-        existingComment.UpdatedAt = commentData.UpdatedAt.DateTime;
+        existingComment.UpdatedAt = commentData.UpdatedAt.UtcDateTime;
 
         await context.SaveChangesAsync();
         logger.LogInformation("Updated review comment #{CommentId}", commentData.Id);
@@ -635,8 +635,8 @@ public class WebhookService(
             Path = commentData.Path,
             Line = commentData.Line,
             IsOutdated = false,
-            CreatedAt = commentData.CreatedAt.DateTime,
-            UpdatedAt = commentData.UpdatedAt.DateTime
+            CreatedAt = commentData.CreatedAt.UtcDateTime,
+            UpdatedAt = commentData.UpdatedAt.UtcDateTime
         };
     }
 
