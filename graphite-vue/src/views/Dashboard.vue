@@ -39,6 +39,55 @@
         </button>
       </div>
 
+      <!-- PAT Warning Banner -->
+      <div
+        v-if="authStore.isAuthenticated && showPATWarning"
+        class="mb-6 p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm"
+      >
+        <div class="flex items-start gap-3">
+          <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <div class="flex-1">
+            <div class="font-medium mb-1">Personal Access Token not configured</div>
+            <p class="text-xs text-amber-400/80 mb-2">
+              Some features require a PAT: submitting reviews, posting comments, marking files as viewed, and merging PRs.
+            </p>
+            <p class="text-xs text-amber-400/80 mb-3">
+              Required permissions: <code class="px-1 py-0.5 bg-amber-500/20 rounded text-amber-300">repo</code> and <code class="px-1 py-0.5 bg-amber-500/20 rounded text-amber-300">read:org</code>
+            </p>
+            <div class="flex gap-3">
+              <a
+                href="https://github.com/settings/tokens/new?description=Graphite%20PR%20Dashboard&scopes=repo,read:org"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center gap-1 text-xs text-amber-300 hover:text-amber-200 underline"
+              >
+                Create token on GitHub
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+              <router-link
+                to="/settings"
+                class="inline-flex items-center gap-1 text-xs text-amber-300 hover:text-amber-200 underline"
+              >
+                Go to Settings
+              </router-link>
+            </div>
+          </div>
+          <button
+            @click="dismissPATWarning"
+            class="p-1 rounded hover:bg-amber-500/20 text-amber-400 hover:text-amber-300 transition-colors"
+            title="Dismiss for this session"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
       <!-- Authenticated Content -->
       <template v-if="authStore.isAuthenticated">
         <!-- Connection Status + Stats Summary (hide during initial load) -->
@@ -171,9 +220,10 @@
 </template>
 
 <script setup lang="ts">
- import { ref, onMounted, onUnmounted, computed } from 'vue';
- import { usePullRequests } from '../composables/usePullRequests';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
+  import { usePullRequests } from '../composables/usePullRequests';
   import { useUserPreferences } from '../composables/useUserPreferences';
+  import { useUserSettings } from '../composables/useUserSettings';
   import { useFaviconBadge } from '../composables/useFaviconBadge';
   import { apiService } from '../services/api';
   import { useAuthStore } from '../stores/auth';
@@ -184,6 +234,7 @@
 
   const authStore = useAuthStore();
   const { preferences, loadPreferences, setListViewMode } = useUserPreferences();
+  const { hasPersonalAccessToken, fetchUserSettings } = useUserSettings();
   const { initFavicon, updateBadge } = useFaviconBadge();
 
    const {
@@ -203,10 +254,19 @@
 
 const expandedGroups = ref<Record<string, boolean>>({});
 const hasAttemptedLoad = ref(false);
+const patWarningDismissed = ref(false);
 
 const isCompactMode = computed(() => preferences.value.listViewMode === 'compact');
 
 const hasPRData = computed(() => Object.keys(pullRequests.value).length > 0);
+
+const showPATWarning = computed(() => {
+  return hasPersonalAccessToken.value === false && !patWarningDismissed.value;
+});
+
+const dismissPATWarning = () => {
+  patWarningDismissed.value = true;
+};
 
 const toggleCompactMode = async () => {
   const newMode = isCompactMode.value ? 'normal' : 'compact';
@@ -256,6 +316,7 @@ onMounted(async () => {
   if (authStore.isAuthenticated) {
     hasAttemptedLoad.value = true;
     await loadPreferences();
+    await fetchUserSettings();
     await fetchPullRequests();
     await fetchUnreadCount();
     loadMergedPRs(true);
