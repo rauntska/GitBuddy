@@ -1,0 +1,11 @@
+name: git-buddy-local
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: graphite-local-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./deployment/local/nginx.local-docker.conf:/etc/nginx/nginx.conf:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
