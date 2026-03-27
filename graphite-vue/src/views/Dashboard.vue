@@ -307,8 +307,8 @@ const toggleGroup = (status: string) => {
 };
 
 const handleRetry = () => {
-  fetchPullRequests();
-};
+   fetchPullRequests();
+  };
 
 onMounted(async () => {
   initFavicon();

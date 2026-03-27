@@ -258,3 +258,53 @@ public record PotentialReviewerDto(
     string? Avatar,
     string Type
 );
+
+public record CreatePullRequestRequest(
+    string Owner,
+    string Repository,
+    string Title,
+    string? Body,
+    string Head,
+    string Base,
+    bool Draft
+);
+
+public record RepositoryDto(
+    long Id,
+    string Owner,
+    string Name,
+    string FullName,
+    string? Description,
+    bool Private,
+    string? DefaultBranch,
+    string Url
+);
+
+public record BranchDto(
+    string Name,
+    string Sha,
+    bool Protected
+);
+
+public record BranchComparisonDto(
+    string Status,
+    int AheadBy,
+    int BehindBy,
+    int TotalCommits,
+    List<CommitDto> Commits,
+    List<FileDiffDto> Files
+);
+
+public record CommitDto(
+    string Sha,
+    string Message,
+    string Author,
+    DateTime AuthoredAt
+);
+
+public record CreatePullRequestResult(
+    bool Success,
+    string Message,
+    PRDetailDto? PullRequest,
+    string? Error
+);

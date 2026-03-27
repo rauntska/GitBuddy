@@ -6,11 +6,12 @@ import LoginButton from './components/LoginButton.vue';
 import UserMenu from './components/UserMenu.vue';
 import SettingsModal from './views/SettingsModal.vue';
 import MainLayout from './components/layout/MainLayout.vue';
+import CreatePRModal from './components/create-pr-modal.vue';
 import { usePullRequests } from './composables/usePullRequests';
 
 const authStore = useAuthStore();
 const route = useRoute();
-const { loading, lastRefresh, refreshPullRequests } = usePullRequests();
+const { loading, lastRefresh, refreshPullRequests, fetchPullRequests } = usePullRequests();
 
 onMounted(() => {
   if (authStore.isAuthenticated) {
@@ -24,6 +25,8 @@ const shouldShowDashboardControls = computed(() =>
 );
 
 const showSettings = ref(false);
+const showCreatePRModal = ref(false);
+
 const formatRelativeTime = (dateString: string): string => {
   const date = new Date(dateString);
   const now = new Date();
@@ -40,6 +43,10 @@ const formatRelativeTime = (dateString: string): string => {
 
 const handleSettingsSaved = () => {
   showSettings.value = false;
+};
+
+const handlePRCreated = () => {
+  fetchPullRequests();
 };
 </script>
 
@@ -68,6 +75,16 @@ const handleSettingsSaved = () => {
               <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
               Updated {{ formatRelativeTime(lastRefresh) }}
             </span>
+            <button
+              v-if="shouldShowDashboardControls"
+              @click="showCreatePRModal = true"
+              class="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-500 text-white text-sm font-medium transition-colors flex items-center gap-2"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              Create PR
+            </button>
             <button
               v-if="shouldShowDashboardControls"
               @click="refreshPullRequests"
@@ -122,5 +139,10 @@ const handleSettingsSaved = () => {
     </main>
 
     <SettingsModal v-if="showSettings" @close="showSettings = false" @saved="handleSettingsSaved" />
+    <CreatePRModal
+      :is-open="showCreatePRModal"
+      @close="showCreatePRModal = false"
+      @created="handlePRCreated"
+    />
   </MainLayout>
 </template>

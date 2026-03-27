@@ -947,4 +947,186 @@ public class GitHubService(
 
         return new GitHubCollaboratorsAndTeamsData(users, teams);
     }
+
+    public async Task<List<GitHubRepositoryData>> GetAccessibleRepositoriesAsync(string userAccessToken)
+    {
+        var restClient = new GitHubClient(new Octokit.ProductHeaderValue("Graphite-PR-Dashboard"))
+        {
+            Credentials = new Credentials(userAccessToken)
+        };
+
+        try
+        {
+            var repos = await restClient.Repository.GetAllForCurrent(new RepositoryRequest
+            {
+                Type = RepositoryType.All,
+                Sort = RepositorySort.Pushed,
+                Direction = SortDirection.Descending
+            });
+
+            return repos.Select(r => new GitHubRepositoryData(
+                r.Id,
+                r.Owner.Login,
+                r.Name,
+                r.FullName,
+                r.Description,
+                r.Private,
+                r.DefaultBranch,
+                r.HtmlUrl
+            )).ToList();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error fetching accessible repositories");
+            return [];
+        }
+    }
+
+    public async Task<List<GitHubRepositoryData>> GetOrganizationRepositoriesAsync(string organization, string accessToken)
+    {
+        var restClient = new GitHubClient(new Octokit.ProductHeaderValue("Graphite-PR-Dashboard"))
+        {
+            Credentials = new Credentials(accessToken)
+        };
+
+        try
+        {
+            var repos = await restClient.Repository.GetAllForOrg(organization);
+
+            return repos.Select(r => new GitHubRepositoryData(
+                r.Id,
+                r.Owner.Login,
+                r.Name,
+                r.FullName,
+                r.Description,
+                r.Private,
+                r.DefaultBranch,
+                r.HtmlUrl
+            )).ToList();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error fetching organization repositories for {Organization}", organization);
+            return new List<GitHubRepositoryData>();
+        }
+    }
+
+    public async Task<List<GitHubBranchData>> GetBranchesAsync(string owner, string repository, string userAccessToken)
+    {
+        var restClient = new GitHubClient(new Octokit.ProductHeaderValue("Graphite-PR-Dashboard"))
+        {
+            Credentials = new Credentials(userAccessToken)
+        };
+
+        try
+        {
+            var branches = await restClient.Repository.Branch.GetAll(owner, repository);
+            return branches.Select(b => new GitHubBranchData(
+                b.Name,
+                b.Commit.Sha,
+                b.Protected
+            )).ToList();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error fetching branches for {Owner}/{Repository}", owner, repository);
+            return new List<GitHubBranchData>();
+        }
+    }
+
+    public async Task<GitHubBranchComparisonData?> CompareBranchesAsync(string owner, string repository, string baseBranch, string headBranch, string userAccessToken)
+    {
+        var restClient = new GitHubClient(new Octokit.ProductHeaderValue("Graphite-PR-Dashboard"))
+        {
+            Credentials = new Credentials(userAccessToken)
+        };
+
+        try
+        {
+            var comparison = await restClient.Repository.Commit.Compare(owner, repository, baseBranch, headBranch);
+
+            var commits = comparison.Commits.Select(c => new GitHubCommitData(
+                c.Sha,
+                c.Commit.Message,
+                c.Author?.Login ?? c.Commit.Author?.Name ?? "Unknown",
+                c.Commit.Author?.Date.UtcDateTime ?? DateTime.UtcNow
+            )).ToList();
+
+            var files = comparison.Files?.Select(f => new GitHubFileDiffData(
+                f.Filename,
+                f.PreviousFileName,
+                f.Status,
+                f.Additions,
+                f.Deletions,
+                f.Changes,
+                f.Patch,
+                "UNVIEWED"
+            )).ToList() ?? new List<GitHubFileDiffData>();
+
+            return new GitHubBranchComparisonData(
+                comparison.Status.ToString(),
+                comparison.AheadBy,
+                comparison.BehindBy,
+                comparison.TotalCommits,
+                commits,
+                files
+            );
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error comparing branches {BaseBranch}...{HeadBranch} for {Owner}/{Repository}", 
+                baseBranch, headBranch, owner, repository);
+            return null;
+        }
+    }
+
+    public async Task<GitHubPRData> CreatePullRequestAsync(string owner, string repository, string title, string? body, string head, string @base, bool draft, string userAccessToken)
+    {
+        var restClient = new GitHubClient(new Octokit.ProductHeaderValue("Graphite-PR-Dashboard"))
+        {
+            Credentials = new Credentials(userAccessToken)
+        };
+
+        try
+        {
+            var newPR = new NewPullRequest(title, head, @base)
+            {
+                Body = body,
+                Draft = draft
+            };
+
+            var pr = await restClient.PullRequest.Create(owner, repository, newPR);
+
+            logger.LogInformation("Successfully created PR {Owner}/{Repository}#{PullRequestNumber}", owner, repository, pr.Number);
+
+            return new GitHubPRData(
+                pr.Number,
+                pr.Title,
+                repository,
+                pr.User.Login,
+                pr.User.AvatarUrl,
+                "AwaitingReview",
+                draft,
+                pr.HtmlUrl,
+                pr.Additions,
+                pr.Deletions,
+                pr.ChangedFiles,
+                pr.CreatedAt.UtcDateTime,
+                pr.UpdatedAt.UtcDateTime,
+                new List<GitHubReviewData>(),
+                new List<GitHubReviewThreadData>(),
+                pr.Body ?? string.Empty,
+                pr.Head.Ref,
+                pr.Base.Ref,
+                pr.MergeableState?.ToString(),
+                null,
+                new List<GitHubCheckRunData>()
+            );
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error creating PR for {Owner}/{Repository}", owner, repository);
+            throw;
+        }
+    }
 }

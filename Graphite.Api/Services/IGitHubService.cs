@@ -41,6 +41,11 @@ public interface IGitHubService
     Task RequestReviewersAsync(string organization, string repository, long pullRequestNumber, List<string> reviewers, string userAccessToken);
     Task RemoveReviewersAsync(string organization, string repository, long pullRequestNumber, string username, string userAccessToken);
     Task<GitHubCollaboratorsAndTeamsData> GetRepositoryCollaboratorsAndTeamsAsync(string organization, string repository, GitHubConfig config);
+    Task<List<GitHubRepositoryData>> GetAccessibleRepositoriesAsync(string userAccessToken);
+    Task<List<GitHubRepositoryData>> GetOrganizationRepositoriesAsync(string organization, string accessToken);
+    Task<List<GitHubBranchData>> GetBranchesAsync(string owner, string repository, string userAccessToken);
+    Task<GitHubBranchComparisonData?> CompareBranchesAsync(string owner, string repository, string baseBranch, string headBranch, string userAccessToken);
+    Task<GitHubPRData> CreatePullRequestAsync(string owner, string repository, string title, string? body, string head, string @base, bool draft, string userAccessToken);
 }
 
 public record GitHubRequestedReviewersData(
@@ -172,4 +177,37 @@ public record GitHubBranchProtectionData(
     int? RequiredApprovingReviewCount,
     bool RequiresStatusChecks,
     List<string> RequiredStatusChecks
+);
+
+public record GitHubRepositoryData(
+    long Id,
+    string Owner,
+    string Name,
+    string FullName,
+    string? Description,
+    bool Private,
+    string? DefaultBranch,
+    string Url
+);
+
+public record GitHubBranchData(
+    string Name,
+    string Sha,
+    bool Protected
+);
+
+public record GitHubBranchComparisonData(
+    string Status,
+    int AheadBy,
+    int BehindBy,
+    int TotalCommits,
+    List<GitHubCommitData> Commits,
+    List<GitHubFileDiffData> Files
+);
+
+public record GitHubCommitData(
+    string Sha,
+    string Message,
+    string Author,
+    DateTime AuthoredAt
 );

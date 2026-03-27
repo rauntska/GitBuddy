@@ -1,5 +1,5 @@
 import apiClient from '../utils/api';
-import type { GroupedPRs, PRStats, Settings, PRDetail, FileDiff, Comment, UserPreferences, PullRequest, CommentTemplate, CommentDraft, MentionableUser, ReactionGroup, User, UserRole, Invitation, AllowedUser, AdminStats, PendingReview, UserSettings, ReviewerStatus, ReviewTimeline, PotentialReviewer } from '../types';
+import type { GroupedPRs, PRStats, Settings, PRDetail, FileDiff, Comment, UserPreferences, PullRequest, CommentTemplate, CommentDraft, MentionableUser, ReactionGroup, User, UserRole, Invitation, AllowedUser, AdminStats, PendingReview, UserSettings, ReviewerStatus, ReviewTimeline, PotentialReviewer, Repository, Branch, BranchComparison, CreatePullRequestRequest, CreatePullRequestResult } from '../types';
 
 const api = apiClient;
 
@@ -403,6 +403,33 @@ export const apiService = {
 
   getPotentialReviewers: async (prId: number): Promise<PotentialReviewer[]> => {
     const response = await api.get<PotentialReviewer[]>(`/pullrequests/${prId}/potential-reviewers`);
+    return response.data;
+  },
+
+  getRepositories: async (): Promise<Repository[]> => {
+    const response = await api.get<Repository[]>('/repositories');
+    return response.data;
+  },
+
+  getOrganizationRepositories: async (): Promise<{ organization: string; repositories: Repository[] }> => {
+    const response = await api.get<{ organization: string; repositories: Repository[] }>('/repositories/organization');
+    return response.data;
+  },
+
+  getBranches: async (owner: string, repo: string): Promise<Branch[]> => {
+    const response = await api.get<Branch[]>(`/repositories/${owner}/${repo}/branches`);
+    return response.data;
+  },
+
+  compareBranches: async (owner: string, repo: string, baseBranch: string, headBranch: string): Promise<BranchComparison> => {
+    const response = await api.get<BranchComparison>(`/repositories/${owner}/${repo}/compare`, {
+      params: { baseBranch, headBranch }
+    });
+    return response.data;
+  },
+
+  createPullRequest: async (data: CreatePullRequestRequest): Promise<CreatePullRequestResult> => {
+    const response = await api.post<CreatePullRequestResult>('/pullrequests', data);
     return response.data;
   },
 };

@@ -3,6 +3,7 @@ using Graphite.Api.Extensions;
 using Graphite.Api.Features.PullRequests.AddComment;
 using Graphite.Api.Features.PullRequests.AddCommentReply;
 using Graphite.Api.Features.PullRequests.AddPendingReviewComment;
+using Graphite.Api.Features.PullRequests.CreatePullRequest;
 using Graphite.Api.Features.PullRequests.DeletePendingReview;
 using Graphite.Api.Features.PullRequests.DeletePendingReviewComment;
 using Graphite.Api.Features.PullRequests.GetById;
@@ -67,6 +68,30 @@ public class PullRequestsController(
         var result = await mediator.Send(new GetPullRequestByIdQuery(id, User));
         if (result == null)
             return NotFound(new { message = "Pull request not found" });
+        return Ok(result);
+    }
+
+    [HttpPost]
+    [Authorize]
+    public async Task<IActionResult> CreatePullRequest([FromBody] CreatePullRequestRequest request)
+    {
+        var result = await mediator.Send(new CreatePullRequestCommand(
+            request.Owner,
+            request.Repository,
+            request.Title,
+            request.Body,
+            request.Head,
+            request.Base,
+            request.Draft,
+            User));
+
+        if (!result.Success)
+        {
+            if (result.Error != null)
+                return StatusCode(500, new { message = result.Message, error = result.Error });
+            return BadRequest(new { message = result.Message });
+        }
+
         return Ok(result);
     }
 

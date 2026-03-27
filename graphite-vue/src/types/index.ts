@@ -360,3 +360,53 @@ export interface PotentialReviewer {
   avatar?: string;
   type: 'User' | 'Team';
 }
+
+export interface Repository {
+  id: number;
+  owner: string;
+  name: string;
+  fullName: string;
+  description?: string;
+  private: boolean;
+  defaultBranch?: string;
+  url: string;
+}
+
+export interface Branch {
+  name: string;
+  sha: string;
+  protected: boolean;
+}
+
+export interface BranchComparison {
+  status: string;
+  aheadBy: number;
+  behindBy: number;
+  totalCommits: number;
+  commits: Commit[];
+  files: FileDiff[];
+}
+
+export interface Commit {
+  sha: string;
+  message: string;
+  author: string;
+  authoredAt: string;
+}
+
+export interface CreatePullRequestRequest {
+  owner: string;
+  repository: string;
+  title: string;
+  body?: string;
+  head: string;
+  base: string;
+  draft: boolean;
+}
+
+export interface CreatePullRequestResult {
+  success: boolean;
+  message: string;
+  pullRequest?: PRDetail;
+  error?: string;
+}
