@@ -159,7 +159,7 @@ public class AuthController(
 
     private async Task<User> CreateGitHubUserAsync(GitHubUserDto githubUser, string accessToken, UserRole role, int? invitationId)
     {
-        return await userService.GetOrCreateGitHubUserAsync(githubUser, accessToken);
+        return await userService.GetOrCreateGitHubUserAsync(githubUser, accessToken, role);
     }
 
     [Authorize]

@@ -10,7 +10,7 @@ public interface IUserService
     Task<UserPreferencesDto> GetPreferencesAsync(int userId);
     Task<UserPreferencesDto> UpdatePreferencesAsync(int userId, UpdatePreferencesRequest request);
     Task<User> GetOrCreateDefaultUserAsync();
-    Task<User> GetOrCreateGitHubUserAsync(GitHubUserDto githubUser, string accessToken);
+    Task<User> GetOrCreateGitHubUserAsync(GitHubUserDto githubUser, string accessToken, UserRole? role = null);
     Task UpdateUserLastLoginAsync(int userId);
     Task<User?> GetCurrentUserAsync(System.Security.Claims.ClaimsPrincipal user);
     Task<IEnumerable<User>> GetAllUsersAsync();
@@ -126,7 +126,7 @@ public class UserService(AppDbContext context) : IUserService
         return user;
     }
 
-    public async Task<User> GetOrCreateGitHubUserAsync(GitHubUserDto githubUser, string accessToken)
+    public async Task<User> GetOrCreateGitHubUserAsync(GitHubUserDto githubUser, string accessToken, UserRole? role = null)
     {
         var user = await context.Users
             .Include(u => u.Preferences)
@@ -143,7 +143,8 @@ public class UserService(AppDbContext context) : IUserService
                 AvatarUrl = githubUser.AvatarUrl,
                 AccessToken = accessToken,
                 CreatedAt = DateTime.UtcNow,
-                LastLoginAt = DateTime.UtcNow
+                LastLoginAt = DateTime.UtcNow,
+                Role = role ?? UserRole.Developer
             };
             context.Users.Add(user);
 
