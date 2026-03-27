@@ -2,8 +2,7 @@
   <div class="editable-description group relative">
     <div 
       v-if="!isEditing" 
-      @click="startEditing"
-      class="cursor-pointer relative"
+      class="relative"
     >
       <div 
         class="prose prose-invert prose-sm max-w-none text-sm text-slate-300 leading-relaxed markdown-content min-h-[60px]"
@@ -16,7 +15,7 @@
           </svg>
         </div>
         <div v-else-if="processedHtml" v-html="processedHtml" />
-        <p v-else class="text-slate-500 italic">Click to add description...</p>
+        <p v-else class="text-slate-500 italic">No description added</p>
       </div>
       
       <div class="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
