@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: git-buddy-api
+  namespace: git-buddy
+  labels:
+    app: git-buddy-api
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: git-buddy-api
+  template:
+    metadata:
+      labels:
+        app: git-buddy-api
+    spec:
+      imagePullSecrets:
+        - name: ghcr-secret
+      containers:
+        - name: api
+          image: ghcr.io/rauntska/git-buddy-api:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          envFrom:
+            - configMapRef:
+                name: git-buddy-config
+            - secretRef:
+                name: git-buddy-secrets
+          volumeMounts:
+            - name: db-storage
+              mountPath: /app/data
+          resources:
+            requests:
+              memory: "150Mi"
+              cpu: "100m"
+            limits:
+              memory: "250Mi"
+              cpu: "150m"
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+      volumes:
+        - name: db-storage
+          persistentVolumeClaim:
+            claimName: git-buddy-db-pvc
