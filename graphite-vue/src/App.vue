@@ -58,7 +58,7 @@ const handleSettingsSaved = () => {
               <path stroke="#3b82f6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 13l2 2m0 0l2-2m-2 2V7" />
               <path stroke="#3b82f6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13l-2 2m0 0l-2-2m2 2V7" />
             </svg>
-            Code Buddy
+            Git Buddy
           </router-link>
           <div class="flex items-center gap-3">
             <span
