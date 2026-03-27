@@ -4,13 +4,15 @@ namespace Graphite.Api.Services;
 
 public interface IPullRequestStatusService
 {
-    string DeterminePrStatus(string currentStatus, bool isDraft, bool isMergeReady, List<GitHubReviewData> reviews);
+    string DeterminePrStatus(string currentStatus,bool isMerged, bool isDraft, bool isMergeReady, List<GitHubReviewData> reviews);
 }
 
 public class PullRequestStatusService : IPullRequestStatusService
 {
-    public string DeterminePrStatus(string currentStatus, bool isDraft, bool isMergeReady, List<GitHubReviewData> reviews)
+    public string DeterminePrStatus(string currentStatus,bool isMerged, bool isDraft, bool isMergeReady, List<GitHubReviewData> reviews)
     {
+        if (isMerged) return PrStatus.Merged;
+        
         if(currentStatus is PrStatus.Closed or PrStatus.Merged)
             return currentStatus;
         

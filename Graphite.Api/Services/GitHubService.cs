@@ -131,7 +131,7 @@ public class GitHubService(
     private async Task<GitHubPRData> CreatePullRequestDataAsync(string organization, string repoName, dynamic pr, GitHubConfig config)
     {
         var reviews = await GetReviewsAsync(organization, repoName, pr.Number, config);
-        var status = statusService.DeterminePrStatus("",pr.IsDraft, false, reviews);
+        var status = statusService.DeterminePrStatus("",false,pr.IsDraft, false, reviews);
         var reviewThreads = await GetReviewThreadsAsync(organization, repoName, pr.Number, config);
 
         var checkResult = await GetCheckStatusAsync(organization, repoName, pr.Number, config);

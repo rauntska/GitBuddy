@@ -134,7 +134,7 @@ public class WebhookService(
         var reviewThreads = await gitHubService.GetReviewThreadsAsync(organization, repo.Name, prData.Number, config);
         var comments = await gitHubService.GetCommentsAsync(organization, repo.Name, prData.Number, config);
 
-        var status = statusService.DeterminePrStatus("", prData.Draft, false, reviews);
+        var status = statusService.DeterminePrStatus("", prData.Merged ?? false, prData.Draft, false, reviews);
 
         var pullRequest = CreatePullRequestEntity(prData, repo, status);
         context.PullRequests.Add(pullRequest);
@@ -307,7 +307,7 @@ public class WebhookService(
             r.SubmittedAt
         )).ToList();
 
-        existingPr.Status = statusService.DeterminePrStatus(existingPr.Status, prData.Draft, existingPr.IsMergeReady, reviewData);
+        existingPr.Status = statusService.DeterminePrStatus(existingPr.Status, prData.Merged??false,prData.Draft, existingPr.IsMergeReady, reviewData);
 
         await context.SaveChangesAsync();
         logger.LogInformation("Updated PR #{GitHubId}", existingPr.GitHubId);
@@ -749,7 +749,8 @@ public class WebhookService(
                 r.SubmittedAt
             )).ToList();
 
-            existingPr.Status = statusService.DeterminePrStatus(existingPr.Status, existingPr.Draft, existingPr.IsMergeReady, reviewData);
+            existingPr.Status = statusService.DeterminePrStatus(existingPr.Status, existingPr.IsMerged,
+                existingPr.Draft, existingPr.IsMergeReady, reviewData);
             existingPr.UpdatedAt = DateTime.UtcNow;
             await context.SaveChangesAsync();
 
