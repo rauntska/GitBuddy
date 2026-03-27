@@ -19,6 +19,18 @@ spec:
     spec:
       imagePullSecrets:
         - name: ghcr-secret
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:18.3
+          command:
+            - sh
+            - -c
+            - |
+              until pg_isready -h postgres -p 5432 -U gitbuddy; do
+                echo "Waiting for PostgreSQL..."
+                sleep 2
+              done
+              echo "PostgreSQL is ready!"
       containers:
         - name: api
           image: ghcr.io/rauntska/git-buddy-api:latest
@@ -30,9 +42,12 @@ spec:
                 name: git-buddy-config
             - secretRef:
                 name: git-buddy-secrets
-          volumeMounts:
-            - name: db-storage
-              mountPath: /app/data
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: git-buddy-postgres-secret
+                  key: POSTGRES_PASSWORD
           resources:
             requests:
               memory: "150Mi"
@@ -56,7 +71,3 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
-      volumes:
-        - name: db-storage
-          persistentVolumeClaim:
-            claimName: git-buddy-db-pvc

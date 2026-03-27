@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: git-buddy-postgres
+  namespace: git-buddy
+  labels:
+    app: git-buddy-postgres
+spec:
+  serviceName: git-buddy-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: git-buddy-postgres
+  template:
+    metadata:
+      labels:
+        app: git-buddy-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:18.3
+          ports:
+            - containerPort: 5432
+          env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          envFrom:
+            - secretRef:
+                name: git-buddy-postgres-secret
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - gitbuddy
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - gitbuddy
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: git-buddy-postgres-pvc

@@ -9,7 +9,7 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
     public AppDbContext CreateDbContext(string[] args)
     {
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
-        optionsBuilder.UseSqlite("Data Source=app.db");
+        optionsBuilder.UseNpgsql("Host=localhost;Database=GitBuddy;Username=gitbuddy;Password=gitbuddy");
 
         return new AppDbContext(optionsBuilder.Options);
     }
