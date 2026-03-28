@@ -3,15 +3,8 @@ using Microsoft.AspNetCore.Mvc.Filters;
 
 namespace Graphite.Api.Filters;
 
-public class ApiExceptionFilterAttribute : ExceptionFilterAttribute
+public class ApiExceptionFilterAttribute(ILogger<ApiExceptionFilterAttribute> logger) : ExceptionFilterAttribute
 {
-    private readonly ILogger<ApiExceptionFilterAttribute> _logger;
-
-    public ApiExceptionFilterAttribute(ILogger<ApiExceptionFilterAttribute> logger)
-    {
-        _logger = logger;
-    }
-
     public override void OnException(ExceptionContext context)
     {
         var exception = context.Exception;
@@ -27,7 +20,7 @@ public class ApiExceptionFilterAttribute : ExceptionFilterAttribute
 
         if (statusCode == StatusCodes.Status500InternalServerError)
         {
-            _logger.LogError(exception, "Unhandled exception in {Action}", context.ActionDescriptor.DisplayName);
+            logger.LogError(exception, "Unhandled exception in {Action}", context.ActionDescriptor.DisplayName);
         }
 
         object response = statusCode == StatusCodes.Status500InternalServerError

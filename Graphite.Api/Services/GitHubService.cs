@@ -1,4 +1,5 @@
 using Graphite.Domain.Models;
+using System.Globalization;
 using Mono.TextTemplating;
 using Octokit;
 using Octokit.GraphQL;
@@ -572,8 +573,8 @@ public class GitHubService(
             jsonResponse.GetProperty("body").GetString() ?? string.Empty,
             user.GetProperty("login").GetString() ?? string.Empty,
             user.GetProperty("avatar_url").GetString() ?? string.Empty,
-            DateTime.Parse(jsonResponse.GetProperty("created_at").GetString() ?? string.Empty),
-            DateTime.Parse(jsonResponse.GetProperty("updated_at").GetString() ?? string.Empty),
+            DateTime.Parse(jsonResponse.GetProperty("created_at").GetString() ?? string.Empty, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal),
+            DateTime.Parse(jsonResponse.GetProperty("updated_at").GetString() ?? string.Empty, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal),
             reviewId
         );
     }

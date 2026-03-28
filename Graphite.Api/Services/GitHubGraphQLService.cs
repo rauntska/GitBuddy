@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using System.Globalization;
 
 namespace Graphite.Api.Services;
 
@@ -297,9 +298,9 @@ public class GitHubGraphQLService : IGitHubGraphQLService
                 null,
                 null,
                 false,
-                DateTime.Parse(commentData.GetProperty("createdAt").GetString() ?? string.Empty),
+                DateTime.Parse(commentData.GetProperty("createdAt").GetString() ?? string.Empty, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal),
                 commentData.GetProperty("updatedAt").GetString() != null 
-                    ? DateTime.Parse(commentData.GetProperty("updatedAt").GetString()!)
+                    ? DateTime.Parse(commentData.GetProperty("updatedAt").GetString()!, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal)
                     : null,
                 isPending,
                 pendingReviewId,
@@ -431,8 +432,8 @@ public class GitHubGraphQLService : IGitHubGraphQLService
                 threadData.GetProperty("path").GetString(),
                 threadData.GetProperty("line").GetInt32(),
                 false,
-                DateTime.Parse(commentData.GetProperty("createdAt").GetString() ?? string.Empty),
-                DateTime.Parse(commentData.GetProperty("updatedAt").GetString() ?? string.Empty)
+                DateTime.Parse(commentData.GetProperty("createdAt").GetString() ?? string.Empty, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal),
+                DateTime.Parse(commentData.GetProperty("updatedAt").GetString() ?? string.Empty, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal)
             );
         }
         catch (Exception ex)
@@ -920,9 +921,9 @@ public class GitHubGraphQLService : IGitHubGraphQLService
                         commentBody,
                         authorData.GetProperty("login").GetString() ?? string.Empty,
                         authorData.GetProperty("avatarUrl").GetString(),
-                        DateTime.Parse(comment.GetProperty("createdAt").GetString() ?? string.Empty),
+                        DateTime.Parse(comment.GetProperty("createdAt").GetString() ?? string.Empty, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal),
                         comment.TryGetProperty("updatedAt", out var updatedProp) && updatedProp.ValueKind != JsonValueKind.Null
-                            ? DateTime.Parse(updatedProp.GetString() ?? string.Empty)
+                            ? DateTime.Parse(updatedProp.GetString() ?? string.Empty, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal)
                             : null,
                         reviewId,
                         null
