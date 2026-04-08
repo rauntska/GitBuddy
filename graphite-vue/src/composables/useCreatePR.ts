@@ -2,6 +2,24 @@ import { ref, computed, watch } from 'vue';
 import { apiService } from '../services/api';
 import type { Repository, Branch, BranchComparison, CreatePullRequestResult, Settings } from '../types';
 
+const RECENT_REPOS_KEY = 'graphite:recent-repos';
+const MAX_RECENT = 5;
+
+function loadRecentRepos(): string[] {
+  try {
+    const raw = localStorage.getItem(RECENT_REPOS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveRecentRepo(repo: Repository) {
+  const recent = loadRecentRepos().filter(fullName => fullName !== repo.fullName);
+  recent.unshift(repo.fullName);
+  localStorage.setItem(RECENT_REPOS_KEY, JSON.stringify(recent.slice(0, MAX_RECENT)));
+}
+
 export function useCreatePR() {
   const repositories = ref<Repository[]>([]);
   const branches = ref<Branch[]>([]);
@@ -14,6 +32,7 @@ export function useCreatePR() {
   const title = ref('');
   const body = ref('');
   const isDraft = ref(false);
+  const titleManuallyEdited = ref(false);
   
   const loadingRepositories = ref(false);
   const loadingBranches = ref(false);
@@ -22,6 +41,18 @@ export function useCreatePR() {
   const error = ref<string | null>(null);
   const result = ref<CreatePullRequestResult | null>(null);
   const settings = ref<Settings | null>(null);
+
+  const sortedRepositories = computed(() => {
+    const recent = loadRecentRepos();
+    return [...repositories.value].sort((a, b) => {
+      const aIdx = recent.indexOf(a.fullName);
+      const bIdx = recent.indexOf(b.fullName);
+      const aRecent = aIdx === -1 ? Infinity : aIdx;
+      const bRecent = bIdx === -1 ? Infinity : bIdx;
+      if (aRecent !== bRecent) return aRecent - bRecent;
+      return a.fullName.localeCompare(b.fullName);
+    });
+  });
 
   const isValid = computed(() => {
     return (
@@ -149,6 +180,10 @@ export function useCreatePR() {
         draft: isDraft.value
       });
 
+      if (result.value.success && selectedRepository.value) {
+        saveRecentRepo(selectedRepository.value);
+      }
+
       return result.value;
     } catch (e: unknown) {
       error.value = e instanceof Error ? e.message : 'Failed to create pull request';
@@ -165,6 +200,7 @@ export function useCreatePR() {
     title.value = '';
     body.value = '';
     isDraft.value = false;
+    titleManuallyEdited.value = false;
     branches.value = [];
     comparison.value = null;
     error.value = null;
@@ -175,6 +211,10 @@ export function useCreatePR() {
     await fetchSettings();
     await fetchRepositories();
   };
+
+  watch(title, () => {
+    titleManuallyEdited.value = true;
+  });
 
   watch(selectedRepository, () => {
     selectedBaseBranch.value = '';
@@ -187,8 +227,18 @@ export function useCreatePR() {
     fetchComparison();
   });
 
+  watch(comparison, (newComparison) => {
+    if (newComparison?.commits.length && !titleManuallyEdited.value && !title.value) {
+      const firstLine = newComparison.commits[0]!.message.split('\n')[0];
+      if (firstLine) {
+        title.value = firstLine;
+      }
+    }
+  });
+
   return {
     repositories,
+    sortedRepositories,
     branches,
     comparison,
     selectedRepository,

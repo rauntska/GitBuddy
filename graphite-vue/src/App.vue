@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from './stores/auth';
 import LoginButton from './components/LoginButton.vue';
 import UserMenu from './components/UserMenu.vue';
@@ -11,6 +11,7 @@ import { usePullRequests } from './composables/usePullRequests';
 
 const authStore = useAuthStore();
 const route = useRoute();
+const router = useRouter();
 const { loading, lastRefresh, refreshPullRequests, fetchPullRequests } = usePullRequests();
 
 onMounted(() => {
@@ -45,8 +46,10 @@ const handleSettingsSaved = () => {
   showSettings.value = false;
 };
 
-const handlePRCreated = () => {
+const handlePRCreated = (pr: { id: number; url: string }) => {
   fetchPullRequests();
+  showCreatePRModal.value = false;
+  router.push({ name: 'pr-detail', params: { id: pr.id } });
 };
 </script>
 
