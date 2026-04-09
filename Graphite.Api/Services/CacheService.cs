@@ -53,7 +53,7 @@ public class CacheService(
             .Include(pr => pr.ReviewThreads)
             .Include(pr => pr.Comments)
             .Include(pr => pr.CheckRuns)
-            .FirstOrDefaultAsync(pr => pr.GitHubId == prData.Id);
+            .FirstOrDefaultAsync(pr => pr.GitHubId == prData.Id && pr.Repository == prData.Repository);
 
         existingPR = await UpsertPullRequestAsync(existingPR, prData);
         
