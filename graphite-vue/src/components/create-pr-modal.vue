@@ -54,8 +54,8 @@
                     View PR
                   </button>
                   <a
-                    v-if="successResult.pullRequest?.url"
-                    :href="successResult.pullRequest.url"
+                    v-if="successResult?.url"
+                    :href="successResult.url"
                     target="_blank"
                     rel="noopener noreferrer"
                     class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium transition-colors flex items-center gap-2"
@@ -381,7 +381,7 @@ import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { useCreatePR } from '../composables/useCreatePR';
 import { useFileIcons } from '../composables/useFileIcons';
 import RichTextEditor from './RichTextEditor.vue';
-import type { Repository, Branch } from '../types';
+import type { Repository } from '../types';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -393,7 +393,6 @@ const emit = defineEmits<{
 }>();
 
 const {
-  repositories,
   sortedRepositories,
   branches,
   comparison,
