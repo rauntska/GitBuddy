@@ -3,6 +3,7 @@ using System;
 using Graphite.Domain.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Graphite.Domain.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260414155817_ChangePullRequestUniqueIndexToComposite")]
+    partial class ChangePullRequestUniqueIndexToComposite
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -96,10 +99,10 @@ namespace Graphite.Domain.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PullRequestId");
-
-                    b.HasIndex("GitHubId", "PullRequestId")
+                    b.HasIndex("GitHubId")
                         .IsUnique();
+
+                    b.HasIndex("PullRequestId");
 
                     b.ToTable("CheckRuns");
                 });

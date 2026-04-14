@@ -33,7 +33,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<PullRequest>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.HasIndex(e => e.GitHubId).IsUnique();
+            entity.HasIndex(e => new { e.GitHubId, e.Repository }).IsUnique();
             entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.UpdatedAt);
 
@@ -157,7 +157,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<CheckRun>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.HasIndex(e => e.GitHubId).IsUnique();
+            entity.HasIndex(e => new { e.GitHubId, e.PullRequestId }).IsUnique();
             entity.HasIndex(e => e.PullRequestId);
 
             entity.HasOne(e => e.PullRequest)

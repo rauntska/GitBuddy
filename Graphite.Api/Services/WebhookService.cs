@@ -41,7 +41,7 @@ public class WebhookService(
                 .Include(pr => pr.Reviews)
                 .Include(pr => pr.ReviewThreads)
                 .Include(pr => pr.Comments)
-                .FirstOrDefaultAsync(pr => pr.GitHubId == prData.Number);
+                .FirstOrDefaultAsync(pr => pr.GitHubId == prData.Number && pr.Repository == repo.Name);
 
            var needsSync= await ProcessPullRequestActionAsync(action, existingPr, pullRequestEvent, config, repo, prData);
            if(needsSync)
@@ -356,6 +356,7 @@ public class WebhookService(
             logger.LogInformation("Push event: {Repository} - Branch: {Branch}", repo.FullName, branch);
 
             var affectedPRs = await context.PullRequests.Where(pr =>
+                    pr.Repository == repo.Name &&
                     (pr.SourceBranch == branch || pr.TargetBranch == branch) && pr.Status != "Closed" &&
                     pr.Status != "Merged")
                 .ToListAsync();
@@ -410,7 +411,7 @@ public class WebhookService(
 
             var existingPr = await context.PullRequests
                 .Include(p => p.Comments)
-                .FirstOrDefaultAsync(p => p.GitHubId == issue.Number);
+                .FirstOrDefaultAsync(p => p.GitHubId == issue.Number && p.Repository == repo.Name);
 
             if (existingPr == null)
             {
@@ -539,7 +540,7 @@ public class WebhookService(
 
             var existingPr = await context.PullRequests
                 .Include(p => p.Comments)
-                .FirstOrDefaultAsync(p => p.GitHubId == pr.Number);
+                .FirstOrDefaultAsync(p => p.GitHubId == pr.Number && p.Repository == repo.Name);
 
             if (existingPr == null)
             {
@@ -653,9 +654,15 @@ public class WebhookService(
             logger.LogInformation("Review thread webhook: {Action} - {Repository}#{PRNumber} - Thread #{ThreadId}",
                 action, repo?.FullName, pr.Number, thread?.Id);
 
+            if (repo == null)
+            {
+                logger.LogWarning("Repository data is null in review thread event for PR {Number}", pr.Number);
+                return;
+            }
+
             var existingPr = await context.PullRequests
                 .Include(p => p.ReviewThreads)
-                .FirstOrDefaultAsync(p => p.GitHubId == pr.Number);
+                .FirstOrDefaultAsync(p => p.GitHubId == pr.Number && p.Repository == repo.Name);
 
             if (existingPr == null)
             {
@@ -726,7 +733,7 @@ public class WebhookService(
 
             var existingPr = await context.PullRequests
                 .Include(p => p.Reviews)
-                .FirstOrDefaultAsync(p => p.GitHubId == pr.Number);
+                .FirstOrDefaultAsync(p => p.GitHubId == pr.Number && p.Repository == repo.Name);
 
             if (existingPr == null)
             {
