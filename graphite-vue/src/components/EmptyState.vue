@@ -2,7 +2,7 @@
   <div class="flex flex-col items-center justify-center py-20 px-4 text-center">
     <!-- Icon/Illustration -->
     <div class="mb-6" :class="iconColorClass">
-      <component :is="iconComponent" />
+      <component :is="iconComponent" class="w-20 h-20 opacity-50" />
     </div>
 
     <!-- Title -->
@@ -49,15 +49,14 @@
       class="mt-4 text-xs text-slate-500 hover:text-slate-400 transition-colors flex items-center gap-1"
     >
       {{ helpLink.label }}
-      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-      </svg>
+      <ArrowTopRightOnSquareIcon class="w-3 h-3" />
     </a>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, h } from 'vue';
+import { computed, type Component } from 'vue';
+import { BoltIcon, CheckBadgeIcon, MagnifyingGlassIcon, ExclamationCircleIcon, ArrowTopRightOnSquareIcon } from '@heroicons/vue/24/outline';
 
 interface Action {
   label: string;
@@ -115,68 +114,13 @@ const content = computed(() => defaultContent[props.type || 'no-prs']);
 
 const iconColorClass = computed(() => content.value.iconColor);
 
-const iconComponent = computed(() => {
-  const iconType = content.value.icon;
-  
-  // SVG icon components
-  const icons = {
-    rocket: () => h('svg', {
-      class: 'w-20 h-20 opacity-50',
-      fill: 'none',
-      stroke: 'currentColor',
-      viewBox: '0 0 24 24',
-    }, [
-      h('path', {
-        'stroke-linecap': 'round',
-        'stroke-linejoin': 'round',
-        'stroke-width': '1.5',
-        d: 'M13 10V3L4 14h7v7l9-11h-7z',
-      }),
-    ]),
-    
-    celebration: () => h('svg', {
-      class: 'w-20 h-20 opacity-50',
-      fill: 'none',
-      stroke: 'currentColor',
-      viewBox: '0 0 24 24',
-    }, [
-      h('path', {
-        'stroke-linecap': 'round',
-        'stroke-linejoin': 'round',
-        'stroke-width': '1.5',
-        d: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
-      }),
-    ]),
-    
-    search: () => h('svg', {
-      class: 'w-20 h-20 opacity-50',
-      fill: 'none',
-      stroke: 'currentColor',
-      viewBox: '0 0 24 24',
-    }, [
-      h('path', {
-        'stroke-linecap': 'round',
-        'stroke-linejoin': 'round',
-        'stroke-width': '1.5',
-        d: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z',
-      }),
-    ]),
-    
-    error: () => h('svg', {
-      class: 'w-20 h-20 opacity-50',
-      fill: 'none',
-      stroke: 'currentColor',
-      viewBox: '0 0 24 24',
-    }, [
-      h('path', {
-        'stroke-linecap': 'round',
-        'stroke-linejoin': 'round',
-        'stroke-width': '1.5',
-        d: 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
-      }),
-    ]),
+const iconComponent = computed((): Component => {
+  const icons: Record<string, Component> = {
+    rocket: BoltIcon,
+    celebration: CheckBadgeIcon,
+    search: MagnifyingGlassIcon,
+    error: ExclamationCircleIcon,
   };
-  
-  return icons[iconType as keyof typeof icons] || icons.search;
+  return icons[content.value.icon] || MagnifyingGlassIcon;
 });
 </script>

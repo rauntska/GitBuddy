@@ -31,9 +31,10 @@
        </button>
     </div>
 
+     <Transition name="collapse">
      <div
        v-if="isExpanded"
-       class="space-y-2 transition-all duration-200"
+       class="space-y-2"
      >
       <PRRow
         v-for="pr in pullRequests"
@@ -41,14 +42,15 @@
         :pr="pr"
         :compact="compact"
       />
-      
+
       <div
         v-if="pullRequests.length === 0"
         class="text-center py-2 text-slate-600 text-sm"
       >
         No pull requests in this category
       </div>
-    </div>
+     </div>
+    </Transition>
   </div>
 </template>
 
@@ -88,3 +90,21 @@ const props = defineProps<{
    return colors[props.status] || 'bg-gray-500';
  });
 </script>
+
+<style scoped>
+.collapse-enter-active,
+.collapse-leave-active {
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+  overflow: hidden;
+}
+.collapse-enter-from,
+.collapse-leave-to {
+  max-height: 0;
+  opacity: 0;
+}
+.collapse-enter-to,
+.collapse-leave-from {
+  max-height: 2000px;
+  opacity: 1;
+}
+</style>

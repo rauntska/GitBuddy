@@ -1,6 +1,7 @@
 <template>
   <router-link
     :to="{ name: 'pr-detail', params: { id: pr.id } }"
+    :aria-label="`PR #${pr.gitHubId} ${pr.title} by ${pr.author} in ${pr.repository} — ${pr.status}`"
     :class="[
       'group relative flex items-center border cursor-pointer',
       'border-slate-700/50 bg-slate-800/50',

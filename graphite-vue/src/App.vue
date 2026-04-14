@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { PlusIcon, ArrowPathIcon, Cog6ToothIcon } from '@heroicons/vue/24/outline';
 import { useAuthStore } from './stores/auth';
 import LoginButton from './components/LoginButton.vue';
 import UserMenu from './components/UserMenu.vue';
 import SettingsModal from './views/SettingsModal.vue';
 import MainLayout from './components/layout/MainLayout.vue';
 import CreatePRModal from './components/create-pr-modal.vue';
+import ToastContainer from './components/ToastContainer.vue';
 import { usePullRequests } from './composables/usePullRequests';
 
 const authStore = useAuthStore();
@@ -81,55 +83,32 @@ const handlePRCreated = (pr: { id: number; url: string }) => {
             <button
               v-if="shouldShowDashboardControls"
               @click="showCreatePRModal = true"
+              aria-label="Create new pull request"
               class="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-500 text-white text-sm font-medium transition-colors flex items-center gap-2"
             >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-              </svg>
+              <PlusIcon class="w-4 h-4" />
               Create PR
             </button>
             <button
               v-if="shouldShowDashboardControls"
               @click="refreshPullRequests"
               :disabled="loading"
+              aria-label="Refresh pull requests"
               class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              <svg
+              <ArrowPathIcon
                 class="w-4 h-4"
                 :class="{ 'animate-spin': loading }"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
+              />
               Refresh
             </button>
             <button
               v-if="shouldShowDashboardControls"
               @click="showSettings = true"
+              aria-label="Open settings"
               class="p-2 rounded-lg hover:bg-slate-800 text-slate-400 transition-colors"
-              title="Quick Settings"
             >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 00-1.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-1.066-2.573c-.94-1.543.826-3.31 2.37-2.37a1.724 1.724 0 002.572-1.065z"
-                />
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                />
-              </svg>
+              <Cog6ToothIcon class="w-5 h-5" />
             </button>
             <LoginButton v-if="!authStore.isAuthenticated" />
             <UserMenu v-else />
@@ -137,15 +116,16 @@ const handlePRCreated = (pr: { id: number; url: string }) => {
         </div>
       </div>
     </header>
-    <main class="flex-1">
+    <main id="main-content" class="flex-1">
       <RouterView />
     </main>
 
-    <SettingsModal v-if="showSettings" @close="showSettings = false" @saved="handleSettingsSaved" />
+    <SettingsModal v-if="showSettings" role="dialog" aria-modal="true" @close="showSettings = false" @saved="handleSettingsSaved" />
     <CreatePRModal
       :is-open="showCreatePRModal"
       @close="showCreatePRModal = false"
       @created="handlePRCreated"
     />
   </MainLayout>
+  <ToastContainer />
 </template>

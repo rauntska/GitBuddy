@@ -282,7 +282,7 @@ const fetchUnreadCount = async () => {
   }
 };
 
-window.setInterval(() => {
+const refreshInterval = window.setInterval(() => {
   if (authStore.isAuthenticated) {
     refreshPullRequests();
     fetchUnreadCount();
@@ -328,6 +328,7 @@ onMounted(async () => {
 });
 
 onUnmounted(async () => {
+  clearInterval(refreshInterval);
   await signalR.disconnect();
 });
 </script>

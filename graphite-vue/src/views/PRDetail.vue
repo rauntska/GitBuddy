@@ -147,6 +147,9 @@
             <!-- Merge Dropdown -->
             <div
               v-if="showMergeDropdown"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Merge options"
               class="absolute right-0 top-full mt-2 w-80 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-50"
             >
               <div class="p-3 border-b border-slate-700">
@@ -620,6 +623,9 @@
     >
       <div
         v-if="showReviewModal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Review pull request"
         class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
         @click.self="showReviewModal = false"
       >
@@ -769,9 +775,11 @@
  import ReviewTimeline from '../components/ReviewTimeline.vue';
   import type { Comment, CheckRun } from '../types';
   import { useAuthStore } from '../stores/auth';
+  import { useToast } from '../composables/useToast';
 
  const authStore = useAuthStore();
  const signalR = useSignalR();
+ const toast = useToast();
 
 const props = defineProps<{
   id: number;
@@ -926,7 +934,7 @@ const toggleContext = async () => {
     console.log('Toggle context - after update:', preferences.value.showContext);
   } catch (error) {
     console.error('Error toggling context:', error);
-    alert('Failed to toggle context. Please try again.');
+    toast.error('Failed to toggle context. Please try again.');
   }
 };
 
@@ -1100,7 +1108,7 @@ const handleClickOutside = (e: MouseEvent) => {
 
 const handleSubmitReview = async () => {
   if (reviewAction.value === 'CHANGES_REQUESTED' && !reviewComment.value.trim()) {
-    alert('Please provide details about the changes you are requesting.');
+    toast.error('Please provide details about the changes you are requesting.');
     return;
   }
 
@@ -1124,6 +1132,7 @@ const handleSubmitReview = async () => {
   if (success) {
     showReviewModal.value = false;
     reviewComment.value = '';
+    toast.success('Review submitted successfully');
   }
 };
 
@@ -1153,7 +1162,9 @@ const handlePublishDraft = async () => {
   publishingDraft.value = false;
 
   if (!success) {
-    alert('Failed to publish draft PR');
+    toast.error('Failed to publish draft PR');
+  } else {
+    toast.success('Draft PR published successfully');
   }
 };
 
@@ -1216,6 +1227,9 @@ const handleMerge = async () => {
 
   if (!result.success) {
     mergeError.value = result.message || 'Failed to merge PR';
+    toast.error(result.message || 'Failed to merge PR');
+  } else {
+    toast.success('PR merged successfully');
   }
 };
 
