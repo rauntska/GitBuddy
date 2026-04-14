@@ -18,6 +18,10 @@ public class SubmitReviewHandler(
         if (pr == null)
             return new SubmitReviewResult(false, "Pull request not found", null);
 
+        if (string.Equals(request.State, "COMMENT", StringComparison.OrdinalIgnoreCase) &&
+            string.IsNullOrWhiteSpace(request.Body))
+            return new SubmitReviewResult(false, "A comment is required when submitting a comment review", null);
+
         var config = await validationService.GetRequiredConfigAsync();
 
         try

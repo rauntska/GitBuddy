@@ -710,10 +710,10 @@
 
           <textarea
             v-model="reviewComment"
-            :placeholder="reviewAction === 'APPROVED' ? 'Add your approval comment (optional)...' : reviewAction === 'CHANGES_REQUESTED' ? 'Describe changes requested... (required)' : 'Add your comment (optional)...'"
+            :placeholder="reviewAction === 'APPROVED' ? 'Add your approval comment (optional)...' : reviewAction === 'CHANGES_REQUESTED' ? 'Describe changes requested... (required)' : 'Add your comment... (required)'"
             :class="[
               'w-full px-4 py-3 border rounded-xl text-slate-200 text-sm resize-none focus:outline-none focus:ring-2 mb-4 transition-all duration-200 placeholder:text-slate-500',
-              reviewAction === 'CHANGES_REQUESTED' && !reviewComment.trim()
+              (reviewAction === 'CHANGES_REQUESTED' || reviewAction === 'COMMENT') && !reviewComment.trim()
                 ? 'bg-slate-800/50 border-rose-500 focus:ring-rose-500/50 focus:border-rose-500'
                 : 'bg-slate-800/50 border-slate-700/50 focus:ring-blue-500/50 focus:border-blue-500'
             ]"
@@ -721,6 +721,9 @@
           />
           <div v-if="reviewAction === 'CHANGES_REQUESTED' && !reviewComment.trim()" class="text-rose-400 text-xs mb-4">
             Please provide details about the changes you're requesting.
+          </div>
+          <div v-if="reviewAction === 'COMMENT' && !reviewComment.trim()" class="text-rose-400 text-xs mb-4">
+            Please provide a comment.
           </div>
           <div class="flex gap-3 justify-end">
             <button
@@ -739,13 +742,13 @@
             </button>
             <button
               @click="handleSubmitReview"
-              :disabled="submittingReview || (reviewAction === 'CHANGES_REQUESTED' && !reviewComment.trim())"
+              :disabled="submittingReview || ((reviewAction === 'CHANGES_REQUESTED' || reviewAction === 'COMMENT') && !reviewComment.trim())"
               :class="[
                 'px-5 py-2 rounded-lg text-sm text-white transition-all duration-200 font-medium shadow-lg',
                 reviewAction === 'APPROVED' ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20 hover:shadow-emerald-500/30' :
                 reviewAction === 'CHANGES_REQUESTED' ? 'bg-rose-600 hover:bg-rose-500 shadow-rose-500/20 hover:shadow-rose-500/30' :
                 'bg-blue-600 hover:bg-blue-500 shadow-blue-500/20 hover:shadow-blue-500/30',
-                { 'opacity-50 cursor-not-allowed shadow-none': submittingReview || (reviewAction === 'CHANGES_REQUESTED' && !reviewComment.trim()) }
+                { 'opacity-50 cursor-not-allowed shadow-none': submittingReview || ((reviewAction === 'CHANGES_REQUESTED' || reviewAction === 'COMMENT') && !reviewComment.trim()) }
               ]"
             >
               {{ submittingReview ? 'Submitting...' : (prDetail?.pendingReview?.comments?.length ? 'Submit Review' : 'Submit') }}
@@ -1109,6 +1112,11 @@ const handleClickOutside = (e: MouseEvent) => {
 const handleSubmitReview = async () => {
   if (reviewAction.value === 'CHANGES_REQUESTED' && !reviewComment.value.trim()) {
     toast.error('Please provide details about the changes you are requesting.');
+    return;
+  }
+
+  if (reviewAction.value === 'COMMENT' && !reviewComment.value.trim()) {
+    toast.error('Please provide a comment when submitting a comment review.');
     return;
   }
 

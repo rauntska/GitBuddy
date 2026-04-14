@@ -18,6 +18,10 @@ public class SubmitPendingReviewHandler(
         if (pr == null)
             return new SubmitPendingReviewResult(false, "Pull request not found", null);
 
+        if (string.Equals(request.State, "COMMENT", StringComparison.OrdinalIgnoreCase) &&
+            string.IsNullOrWhiteSpace(request.Body))
+            return new SubmitPendingReviewResult(false, "A comment is required when submitting a comment review", null);
+
         var config = await validationService.GetRequiredConfigAsync();
 
         var pendingReview = await gitHubService.GetPendingReviewAsync(
