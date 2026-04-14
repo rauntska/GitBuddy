@@ -99,11 +99,7 @@ public class AuthController(
 
             if (user != null)
             {
-                user.Username = githubUser.Login;
-                user.Email = githubUser.Email ?? $"{githubUser.Login}@github.local";
-                user.AvatarUrl = githubUser.AvatarUrl;
-                user.AccessToken = accessToken;
-                user.LastLoginAt = DateTime.UtcNow;
+                user = await userService.GetOrCreateGitHubUserAsync(githubUser, accessToken);
                 var token = jwtService.GenerateToken(user);
                 var redirectUrl = $"{frontendUrl}/auth/callback?token={token}&username={user.Username}&avatar={Uri.EscapeDataString(user.AvatarUrl ?? "")}&role={user.Role}";
                 return Redirect(redirectUrl);

@@ -30,7 +30,24 @@ public class SubmitPendingReviewHandler(
 
         if (pendingReview == null)
         {
-            return new SubmitPendingReviewResult(false, "No pending review found to submit", null);
+            try
+            {
+                await gitHubService.SubmitPullRequestReviewAsync(
+                    config.Organization,
+                    pr.Repository,
+                    pr.GitHubId,
+                    request.State,
+                    request.Body,
+                    config,
+                    accessToken!
+                );
+
+                return new SubmitPendingReviewResult(true, "Review submitted successfully", null);
+            }
+            catch (Exception ex)
+            {
+                return new SubmitPendingReviewResult(false, "Failed to submit review", ex.Message);
+            }
         }
 
         try

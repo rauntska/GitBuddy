@@ -842,8 +842,19 @@ public class GitHubGraphQLService : IGitHubGraphQLService
             }
 
             var data = jsonResponse.RootElement.GetProperty("data");
-            var repoData = data.GetProperty("repository");
-            var prData = repoData.GetProperty("pullRequest");
+            
+            if (!data.TryGetProperty("repository", out var repoData) || repoData.ValueKind == JsonValueKind.Null)
+            {
+                _logger.LogWarning("GetPendingReview: Repository {Organization}/{Repository} not found or inaccessible", organization, repository);
+                return null;
+            }
+            
+            if (!repoData.TryGetProperty("pullRequest", out var prData) || prData.ValueKind == JsonValueKind.Null)
+            {
+                _logger.LogWarning("GetPendingReview: PR #{PullRequestNumber} not found in {Organization}/{Repository}", pullRequestNumber, organization, repository);
+                return null;
+            }
+            
             var reviewsData = prData.GetProperty("reviews").GetProperty("nodes");
 
             _logger.LogInformation("GetPendingReview: Found {Count} pending reviews, looking for user {UserLogin}", reviewsData.GetArrayLength(), userLogin);
