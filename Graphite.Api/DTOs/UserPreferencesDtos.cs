@@ -5,7 +5,8 @@ public record UserPreferencesDto(
     int FileTreeWidth,
     int CommentsPanelWidth,
     bool FileTreeVisible,
-    string ListViewMode
+    string ListViewMode,
+    string? NotificationPreferences
 );
 
 public record UpdatePreferencesRequest(
@@ -13,5 +14,6 @@ public record UpdatePreferencesRequest(
     int? FileTreeWidth,
     int? CommentsPanelWidth,
     bool? FileTreeVisible,
-    string? ListViewMode
+    string? ListViewMode,
+    string? NotificationPreferences
 );

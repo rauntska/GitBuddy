@@ -51,7 +51,8 @@ public class UserService(AppDbContext context) : IUserService
             preferences.FileTreeWidth,
             preferences.CommentsPanelWidth,
             preferences.FileTreeVisible,
-            preferences.ListViewMode ?? "normal"
+            preferences.ListViewMode ?? "normal",
+            preferences.NotificationPreferences
         );
     }
 
@@ -68,18 +69,21 @@ public class UserService(AppDbContext context) : IUserService
 
         if (request.DiffViewMode != null)
             preferences.DiffViewMode = request.DiffViewMode;
-        
+
         if (request.FileTreeWidth.HasValue)
             preferences.FileTreeWidth = request.FileTreeWidth.Value;
-        
+
         if (request.CommentsPanelWidth.HasValue)
             preferences.CommentsPanelWidth = request.CommentsPanelWidth.Value;
-        
+
         if (request.FileTreeVisible.HasValue)
             preferences.FileTreeVisible = request.FileTreeVisible.Value;
-        
+
         if (request.ListViewMode != null)
             preferences.ListViewMode = request.ListViewMode;
+
+        if (request.NotificationPreferences != null)
+            preferences.NotificationPreferences = request.NotificationPreferences;
 
         preferences.UpdatedAt = DateTime.UtcNow;
         await context.SaveChangesAsync();
@@ -89,7 +93,8 @@ public class UserService(AppDbContext context) : IUserService
             preferences.FileTreeWidth,
             preferences.CommentsPanelWidth,
             preferences.FileTreeVisible,
-            preferences.ListViewMode ?? "normal"
+            preferences.ListViewMode ?? "normal",
+            preferences.NotificationPreferences
         );
     }
 

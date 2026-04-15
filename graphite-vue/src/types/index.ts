@@ -300,6 +300,24 @@ export interface UserPreferences {
   listViewMode: 'compact' | 'normal';
   viewedFilesByPr?: Record<number, string[]>;
   keyboardShortcuts: KeyboardShortcuts;
+  notificationPreferences?: NotificationPreferences;
+}
+
+export interface NotificationPreferences {
+  enabled: boolean;
+  events: {
+    prCreated: boolean;
+    reviewAdded: boolean;
+    commentAdded: boolean;
+    threadResolved: boolean;
+    prMerged: boolean;
+    checkFailed: boolean;
+  };
+  quietHours: {
+    enabled: boolean;
+    start: string;
+    end: string;
+  };
 }
 
 export interface KeyboardShortcuts {

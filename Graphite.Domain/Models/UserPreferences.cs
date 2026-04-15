@@ -13,7 +13,10 @@ public class UserPreferences
     
     // List view preferences
     public string ListViewMode { get; set; } = "normal"; // "compact" or "normal"
-    
+
+    // Notification preferences (JSON-serialized)
+    public string? NotificationPreferences { get; set; }
+
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     
     // Navigation property

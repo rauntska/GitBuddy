@@ -25,10 +25,14 @@ const loading = ref(false);
 export function useUserPreferences() {
   const loadPreferences = async () => {
     if (loaded.value) return;
-    
+
     loading.value = true;
     try {
       const prefs = await apiService.getUserPreferences();
+      // Deserialize notificationPreferences from JSON string
+      if ((prefs as any).notificationPreferences && typeof (prefs as any).notificationPreferences === 'string') {
+        (prefs as any).notificationPreferences = JSON.parse((prefs as any).notificationPreferences);
+      }
       preferences.value = prefs;
       loaded.value = true;
     } catch (error) {
@@ -44,8 +48,14 @@ export function useUserPreferences() {
     (preferences.value as any)[key] = value;
 
     try {
-      const updated = await apiService.updateUserPreferences({ [key]: value });
-      // Merge the updated preferences, ensuring our value is preserved
+      const payload: any = { [key]: value };
+      if (key === 'notificationPreferences') {
+        payload[key] = JSON.stringify(value);
+      }
+      const updated = await apiService.updateUserPreferences(payload);
+      if ((updated as any).notificationPreferences && typeof (updated as any).notificationPreferences === 'string') {
+        (updated as any).notificationPreferences = JSON.parse((updated as any).notificationPreferences);
+      }
       preferences.value = { ...preferences.value, ...updated };
     } catch (error) {
       // Revert on error
@@ -102,7 +112,16 @@ export function useUserPreferences() {
     }
 
     try {
-      const updated = await apiService.updateUserPreferences(updates);
+      // Serialize notificationPreferences to JSON string for backend
+      const payload: any = { ...updates };
+      if (updates.notificationPreferences) {
+        payload.notificationPreferences = JSON.stringify(updates.notificationPreferences);
+      }
+      const updated = await apiService.updateUserPreferences(payload);
+      // Deserialize notificationPreferences from JSON string
+      if ((updated as any).notificationPreferences && typeof (updated as any).notificationPreferences === 'string') {
+        (updated as any).notificationPreferences = JSON.parse((updated as any).notificationPreferences);
+      }
       preferences.value = updated;
     } catch (error) {
       // Revert on error

@@ -1,7 +1,8 @@
 import { ref } from 'vue';
 import { apiService } from '../services/api';
 import type { GroupedPRs, PRStats, PullRequest } from '../types';
-import { useSignalR, type PRListUpdate, type PRClosedNotification, type ReviewNotification, type ThreadNotification } from './useSignalR';
+import { useSignalR, type PRListUpdate, type PRClosedNotification, type ReviewNotification, type ThreadNotification, type CommentNotification, type CheckRunsNotification } from './useSignalR';
+import { useBrowserNotifications } from './useBrowserNotifications';
 
 export function usePullRequests() {
   const pullRequests = ref<GroupedPRs>({});
@@ -25,6 +26,7 @@ export function usePullRequests() {
   const mergedPRsHasMore = ref(true);
 
   const signalR = useSignalR();
+  const browserNotifications = useBrowserNotifications();
 
   const setupSignalRHandlers = () => {
     signalR.onPRCreated.value = (pr: PRListUpdate) => {
@@ -68,6 +70,7 @@ export function usePullRequests() {
         if (pr.status === 'Approved') stats.value.approved++;
         if (pr.status === 'AwaitingReview') stats.value.awaitingReview++;
       }
+      browserNotifications.notifyPRCreated(pr);
     };
 
     signalR.onPRUpdated.value = (pr: PRListUpdate) => {
@@ -169,43 +172,47 @@ export function usePullRequests() {
     };
 
     signalR.onPRClosed.value = (notification: PRClosedNotification) => {
+      let closedPR: PullRequest | undefined;
       for (const status in pullRequests.value) {
         const prList = pullRequests.value[status];
         if (!prList) continue;
-        
+
         const idx = prList.findIndex(p => p.id === notification.pullRequestId);
         if (idx !== -1) {
+          closedPR = prList[idx];
           prList.splice(idx, 1);
           stats.value.totalOpen--;
           break;
         }
       }
+      browserNotifications.notifyPRClosed(notification, closedPR ?? null);
     };
 
     signalR.onReviewAdded.value = (notification: ReviewNotification) => {
       const newStatus = notification.newStatus;
-      
+      let reviewedPR: PullRequest | undefined;
+
       for (const status in pullRequests.value) {
         const prList = pullRequests.value[status];
         if (!prList) continue;
-        
+
         const idx = prList.findIndex(p => p.id === notification.pullRequestId);
         if (idx !== -1) {
           const pr = prList[idx];
           if (!pr) continue;
-          
+
           if (newStatus && newStatus !== status) {
             prList.splice(idx, 1);
-            
+
             const existingReviewIdx = pr.reviews.findIndex(r => r.id === notification.review.id);
             if (existingReviewIdx !== -1) {
               pr.reviews[existingReviewIdx] = notification.review;
             } else {
               pr.reviews.push(notification.review);
             }
-            
+
             pr.status = newStatus;
-            
+
             if (!pullRequests.value[newStatus]) {
               pullRequests.value[newStatus] = [];
             }
@@ -221,16 +228,19 @@ export function usePullRequests() {
               pr.reviews.push(notification.review);
             }
           }
+          reviewedPR = pr;
           break;
         }
       }
+      browserNotifications.notifyReviewAdded(notification, reviewedPR ?? null);
     };
 
     signalR.onThreadChanged.value = (notification: ThreadNotification) => {
+      let threadPR: PullRequest | undefined;
       for (const status in pullRequests.value) {
         const prList = pullRequests.value[status];
         if (!prList) continue;
-        
+
         for (const pr of prList) {
           const threadIdx = pr.reviewThreads.findIndex(t => t.id === notification.threadId);
           if (threadIdx !== -1) {
@@ -239,10 +249,35 @@ export function usePullRequests() {
               thread.isResolved = notification.isResolved;
               thread.state = notification.isResolved ? 'RESOLVED' : 'UNRESOLVED';
             }
+            threadPR = pr;
             return;
           }
         }
       }
+      browserNotifications.notifyThreadResolved(notification, threadPR ?? null);
+    };
+
+    signalR.onCommentChanged.value = (notification: CommentNotification) => {
+      if (notification.action !== 'added') return;
+      let commentPR: PullRequest | undefined;
+      for (const status in pullRequests.value) {
+        const prList = pullRequests.value[status];
+        if (!prList) continue;
+        const pr = prList.find(p => p.id === notification.pullRequestId);
+        if (pr) { commentPR = pr; break; }
+      }
+      browserNotifications.notifyCommentAdded(notification, commentPR ?? null);
+    };
+
+    signalR.onCheckRunsUpdated.value = (notification: CheckRunsNotification) => {
+      let checkPR: PullRequest | undefined;
+      for (const status in pullRequests.value) {
+        const prList = pullRequests.value[status];
+        if (!prList) continue;
+        const pr = prList.find(p => p.id === notification.pullRequestId);
+        if (pr) { checkPR = pr; break; }
+      }
+      browserNotifications.notifyCheckRunsUpdated(notification, checkPR ?? null);
     };
   };
 

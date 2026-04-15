@@ -9,6 +9,7 @@ import SettingsModal from './views/SettingsModal.vue';
 import MainLayout from './components/layout/MainLayout.vue';
 import CreatePRModal from './components/create-pr-modal.vue';
 import ToastContainer from './components/ToastContainer.vue';
+import NotificationPermissionBanner from './components/NotificationPermissionBanner.vue';
 import { usePullRequests } from './composables/usePullRequests';
 
 const authStore = useAuthStore();
@@ -57,6 +58,7 @@ const handlePRCreated = (pr: { id: number; url: string }) => {
 
 <template>
   <MainLayout>
+    <NotificationPermissionBanner />
     <header class="sticky top-0 z-20 bg-slate-900/95 backdrop-blur border-b border-slate-800 pl-14">
       <div class="px-4 py-4">
         <div class="flex items-center justify-between">
