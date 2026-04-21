@@ -428,3 +428,12 @@ export interface CreatePullRequestResult {
   pullRequest?: PRDetail;
   error?: string;
 }
+
+export interface BranchWithoutPR {
+  owner: string;
+  repo: string;
+  repoFullName: string;
+  branchName: string;
+  defaultBranch: string;
+  lastActivityAt?: string | null;
+}

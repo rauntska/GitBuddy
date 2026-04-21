@@ -308,3 +308,12 @@ public record CreatePullRequestResult(
     PRDetailDto? PullRequest,
     string? Error
 );
+
+public record BranchWithoutPRDto(
+    string Owner,
+    string Repo,
+    string RepoFullName,
+    string BranchName,
+    string DefaultBranch,
+    DateTime? LastActivityAt
+);

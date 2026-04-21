@@ -69,6 +69,7 @@ builder.Services.AddSingleton<IGitHubTokenService, GitHubTokenService>();
 builder.Services.AddScoped<IGitHubGraphQLService, GitHubGraphQLService>();
 builder.Services.AddScoped<IPullRequestStatusService, PullRequestStatusService>();
 builder.Services.AddScoped<IRepositoryRuleService, RepositoryRuleService>();
+builder.Services.AddScoped<IBranchWithoutPRService, BranchWithoutPRService>();
 
 // Utility services
 builder.Services.AddScoped<ILanguageDetectionService, LanguageDetectionService>();

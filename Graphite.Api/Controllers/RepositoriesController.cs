@@ -4,6 +4,7 @@ using Graphite.Domain.Data;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace Graphite.Api.Controllers;
 
@@ -14,6 +15,7 @@ public class RepositoriesController(
     IGitHubService gitHubService,
     IPullRequestValidationService validationService,
     ICacheService cacheService,
+    IBranchWithoutPRService branchWithoutPRService,
     AppDbContext context)
     : BaseController(context)
 {
@@ -128,5 +130,32 @@ public class RepositoriesController(
         );
 
         return Ok(dto);
+    }
+
+    [HttpGet("branches-without-prs")]
+    public async Task<IActionResult> GetBranchesWithoutPRs([FromQuery] int recentDays = 7)
+    {
+        var (_, accessToken) = await validationService.GetRequiredUserWithTokenAsync(User);
+
+        if (string.IsNullOrEmpty(accessToken))
+        {
+            return BadRequest(new { message = "GitHub access token not found" });
+        }
+
+        var config = await cacheService.GetConfigAsync();
+
+        var openPRBranches = await context.PullRequests
+            .Where(pr => pr.Status != "Closed" && pr.Status != "Merged")
+            .Select(pr => new { pr.Repository, pr.SourceBranch })
+            .ToListAsync();
+
+        var openPRSet = openPRBranches
+            .Select(x => (x.Repository, x.SourceBranch))
+            .ToHashSet();
+
+        var result = await branchWithoutPRService.GetBranchesWithoutPRsAsync(
+            config?.Organization, accessToken, openPRSet, recentDays);
+
+        return Ok(result);
     }
 }

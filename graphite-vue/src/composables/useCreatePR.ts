@@ -207,6 +207,41 @@ export function useCreatePR() {
     result.value = null;
   };
 
+  const prefill = async (data: {
+    owner: string;
+    repo: string;
+    repoFullName: string;
+    headBranch: string;
+    baseBranch: string;
+  }) => {
+    reset();
+    await init();
+
+    const repo = repositories.value.find(r => r.fullName === data.repoFullName);
+    if (!repo) {
+      error.value = `Repository ${data.repoFullName} not found`;
+      return;
+    }
+
+    selectedRepository.value = repo;
+
+    await new Promise<void>((resolve) => {
+      const unwatch = watch(loadingBranches, (isLoading) => {
+        if (!isLoading) {
+          unwatch();
+          resolve();
+        }
+      });
+      if (!loadingBranches.value) {
+        unwatch();
+        resolve();
+      }
+    });
+
+    selectedHeadBranch.value = data.headBranch;
+    selectedBaseBranch.value = data.baseBranch;
+  };
+
   const init = async () => {
     await fetchSettings();
     await fetchRepositories();
@@ -263,6 +298,7 @@ export function useCreatePR() {
     fetchBranches,
     fetchComparison,
     createPullRequest,
-    reset
+    reset,
+    prefill
   };
 }

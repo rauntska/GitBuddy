@@ -3,6 +3,7 @@ import { computed, ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { PlusIcon, ArrowPathIcon, Cog6ToothIcon } from '@heroicons/vue/24/outline';
 import { useAuthStore } from './stores/auth';
+import { useCreatePRModal } from './composables/useCreatePRModal';
 import LoginButton from './components/LoginButton.vue';
 import UserMenu from './components/UserMenu.vue';
 import SettingsModal from './views/SettingsModal.vue';
@@ -29,7 +30,7 @@ const shouldShowDashboardControls = computed(() =>
 );
 
 const showSettings = ref(false);
-const showCreatePRModal = ref(false);
+const { isOpen: showCreatePRModal, close: closeCreatePRModal, open: openCreatePRModal } = useCreatePRModal();
 
 const formatRelativeTime = (dateString: string): string => {
   const date = new Date(dateString);
@@ -51,7 +52,7 @@ const handleSettingsSaved = () => {
 
 const handlePRCreated = (pr: { id: number; url: string }) => {
   fetchPullRequests();
-  showCreatePRModal.value = false;
+  closeCreatePRModal();
   router.push({ name: 'pr-detail', params: { id: pr.id } });
 };
 </script>
@@ -84,7 +85,7 @@ const handlePRCreated = (pr: { id: number; url: string }) => {
             </span>
             <button
               v-if="shouldShowDashboardControls"
-              @click="showCreatePRModal = true"
+              @click="openCreatePRModal()"
               aria-label="Create new pull request"
               class="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-500 text-white text-sm font-medium transition-colors flex items-center gap-2"
             >
@@ -125,7 +126,7 @@ const handlePRCreated = (pr: { id: number; url: string }) => {
     <SettingsModal v-if="showSettings" role="dialog" aria-modal="true" @close="showSettings = false" @saved="handleSettingsSaved" />
     <CreatePRModal
       :is-open="showCreatePRModal"
-      @close="showCreatePRModal = false"
+      @close="closeCreatePRModal()"
       @created="handlePRCreated"
     />
   </MainLayout>

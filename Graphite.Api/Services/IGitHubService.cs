@@ -44,6 +44,7 @@ public interface IGitHubService
     Task<List<GitHubRepositoryData>> GetAccessibleRepositoriesAsync(string userAccessToken);
     Task<List<GitHubRepositoryData>> GetOrganizationRepositoriesAsync(string organization, string accessToken);
     Task<List<GitHubBranchData>> GetBranchesAsync(string owner, string repository, string userAccessToken);
+    Task<DateTime?> GetCommitDateAsync(string owner, string repository, string sha, string userAccessToken);
     Task<GitHubBranchComparisonData?> CompareBranchesAsync(string owner, string repository, string baseBranch, string headBranch, string userAccessToken);
     Task<GitHubPRData> CreatePullRequestAsync(string owner, string repository, string title, string? body, string head, string @base, bool draft, string userAccessToken);
 }

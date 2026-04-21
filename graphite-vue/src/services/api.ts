@@ -1,5 +1,5 @@
 import apiClient from '../utils/api';
-import type { GroupedPRs, PRStats, Settings, PRDetail, FileDiff, Comment, UserPreferences, PullRequest, CommentTemplate, CommentDraft, MentionableUser, ReactionGroup, User, UserRole, Invitation, AllowedUser, AdminStats, PendingReview, UserSettings, ReviewerStatus, ReviewTimeline, PotentialReviewer, Repository, Branch, BranchComparison, CreatePullRequestRequest, CreatePullRequestResult } from '../types';
+import type { GroupedPRs, PRStats, Settings, PRDetail, FileDiff, Comment, UserPreferences, PullRequest, CommentTemplate, CommentDraft, MentionableUser, ReactionGroup, User, UserRole, Invitation, AllowedUser, AdminStats, PendingReview, UserSettings, ReviewerStatus, ReviewTimeline, PotentialReviewer, Repository, Branch, BranchComparison, CreatePullRequestRequest, CreatePullRequestResult, BranchWithoutPR } from '../types';
 
 const api = apiClient;
 
@@ -430,6 +430,13 @@ export const apiService = {
 
   createPullRequest: async (data: CreatePullRequestRequest): Promise<CreatePullRequestResult> => {
     const response = await api.post<CreatePullRequestResult>('/pullrequests', data);
+    return response.data;
+  },
+
+  getBranchesWithoutPR: async (recentDays: number = 7): Promise<BranchWithoutPR[]> => {
+    const response = await api.get<BranchWithoutPR[]>('/repositories/branches-without-prs', {
+      params: { recentDays }
+    });
     return response.data;
   },
 };

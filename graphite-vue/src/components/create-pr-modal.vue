@@ -379,6 +379,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { useCreatePR } from '../composables/useCreatePR';
+import { useCreatePRModal } from '../composables/useCreatePRModal';
 import { useFileIcons } from '../composables/useFileIcons';
 import RichTextEditor from './RichTextEditor.vue';
 import type { Repository } from '../types';
@@ -413,8 +414,11 @@ const {
   totalDeletions,
   fetchRepositories,
   createPullRequest,
-  reset
+  reset,
+  prefill
 } = useCreatePR();
+
+const { consumePrefill } = useCreatePRModal();
 
 const { getFileIcon } = useFileIcons();
 
@@ -642,9 +646,14 @@ const formatTime = (dateStr: string) => {
   return 'just now';
 };
 
-watch(() => props.isOpen, (isOpen) => {
+watch(() => props.isOpen, async (isOpen) => {
   if (isOpen) {
-    fetchRepositories();
+    const prefillData = consumePrefill();
+    if (prefillData) {
+      await prefill(prefillData);
+    } else {
+      fetchRepositories();
+    }
   }
 });
 
@@ -678,6 +687,17 @@ watch(branches, () => {
   if (selectedBaseBranch.value) {
     baseSearch.value = selectedBaseBranch.value;
   }
+  if (selectedHeadBranch.value) {
+    headSearch.value = selectedHeadBranch.value;
+  }
+});
+
+watch(selectedHeadBranch, (val) => {
+  if (val) headSearch.value = val;
+});
+
+watch(selectedBaseBranch, (val) => {
+  if (val) baseSearch.value = val;
 });
 
 watch(title, (newVal, oldVal) => {

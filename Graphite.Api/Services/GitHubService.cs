@@ -1035,6 +1035,25 @@ public class GitHubService(
         }
     }
 
+    public async Task<DateTime?> GetCommitDateAsync(string owner, string repository, string sha, string userAccessToken)
+    {
+        var restClient = new GitHubClient(new Octokit.ProductHeaderValue("Graphite-PR-Dashboard"))
+        {
+            Credentials = new Credentials(userAccessToken)
+        };
+
+        try
+        {
+            var commit = await restClient.Repository.Commit.Get(owner, repository, sha);
+            return commit.Commit.Author.Date.UtcDateTime;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Error fetching commit {Sha} for {Owner}/{Repository}", sha[..7], owner, repository);
+            return null;
+        }
+    }
+
     public async Task<GitHubBranchComparisonData?> CompareBranchesAsync(string owner, string repository, string baseBranch, string headBranch, string userAccessToken)
     {
         var restClient = new GitHubClient(new Octokit.ProductHeaderValue("Graphite-PR-Dashboard"))

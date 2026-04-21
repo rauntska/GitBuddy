@@ -194,6 +194,16 @@
         />
       </div>
 
+      <!-- Branches Without PRs -->
+      <BranchesWithoutPRSection
+        v-if="authStore.isAuthenticated"
+        :grouped-branches="groupedBranchesWithoutPR"
+        :total-branches="totalBranchesWithoutPR"
+        :loading="branchesWithoutPRLoading"
+        :error="branchesWithoutPRError"
+        @refresh="fetchBranchesWithoutPR"
+      />
+
       <!-- Merged / Closed PRs -->
       <div v-if="authStore.isAuthenticated && mergedPRs.length > 0" class="mt-8">
         <PRGroup
@@ -225,17 +235,26 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
   import { useUserPreferences } from '../composables/useUserPreferences';
   import { useUserSettings } from '../composables/useUserSettings';
   import { useFaviconBadge } from '../composables/useFaviconBadge';
+  import { useBranchesWithoutPR } from '../composables/useBranchesWithoutPR';
   import { apiService } from '../services/api';
   import { useAuthStore } from '../stores/auth';
   import StatsSummary from '../components/StatsSummary.vue';
   import PRGroup from '../components/PRGroup.vue';
   import SkeletonPRRow from '../components/SkeletonPRRow.vue';
   import EmptyState from '../components/EmptyState.vue';
+  import BranchesWithoutPRSection from '../components/BranchesWithoutPRSection.vue';
 
   const authStore = useAuthStore();
   const { preferences, loadPreferences, setListViewMode } = useUserPreferences();
   const { hasPersonalAccessToken, fetchUserSettings } = useUserSettings();
   const { initFavicon, updateBadge } = useFaviconBadge();
+  const {
+    branches: branchesWithoutPR,
+    groupedByRepo: groupedBranchesWithoutPR,
+    loading: branchesWithoutPRLoading,
+    error: branchesWithoutPRError,
+    fetchBranches: fetchBranchesWithoutPR,
+  } = useBranchesWithoutPR();
 
    const {
      pullRequests,
@@ -259,6 +278,8 @@ const patWarningDismissed = ref(false);
 const isCompactMode = computed(() => preferences.value.listViewMode === 'compact');
 
 const hasPRData = computed(() => Object.keys(pullRequests.value).length > 0);
+
+const totalBranchesWithoutPR = computed(() => branchesWithoutPR.value.length);
 
 const showPATWarning = computed(() => {
   return hasPersonalAccessToken.value === false && !patWarningDismissed.value;
@@ -286,6 +307,7 @@ const refreshInterval = window.setInterval(() => {
   if (authStore.isAuthenticated) {
     refreshPullRequests();
     fetchUnreadCount();
+    fetchBranchesWithoutPR();
   }
 }, 60000);
 
@@ -320,6 +342,7 @@ onMounted(async () => {
     await fetchPullRequests();
     await fetchUnreadCount();
     loadMergedPRs(true);
+    fetchBranchesWithoutPR();
     
     if (authStore.token) {
       await signalR.connect(authStore.token);
