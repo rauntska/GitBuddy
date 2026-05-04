@@ -102,13 +102,15 @@ const rightLineNumber = computed(() => {
 const showLeftCommentButton = computed(() => {
   if (!props.row.leftLine?.lineNumber) return false;
   const { type } = props.row.leftLine;
-  return type === 'delete' || type === 'context';
+  if (type !== 'delete' && type !== 'context') return false;
+  return !props.row.leftLine.isExpanded;
 });
 
 const showRightCommentButton = computed(() => {
   if (!props.row.rightLine?.lineNumber) return false;
   const { type } = props.row.rightLine;
-  return type === 'add' || type === 'context';
+  if (type !== 'add' && type !== 'context') return false;
+  return !props.row.rightLine.isExpanded;
 });
 
 const rowClasses = computed(() => {

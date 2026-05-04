@@ -109,6 +109,7 @@
                         v-if="commentingLine === row.leftLine.lineNumber && commentingSide === 'left'"
                         v-model="newCommentText"
                         :error="commentError"
+                        :pr-id="prId"
                         @submit="submitNewComment"
                         @cancel="cancelNewComment"
                       />
@@ -181,6 +182,7 @@
                         v-if="commentingLine === row.rightLine.lineNumber && commentingSide === 'right'"
                         v-model="newCommentText"
                         :error="commentError"
+                        :pr-id="prId"
                         @submit="submitNewComment"
                         @cancel="cancelNewComment"
                       />

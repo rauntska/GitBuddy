@@ -204,11 +204,13 @@ export function alignDiffLines(lines: DiffLine[]): AlignedRow[] {
           type: 'context',
           content: line.content,
           lineNumber: line.oldLineNumber,
+          isExpanded: line.isExpanded,
         },
         rightLine: {
           type: 'context',
           content: line.content,
           lineNumber: line.newLineNumber,
+          isExpanded: line.isExpanded,
         },
       });
       i++;
@@ -485,18 +487,21 @@ export function mergeExpandedLines(
           content: newLine.content,
           oldLineNumber: oldLine.lineNumber,
           newLineNumber: newLine.lineNumber,
+          isExpanded: true,
         });
       } else if (oldLine) {
         lines.push({
           type: 'context',
           content: oldLine.content,
           oldLineNumber: oldLine.lineNumber,
+          isExpanded: true,
         });
       } else if (newLine) {
         lines.push({
           type: 'context',
           content: newLine.content,
           newLineNumber: newLine.lineNumber,
+          isExpanded: true,
         });
       }
     }

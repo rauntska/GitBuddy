@@ -6,6 +6,7 @@
       ref="editorRef"
       :placeholder="placeholder"
       :min-height="minHeight"
+      :pr-id="prId"
       @save="$emit('submit')"
       @cancel="$emit('cancel')"
     />
@@ -39,6 +40,7 @@ const props = withDefaults(defineProps<{
   minHeight?: number;
   submitText?: string;
   cancelText?: string;
+  prId?: number;
 }>(), {
   placeholder: 'Add your comment...',
   minHeight: 100,

@@ -224,6 +224,7 @@ export interface DiffLine {
   oldLineNumber?: number;
   newLineNumber?: number;
   hasComment?: boolean;
+  isExpanded?: boolean;
 }
 
 export interface InlineDiffSegment {
@@ -236,6 +237,7 @@ export interface AlignedLine {
   content: string;
   lineNumber?: number;
   inlineDiff?: InlineDiffSegment[];
+  isExpanded?: boolean;
 }
 
 export interface AlignedRow {
