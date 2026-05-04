@@ -330,6 +330,7 @@
                 <EditableDescription
                   v-if="prDetail"
                   :content="prDetail.description || ''"
+                  :pr-id="prDetail.id"
                   @save="handleDescriptionSave"
                 />
               </div>

@@ -1,5 +1,7 @@
+using Graphite.Api.Features.Images.UploadImage;
 using Graphite.Domain.Data;
 using Graphite.Domain.Models;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Net.Http.Headers;
@@ -13,8 +15,9 @@ public class ImagesController(
     IHttpClientFactory httpClientFactory,
     AppDbContext context,
     ILogger<ImagesController> logger,
-    IConfiguration configuration)
-    : ControllerBase
+    IConfiguration configuration,
+    ISender mediator)
+    : BaseController(context)
 {
     [HttpGet("proxy")]
     public async Task<IActionResult> ProxyImage([FromQuery] string url)
@@ -116,6 +119,83 @@ public class ImagesController(
         {
             logger.LogError(ex, "Unexpected error fetching image");
             return StatusCode(500, "An unexpected error occurred");
+        }
+    }
+
+    [HttpGet("uploads/{filename}")]
+    [AllowAnonymous]
+    public IActionResult GetUploadedFile(string filename)
+    {
+        if (string.IsNullOrWhiteSpace(filename) || filename.Contains('/') || filename.Contains('\\'))
+            return BadRequest("Invalid filename.");
+
+        var ext = Path.GetExtension(filename);
+        var contentType = ext.ToLowerInvariant() switch
+        {
+            ".png" => "image/png",
+            ".jpg" => "image/jpeg",
+            ".jpeg" => "image/jpeg",
+            ".gif" => "image/gif",
+            ".webp" => "image/webp",
+            ".svg" => "image/svg+xml",
+            _ => "application/octet-stream"
+        };
+
+        var storagePath = configuration["ImageUpload:StoragePath"]
+            ?? Path.Combine(AppContext.BaseDirectory, "uploads", "images");
+        var filePath = Path.Combine(storagePath, filename);
+
+        if (!System.IO.File.Exists(filePath))
+            return NotFound();
+
+        Response.Headers.CacheControl = "public, max-age=31536000, immutable";
+        return PhysicalFile(filePath, contentType);
+    }
+
+    [HttpPost("upload")]
+    [Authorize]
+    [RequestSizeLimit(25 * 1024 * 1024)]
+    public async Task<IActionResult> UploadImage(
+        [FromForm] IFormFile file,
+        [FromForm] int prId)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { message = "No file provided." });
+
+        var allowedTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "image/png", "image/jpeg", "image/gif", "image/webp", "image/svg+xml"
+        };
+
+        if (!allowedTypes.Contains(file.ContentType))
+            return BadRequest(new { message = $"Unsupported file type: {file.ContentType}. Allowed: png, jpg, gif, webp, svg" });
+
+        if (file.Length > 25 * 1024 * 1024)
+            return BadRequest(new { message = "File size exceeds the 25 MB limit." });
+
+        try
+        {
+            using var stream = file.OpenReadStream();
+            var imageData = new byte[stream.Length];
+            await stream.ReadAsync(imageData.AsMemory(0, imageData.Length));
+
+            var result = await mediator.Send(new UploadImageCommand(
+                prId, imageData, file.FileName, file.ContentType, User));
+
+            return Ok(new { url = result.Url });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to upload image");
+            return StatusCode(500, new { message = "Failed to upload image.", error = ex.Message });
         }
     }
 }

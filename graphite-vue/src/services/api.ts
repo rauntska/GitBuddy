@@ -439,6 +439,23 @@ export const apiService = {
     });
     return response.data;
   },
+
+  uploadImage: async (prId: number, file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('prId', prId.toString());
+    const response = await api.post<{ url: string }>('/images/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    const relativeUrl = response.data.url;
+    if (relativeUrl.startsWith('/')) {
+      const envUrl = import.meta.env.VITE_API_BASE_URL || '/api';
+      const apiBase = typeof envUrl === 'string' ? envUrl.replace(/\/api\/?$/, '') : window.location.origin;
+      const base = apiBase.startsWith('http') ? apiBase : window.location.origin;
+      return `${base}${relativeUrl}`;
+    }
+    return relativeUrl;
+  },
 };
 
 export default api;
