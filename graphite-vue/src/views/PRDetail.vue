@@ -869,7 +869,6 @@ onMounted(async () => {
     }
   }
   
-  document.addEventListener('keydown', handleKeyPress);
   document.addEventListener('mousemove', handleMouseMove);
   document.addEventListener('mouseup', handleMouseUp);
   document.addEventListener('click', handleClickOutside);
@@ -943,7 +942,6 @@ const toggleContext = async () => {
 };
 
 onUnmounted(async () => {
-  document.removeEventListener('keydown', handleKeyPress);
   document.removeEventListener('mousemove', handleMouseMove);
   document.removeEventListener('mouseup', handleMouseUp);
   document.removeEventListener('click', handleClickOutside);
@@ -980,36 +978,6 @@ const handleMouseUp = async () => {
   if (isResizingComments.value) {
     await setCommentsPanelWidth(commentsPanelWidth.value);
     isResizingComments.value = false;
-  }
-};
-
-const handleKeyPress = (e: KeyboardEvent) => {
-  if ((e.target as HTMLElement).tagName === 'TEXTAREA' || (e.target as HTMLElement).tagName === 'INPUT') {
-    return;
-  }
-
-  const key = e.key.toLowerCase();
-  const shortcuts = preferences.value.keyboardShortcuts || {
-    toggleComments: 'c',
-    toggleFileTree: 'f',
-    nextFile: 'j',
-    previousFile: 'k',
-    nextComment: 'n',
-    previousComment: 'p',
-  };
-
-  if (key === shortcuts.toggleComments) {
-    toggleCommentsPanel();
-  } else if (key === shortcuts.toggleFileTree) {
-    toggleFileTree();
-  } else if (key === shortcuts.nextFile) {
-    navigateFile('next');
-  } else if (key === shortcuts.previousFile) {
-    navigateFile('prev');
-  } else if (key === shortcuts.nextComment) {
-    navigateComment('next');
-  } else if (key === shortcuts.previousComment) {
-    navigateComment('prev');
   }
 };
 
@@ -1322,50 +1290,6 @@ const scrollToThread = async (threadId: string, line?: number) => {
 const setFileRef = (path: string, el: any) => {
   if (el) {
     fileRefs.value.set(path, el);
-  }
-};
-
-const navigateFile = (direction: 'next' | 'prev') => {
-  if (!prDetail.value) return;
-  
-  const currentIndex = selectedFile.value 
-    ? prDetail.value.files.findIndex(f => f.path === selectedFile.value)
-    : -1;
-  
-  const nextIndex = direction === 'next' 
-    ? (currentIndex + 1) % prDetail.value.files.length
-    : (currentIndex - 1 + prDetail.value.files.length) % prDetail.value.files.length;
-  
-  const nextFile = prDetail.value.files[nextIndex];
-  if (nextFile?.path) {
-    scrollToFile(nextFile.path);
-  }
-};
-
-const navigateComment = (direction: 'next' | 'prev') => {
-  if (!prDetail.value) return;
-
-  const comments = prDetail.value.allComments.filter(c => c.line && c.path);
-  if (comments.length === 0) return;
-
-  const currentHash = window.location.hash.match(/#L(\d+)/);
-  const currentLine = currentHash ? parseInt(currentHash[1] || '0') : 0;
-
-  const currentIndex = comments.findIndex(c => c.line === currentLine);
-  let nextComment: Comment | undefined;
-
-  if (direction === 'next') {
-    nextComment = currentIndex >= 0 && currentIndex < comments.length - 1
-      ? comments[currentIndex + 1]
-      : comments[0];
-  } else {
-    nextComment = currentIndex > 0
-      ? comments[currentIndex - 1]
-      : comments[comments.length - 1];
-  }
-
-  if (nextComment && nextComment.line && nextComment.path) {
-    scrollToFile(nextComment.path, nextComment.line);
   }
 };
 

@@ -8,15 +8,10 @@ const preferences = ref<UserPreferences>({
   fileTreeWidth: 256,
   commentsPanelWidth: 320,
   fileTreeVisible: true,
-  listViewMode: 'normal',
-  keyboardShortcuts: {
-    toggleComments: 'c',
-    toggleFileTree: 'f',
-    nextFile: 'j',
-    previousFile: 'k',
-    nextComment: 'n',
-    previousComment: 'p',
-  },
+  listViewMode: 'comfortable',
+  pinnedPrIds: [],
+  dashboardGroupOrder: [],
+  hiddenDashboardGroups: [],
 });
 
 const loaded = ref(false);
@@ -29,9 +24,18 @@ export function useUserPreferences() {
     loading.value = true;
     try {
       const prefs = await apiService.getUserPreferences();
-      // Deserialize notificationPreferences from JSON string
+      // Deserialize JSON-serialized fields
       if ((prefs as any).notificationPreferences && typeof (prefs as any).notificationPreferences === 'string') {
         (prefs as any).notificationPreferences = JSON.parse((prefs as any).notificationPreferences);
+      }
+      if ((prefs as any).pinnedPrIds && typeof (prefs as any).pinnedPrIds === 'string') {
+        (prefs as any).pinnedPrIds = JSON.parse((prefs as any).pinnedPrIds);
+      }
+      if ((prefs as any).dashboardGroupOrder && typeof (prefs as any).dashboardGroupOrder === 'string') {
+        (prefs as any).dashboardGroupOrder = JSON.parse((prefs as any).dashboardGroupOrder);
+      }
+      if ((prefs as any).hiddenDashboardGroups && typeof (prefs as any).hiddenDashboardGroups === 'string') {
+        (prefs as any).hiddenDashboardGroups = JSON.parse((prefs as any).hiddenDashboardGroups);
       }
       preferences.value = prefs;
       loaded.value = true;
@@ -49,12 +53,21 @@ export function useUserPreferences() {
 
     try {
       const payload: any = { [key]: value };
-      if (key === 'notificationPreferences') {
+      if (key === 'notificationPreferences' || key === 'pinnedPrIds' || key === 'dashboardGroupOrder' || key === 'hiddenDashboardGroups') {
         payload[key] = JSON.stringify(value);
       }
       const updated = await apiService.updateUserPreferences(payload);
       if ((updated as any).notificationPreferences && typeof (updated as any).notificationPreferences === 'string') {
         (updated as any).notificationPreferences = JSON.parse((updated as any).notificationPreferences);
+      }
+      if ((updated as any).pinnedPrIds && typeof (updated as any).pinnedPrIds === 'string') {
+        (updated as any).pinnedPrIds = JSON.parse((updated as any).pinnedPrIds);
+      }
+      if ((updated as any).dashboardGroupOrder && typeof (updated as any).dashboardGroupOrder === 'string') {
+        (updated as any).dashboardGroupOrder = JSON.parse((updated as any).dashboardGroupOrder);
+      }
+      if ((updated as any).hiddenDashboardGroups && typeof (updated as any).hiddenDashboardGroups === 'string') {
+        (updated as any).hiddenDashboardGroups = JSON.parse((updated as any).hiddenDashboardGroups);
       }
       preferences.value = { ...preferences.value, ...updated };
     } catch (error) {
@@ -85,22 +98,30 @@ export function useUserPreferences() {
     await updatePreference('fileTreeVisible', visible);
   };
 
-  const setListViewMode = async (mode: 'compact' | 'normal') => {
+  const setListViewMode = async (mode: 'compact' | 'comfortable' | 'expanded') => {
     await updatePreference('listViewMode', mode);
   };
 
-  const setKeyboardShortcut = async (key: keyof UserPreferences['keyboardShortcuts'], value: string) => {
-    const oldShortcuts = preferences.value.keyboardShortcuts;
-    preferences.value.keyboardShortcuts = { ...preferences.value.keyboardShortcuts, [key]: value };
+  const togglePinnedPr = async (prId: number) => {
+    const current = preferences.value.pinnedPrIds ?? [];
+    const updated = current.includes(prId) ? current.filter(id => id !== prId) : [...current, prId];
+    await updatePreference('pinnedPrIds', updated);
+  };
 
-    try {
-      await apiService.updateUserPreferences({ keyboardShortcuts: preferences.value.keyboardShortcuts });
-    } catch (error) {
-      // Revert on error
-      preferences.value.keyboardShortcuts = oldShortcuts;
-      console.error('Failed to update keyboard shortcut:', error);
-      throw error;
-    }
+  const isPrPinned = (prId: number) => {
+    return (preferences.value.pinnedPrIds ?? []).includes(prId);
+  };
+
+  const setDashboardGroupOrder = async (order: string[]) => {
+    await updatePreference('dashboardGroupOrder', order);
+  };
+
+  const setHiddenDashboardGroups = async (groups: string[]) => {
+    await updatePreference('hiddenDashboardGroups', groups);
+  };
+
+  const resetDashboardLayout = async () => {
+    await updatePreferences({ dashboardGroupOrder: [], hiddenDashboardGroups: [] });
   };
 
   const updatePreferences = async (updates: Partial<UserPreferences>) => {
@@ -112,15 +133,33 @@ export function useUserPreferences() {
     }
 
     try {
-      // Serialize notificationPreferences to JSON string for backend
+      // Serialize JSON fields for backend
       const payload: any = { ...updates };
       if (updates.notificationPreferences) {
         payload.notificationPreferences = JSON.stringify(updates.notificationPreferences);
       }
+      if (updates.pinnedPrIds) {
+        payload.pinnedPrIds = JSON.stringify(updates.pinnedPrIds);
+      }
+      if (updates.dashboardGroupOrder) {
+        payload.dashboardGroupOrder = JSON.stringify(updates.dashboardGroupOrder);
+      }
+      if (updates.hiddenDashboardGroups) {
+        payload.hiddenDashboardGroups = JSON.stringify(updates.hiddenDashboardGroups);
+      }
       const updated = await apiService.updateUserPreferences(payload);
-      // Deserialize notificationPreferences from JSON string
+      // Deserialize JSON fields from backend
       if ((updated as any).notificationPreferences && typeof (updated as any).notificationPreferences === 'string') {
         (updated as any).notificationPreferences = JSON.parse((updated as any).notificationPreferences);
+      }
+      if ((updated as any).pinnedPrIds && typeof (updated as any).pinnedPrIds === 'string') {
+        (updated as any).pinnedPrIds = JSON.parse((updated as any).pinnedPrIds);
+      }
+      if ((updated as any).dashboardGroupOrder && typeof (updated as any).dashboardGroupOrder === 'string') {
+        (updated as any).dashboardGroupOrder = JSON.parse((updated as any).dashboardGroupOrder);
+      }
+      if ((updated as any).hiddenDashboardGroups && typeof (updated as any).hiddenDashboardGroups === 'string') {
+        (updated as any).hiddenDashboardGroups = JSON.parse((updated as any).hiddenDashboardGroups);
       }
       preferences.value = updated;
     } catch (error) {
@@ -143,7 +182,11 @@ export function useUserPreferences() {
     setCommentsPanelWidth,
     setFileTreeVisible,
     setListViewMode,
-    setKeyboardShortcut,
+    togglePinnedPr,
+    isPrPinned,
+    setDashboardGroupOrder,
+    setHiddenDashboardGroups,
+    resetDashboardLayout,
     updatePreferences,
   };
 }

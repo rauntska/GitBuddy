@@ -12,7 +12,12 @@ public class UserPreferences
     public bool FileTreeVisible { get; set; } = true;
     
     // List view preferences
-    public string ListViewMode { get; set; } = "normal"; // "compact" or "normal"
+    public string ListViewMode { get; set; } = "comfortable"; // "compact", "comfortable", or "expanded"
+
+    // Dashboard layout preferences (JSON-serialized)
+    public string? PinnedPrIds { get; set; }
+    public string? DashboardGroupOrder { get; set; }
+    public string? HiddenDashboardGroups { get; set; }
 
     // Notification preferences (JSON-serialized)
     public string? NotificationPreferences { get; set; }

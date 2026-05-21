@@ -195,75 +195,8 @@
 
     <div>
       <h3 class="text-lg font-semibold text-white mb-4">Preferences</h3>
-      
+
       <div class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-slate-300 mb-2">
-            Keyboard Shortcuts
-          </label>
-          <div class="space-y-2">
-            <div class="flex items-center gap-2">
-              <span class="w-32 text-xs text-slate-400">Toggle Comments</span>
-              <input
-                :value="keyboardShortcuts?.toggleComments || 'c'"
-                @input="(e: any) => updateShortcut('toggleComments', e.target.value)"
-                type="text"
-                maxlength="1"
-                class="w-16 px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-white text-sm text-center uppercase focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="w-32 text-xs text-slate-400">Toggle File Tree</span>
-              <input
-                :value="keyboardShortcuts?.toggleFileTree || 'f'"
-                @input="(e: any) => updateShortcut('toggleFileTree', e.target.value)"
-                type="text"
-                maxlength="1"
-                class="w-16 px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-white text-sm text-center uppercase focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="w-32 text-xs text-slate-400">Next File</span>
-              <input
-                :value="keyboardShortcuts?.nextFile || 'j'"
-                @input="(e: any) => updateShortcut('nextFile', e.target.value)"
-                type="text"
-                maxlength="1"
-                class="w-16 px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-white text-sm text-center uppercase focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="w-32 text-xs text-slate-400">Previous File</span>
-              <input
-                :value="keyboardShortcuts?.previousFile || 'k'"
-                @input="(e: any) => updateShortcut('previousFile', e.target.value)"
-                type="text"
-                maxlength="1"
-                class="w-16 px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-white text-sm text-center uppercase focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="w-32 text-xs text-slate-400">Next Comment</span>
-              <input
-                :value="keyboardShortcuts?.nextComment || 'n'"
-                @input="(e: any) => updateShortcut('nextComment', e.target.value)"
-                type="text"
-                maxlength="1"
-                class="w-16 px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-white text-sm text-center uppercase focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="w-32 text-xs text-slate-400">Previous Comment</span>
-              <input
-                :value="keyboardShortcuts?.previousComment || 'p'"
-                @input="(e: any) => updateShortcut('previousComment', e.target.value)"
-                type="text"
-                maxlength="1"
-                class="w-16 px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-white text-sm text-center uppercase focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   </div>
@@ -275,9 +208,9 @@ import { EyeIcon, EyeSlashIcon } from '@heroicons/vue/24/outline';
 import { apiService } from '../../services/api';
 import { useUserPreferences } from '../../composables/useUserPreferences';
 import { useBrowserNotifications } from '../../composables/useBrowserNotifications';
-import type { KeyboardShortcuts, NotificationPreferences } from '../../types';
+import type { NotificationPreferences } from '../../types';
 
-const { preferences, loadPreferences, setKeyboardShortcut, updatePreferences } = useUserPreferences();
+const { preferences, loadPreferences, updatePreferences } = useUserPreferences();
 const browserNotifications = useBrowserNotifications();
 
 const localPAT = ref('');
@@ -287,7 +220,6 @@ const patMessage = ref('');
 const patMessageType = ref<'success' | 'error'>('success');
 const hasExistingPAT = ref(false);
 
-const keyboardShortcuts = computed(() => preferences.value.keyboardShortcuts);
 
 const notificationPermission = computed(() => browserNotifications.permissionStatus.value);
 
@@ -384,17 +316,6 @@ const clearPAT = async () => {
     patMessageType.value = 'error';
   } finally {
     savingPAT.value = false;
-  }
-};
-
-const updateShortcut = async (key: keyof KeyboardShortcuts, value: string) => {
-  const lowerValue = value.toLowerCase();
-  if (lowerValue && lowerValue.length === 1) {
-    try {
-      await setKeyboardShortcut(key, lowerValue);
-    } catch (error) {
-      console.error('Failed to update keyboard shortcut:', error);
-    }
   }
 };
 

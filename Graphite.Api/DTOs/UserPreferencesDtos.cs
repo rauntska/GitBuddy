@@ -6,6 +6,9 @@ public record UserPreferencesDto(
     int CommentsPanelWidth,
     bool FileTreeVisible,
     string ListViewMode,
+    string? PinnedPrIds,
+    string? DashboardGroupOrder,
+    string? HiddenDashboardGroups,
     string? NotificationPreferences
 );
 
@@ -15,5 +18,8 @@ public record UpdatePreferencesRequest(
     int? CommentsPanelWidth,
     bool? FileTreeVisible,
     string? ListViewMode,
+    string? PinnedPrIds,
+    string? DashboardGroupOrder,
+    string? HiddenDashboardGroups,
     string? NotificationPreferences
 );

@@ -299,9 +299,11 @@ export interface UserPreferences {
   fileTreeWidth: number;
   commentsPanelWidth: number;
   fileTreeVisible: boolean;
-  listViewMode: 'compact' | 'normal';
+  listViewMode: 'compact' | 'comfortable' | 'expanded';
+  pinnedPrIds?: number[];
+  dashboardGroupOrder?: string[];
+  hiddenDashboardGroups?: string[];
   viewedFilesByPr?: Record<number, string[]>;
-  keyboardShortcuts: KeyboardShortcuts;
   notificationPreferences?: NotificationPreferences;
 }
 
@@ -320,15 +322,6 @@ export interface NotificationPreferences {
     start: string;
     end: string;
   };
-}
-
-export interface KeyboardShortcuts {
-  toggleComments: string;
-  toggleFileTree: string;
-  nextFile: string;
-  previousFile: string;
-  nextComment: string;
-  previousComment: string;
 }
 
 export interface FileLineContent {

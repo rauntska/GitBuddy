@@ -43,7 +43,9 @@
               :key="pr.gitHubId"
               :pr="pr"
               :compact="compact"
+              :density="density"
               :style="index < 20 ? { animationDelay: `${index * 50}ms` } : undefined"
+              @contextmenu="$emit('contextmenu', $event)"
             />
           </TransitionGroup>
 
@@ -74,10 +76,12 @@ const props = defineProps<{
   status: string;
   expanded?: boolean;
   compact?: boolean;
+  density?: 'compact' | 'comfortable' | 'expanded';
 }>();
 
  defineEmits<{
   toggle: [];
+  contextmenu: [payload: { pr: any; x: number; y: number }];
  }>();
 
  const isExpanded = computed(() => {

@@ -2,20 +2,45 @@
   <div class="space-y-3">
     <div class="flex items-center justify-between">
       <h3 class="text-sm font-medium text-slate-300">Review Timeline</h3>
-      <button
-        v-if="!expanded"
-        @click="expanded = true"
-        class="text-xs text-blue-400 hover:text-blue-300"
-      >
-        Show all
-      </button>
-      <button
-        v-else
-        @click="expanded = false"
-        class="text-xs text-blue-400 hover:text-blue-300"
-      >
-        Show less
-      </button>
+      <div class="flex items-center gap-3">
+        <!-- Mode toggle -->
+        <div class="flex items-center bg-slate-800 rounded-md border border-slate-700/50 p-0.5">
+          <button
+            @click="viewMode = 'events'"
+            :class="[
+              'px-2 py-0.5 text-xs rounded transition-colors',
+              viewMode === 'events' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:text-slate-200'
+            ]"
+          >
+            Events
+          </button>
+          <button
+            @click="viewMode = 'lifecycle'"
+            :class="[
+              'px-2 py-0.5 text-xs rounded transition-colors',
+              viewMode === 'lifecycle' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:text-slate-200'
+            ]"
+          >
+            Lifecycle
+          </button>
+        </div>
+        <template v-if="viewMode === 'events'">
+          <button
+            v-if="!expanded"
+            @click="expanded = true"
+            class="text-xs text-blue-400 hover:text-blue-300"
+          >
+            Show all
+          </button>
+          <button
+            v-else
+            @click="expanded = false"
+            class="text-xs text-blue-400 hover:text-blue-300"
+          >
+            Show less
+          </button>
+        </template>
+      </div>
     </div>
 
     <div v-if="loading" class="flex justify-center py-4">
@@ -26,6 +51,47 @@
       No review activity yet
     </div>
 
+    <!-- Lifecycle View -->
+    <div v-else-if="viewMode === 'lifecycle'" class="relative pl-8">
+      <div
+        class="absolute left-[11px] top-2 bottom-2 w-0.5 rounded"
+        :style="{ background: lifecycleLineGradient }"
+      ></div>
+
+      <div class="space-y-5">
+        <div
+          v-for="(step, index) in lifecycleSteps"
+          :key="index"
+          class="relative"
+        >
+          <!-- Node -->
+          <div
+            :class="[
+              'absolute left-[-24px] top-1 w-3.5 h-3.5 rounded-full border-2',
+              step.nodeClass
+            ]"
+          ></div>
+
+          <!-- Content -->
+          <div>
+            <div class="text-sm">
+              <span :class="step.labelClass" class="font-medium">{{ step.label }}</span>
+              <span v-if="step.actor" class="text-slate-500 text-xs ml-2">
+                by {{ step.actor }} &bull; {{ formatTimestamp(step.timestamp) }}
+              </span>
+            </div>
+            <div v-if="step.detail" class="text-xs text-slate-500 mt-1">
+              {{ step.detail }}
+            </div>
+            <div v-if="step.excerpt" class="mt-1.5 text-xs text-slate-400 bg-slate-800/50 rounded p-2 border-l-2" :class="step.excerptBorderClass">
+              {{ step.excerpt }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Events View (original) -->
     <div v-else class="relative">
       <div class="absolute left-4 top-0 bottom-0 w-px bg-slate-700"></div>
 
@@ -100,14 +166,107 @@ const emit = defineEmits<{
 const events = ref<ReviewEvent[]>([]);
 const loading = ref(true);
 const expanded = ref(false);
+const viewMode = ref<'events' | 'lifecycle'>('events');
 
 const maxDisplay = 2;
 
 const displayedEvents = computed(() => {
-  const sorted = [...events.value].sort((a, b) => 
+  const sorted = [...events.value].sort((a, b) =>
     new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   );
   return expanded.value ? sorted : sorted.slice(0, maxDisplay);
+});
+
+// Lifecycle steps derived from events
+interface LifecycleStep {
+  label: string;
+  labelClass: string;
+  nodeClass: string;
+  actor?: string;
+  timestamp: string;
+  detail?: string;
+  excerpt?: string;
+  excerptBorderClass?: string;
+}
+
+const lifecycleSteps = computed<LifecycleStep[]>(() => {
+  const sorted = [...events.value].sort((a, b) =>
+    new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  );
+  const steps: LifecycleStep[] = [];
+
+  for (const event of sorted) {
+    if (event.type === 'REVIEW_SUBMITTED') {
+      if (event.state === 'APPROVED') {
+        steps.push({
+          label: 'Approved',
+          labelClass: 'text-green-400',
+          nodeClass: 'border-green-500 bg-slate-800',
+          actor: event.actor,
+          timestamp: event.timestamp,
+          detail: event.summary,
+          excerptBorderClass: 'border-green-500/50',
+        });
+      } else if (event.state === 'CHANGES_REQUESTED') {
+        steps.push({
+          label: 'Changes Requested',
+          labelClass: 'text-blue-400',
+          nodeClass: 'border-blue-500 bg-slate-800',
+          actor: event.actor,
+          timestamp: event.timestamp,
+          detail: event.summary,
+          excerpt: event.summary,
+          excerptBorderClass: 'border-blue-500/50',
+        });
+      } else {
+        steps.push({
+          label: 'Reviewed',
+          labelClass: 'text-purple-400',
+          nodeClass: 'border-purple-500 bg-slate-800',
+          actor: event.actor,
+          timestamp: event.timestamp,
+          detail: event.summary,
+          excerptBorderClass: 'border-purple-500/50',
+        });
+      }
+    } else if (event.type === 'THREAD_CREATED') {
+      steps.push({
+        label: 'Comment Thread Started',
+        labelClass: 'text-amber-400',
+        nodeClass: 'border-amber-500 bg-slate-800',
+        actor: event.actor,
+        timestamp: event.timestamp,
+        detail: event.filePath ? `on ${event.filePath}` : undefined,
+        excerptBorderClass: 'border-amber-500/50',
+      });
+    } else if (event.type === 'THREAD_RESOLVED') {
+      steps.push({
+        label: 'Thread Resolved',
+        labelClass: 'text-green-400',
+        nodeClass: 'border-green-500 bg-slate-800',
+        actor: event.actor,
+        timestamp: event.timestamp,
+        detail: event.filePath ? `on ${event.filePath}` : undefined,
+        excerptBorderClass: 'border-green-500/50',
+      });
+    }
+  }
+
+  return steps;
+});
+
+const lifecycleLineGradient = computed(() => {
+  if (lifecycleSteps.value.length === 0) return 'bg-slate-700';
+  const colors = lifecycleSteps.value.map(s => {
+    if (s.labelClass.includes('green')) return '#22c55e';
+    if (s.labelClass.includes('blue')) return '#3b82f6';
+    if (s.labelClass.includes('purple')) return '#a855f7';
+    if (s.labelClass.includes('amber')) return '#f59e0b';
+    return '#64748b';
+  });
+  const total = colors.length;
+  const stops = colors.map((c, i) => `${c} ${(i / total) * 100}%${i < total - 1 ? `, ${c} ${((i + 1) / total) * 100}%` : ''}`);
+  return `linear-gradient(to bottom, ${stops.join(', ')})`;
 });
 
 const getEventBgColor = (type: string, state?: string): string => {
@@ -187,7 +346,7 @@ const formatTimestamp = (timestamp: string): string => {
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays < 7) return `${diffDays}d ago`;
-  
+
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 

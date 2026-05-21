@@ -40,7 +40,7 @@ public class UserService(AppDbContext context) : IUserService
                 FileTreeWidth = 256,
                 CommentsPanelWidth = 320,
                 FileTreeVisible = true,
-                ListViewMode = "normal"
+                ListViewMode = "comfortable"
             };
             context.UserPreferences.Add(preferences);
             await context.SaveChangesAsync();
@@ -51,7 +51,10 @@ public class UserService(AppDbContext context) : IUserService
             preferences.FileTreeWidth,
             preferences.CommentsPanelWidth,
             preferences.FileTreeVisible,
-            preferences.ListViewMode ?? "normal",
+            preferences.ListViewMode ?? "comfortable",
+            preferences.PinnedPrIds,
+            preferences.DashboardGroupOrder,
+            preferences.HiddenDashboardGroups,
             preferences.NotificationPreferences
         );
     }
@@ -82,6 +85,15 @@ public class UserService(AppDbContext context) : IUserService
         if (request.ListViewMode != null)
             preferences.ListViewMode = request.ListViewMode;
 
+        if (request.PinnedPrIds != null)
+            preferences.PinnedPrIds = request.PinnedPrIds;
+
+        if (request.DashboardGroupOrder != null)
+            preferences.DashboardGroupOrder = request.DashboardGroupOrder;
+
+        if (request.HiddenDashboardGroups != null)
+            preferences.HiddenDashboardGroups = request.HiddenDashboardGroups;
+
         if (request.NotificationPreferences != null)
             preferences.NotificationPreferences = request.NotificationPreferences;
 
@@ -93,7 +105,10 @@ public class UserService(AppDbContext context) : IUserService
             preferences.FileTreeWidth,
             preferences.CommentsPanelWidth,
             preferences.FileTreeVisible,
-            preferences.ListViewMode ?? "normal",
+            preferences.ListViewMode ?? "comfortable",
+            preferences.PinnedPrIds,
+            preferences.DashboardGroupOrder,
+            preferences.HiddenDashboardGroups,
             preferences.NotificationPreferences
         );
     }

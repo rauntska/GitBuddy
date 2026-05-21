@@ -94,18 +94,45 @@
         <div v-if="!loading || hasPRData" class="flex flex-wrap items-center justify-between gap-4 mb-4">
           <StatsSummary :stats="stats" />
           <div class="flex items-center gap-2 flex-shrink-0">
-            <button
-              @click="toggleCompactMode"
-              :title="isCompactMode ? 'Switch to normal view' : 'Switch to compact view'"
-              class="p-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 transition-colors"
-            >
-              <svg v-if="isCompactMode" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-              </svg>
-              <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
-              </svg>
-            </button>
+            <!-- Density Toggle -->
+            <div class="flex items-center bg-slate-800 rounded-lg border border-slate-700/50 p-0.5">
+              <button
+                @click="setListViewMode('compact')"
+                :title="'Compact view'"
+                :class="[
+                  'p-1.5 rounded-md transition-colors',
+                  listViewMode === 'compact' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:text-slate-200'
+                ]"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                </svg>
+              </button>
+              <button
+                @click="setListViewMode('comfortable')"
+                :title="'Comfortable view'"
+                :class="[
+                  'p-1.5 rounded-md transition-colors',
+                  listViewMode === 'comfortable' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:text-slate-200'
+                ]"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16" />
+                </svg>
+              </button>
+              <button
+                @click="setListViewMode('expanded')"
+                :title="'Expanded view'"
+                :class="[
+                  'p-1.5 rounded-md transition-colors',
+                  listViewMode === 'expanded' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:text-slate-200'
+                ]"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -182,16 +209,93 @@
 
       <!-- PR Groups -->
       <div v-if="authStore.isAuthenticated && hasPRData" class="space-y-6">
-        <PRGroup
-          v-for="(group, status) in pullRequests"
+        <!-- Edit Layout Toolbar -->
+        <div v-if="editLayoutMode" class="flex items-center gap-3 p-3 bg-slate-800/50 border border-slate-700/50 rounded-lg mb-4">
+          <span class="text-sm text-slate-400">Drag groups to reorder &bull; Click eye to hide</span>
+          <div class="ml-auto flex gap-2">
+            <button
+              @click="resetDashboardLayout"
+              class="px-3 py-1 text-xs rounded bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors"
+            >
+              Reset Layout
+            </button>
+            <button
+              @click="editLayoutMode = false"
+              class="px-3 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-500 transition-colors"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+
+        <!-- Edit Mode Toggle (shown when not in edit mode) -->
+        <div v-if="!editLayoutMode" class="flex justify-end">
+          <button
+            @click="editLayoutMode = true"
+            class="px-2 py-1 text-xs rounded text-slate-500 hover:text-slate-300 hover:bg-slate-800 transition-colors"
+            title="Customize dashboard layout"
+          >
+            <svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+            </svg>
+            Customize
+          </button>
+        </div>
+
+        <!-- Render groups in order -->
+        <div
+          v-for="status in orderedGroupKeys"
           :key="status"
-          :title="groupTitle(status)"
-          :pull-requests="group"
-          :status="status"
-          :expanded="expandedGroups[status] ?? true"
-          :compact="isCompactMode"
-          @toggle="toggleGroup(status)"
-        />
+          :draggable="editLayoutMode"
+          class="relative"
+          @dragstart="onDragStart($event, status)"
+          @dragover.prevent="onDragOver($event, status)"
+          @drop="onDrop($event, status)"
+          @dragend="onDragEnd"
+        >
+          <!-- Drag handle in edit mode -->
+          <div v-if="editLayoutMode" class="absolute -left-6 top-3 cursor-grab text-slate-600 hover:text-slate-400">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M7 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" />
+            </svg>
+          </div>
+          <PRGroup
+            :title="groupTitle(status)"
+            :pull-requests="pullRequests[status] || []"
+            :status="status"
+            :expanded="expandedGroups[status] ?? true"
+            :compact="isCompactMode"
+            :density="listViewMode"
+            @toggle="toggleGroup(status)"
+            @contextmenu="onPRContextMenu"
+          />
+          <!-- Hide button in edit mode -->
+          <button
+            v-if="editLayoutMode"
+            @click.stop="hideGroup(status)"
+            class="absolute top-3 right-10 p-1 rounded text-slate-600 hover:text-slate-400 hover:bg-slate-800 transition-colors"
+            title="Hide this group"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Hidden groups (in edit mode) -->
+        <div v-if="editLayoutMode && hiddenGroups.length > 0" class="mt-4 pt-4 border-t border-slate-700/50">
+          <div class="text-xs text-slate-500 mb-2 uppercase tracking-wider">Hidden Groups</div>
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-for="status in hiddenGroups"
+              :key="status"
+              @click="showGroup(status)"
+              class="px-3 py-1 text-xs rounded-full border border-slate-700 text-slate-500 hover:text-slate-300 hover:border-slate-500 transition-colors"
+            >
+              {{ groupTitle(status) }} — Show
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Branches Without PRs -->
@@ -212,7 +316,9 @@
           status="Merged"
           :expanded="expandedGroups.Merged ?? true"
           :compact="isCompactMode"
+          :density="listViewMode"
           @toggle="toggleGroup('Merged')"
+          @contextmenu="onPRContextMenu"
         />
 
         <div v-if="mergedPRsHasMore" class="text-center mt-4">
@@ -226,6 +332,16 @@
         </div>
       </div>
     </main>
+
+    <!-- Quick Actions Context Menu -->
+    <ContextMenu
+      :visible="contextMenuVisible"
+      :items="contextMenuItems"
+      :x="contextMenuX"
+      :y="contextMenuY"
+      @close="contextMenuVisible = false"
+      @select="onContextMenuSelect"
+    />
   </div>
 </template>
 
@@ -243,9 +359,11 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
   import SkeletonPRRow from '../components/SkeletonPRRow.vue';
   import EmptyState from '../components/EmptyState.vue';
   import BranchesWithoutPRSection from '../components/BranchesWithoutPRSection.vue';
+  import ContextMenu from '../components/ContextMenu.vue';
+  import type { MenuItem } from '../components/ContextMenu.vue';
 
   const authStore = useAuthStore();
-  const { preferences, loadPreferences, setListViewMode } = useUserPreferences();
+  const { preferences, loadPreferences, setListViewMode, togglePinnedPr, isPrPinned, setDashboardGroupOrder, setHiddenDashboardGroups, resetDashboardLayout } = useUserPreferences();
   const { hasPersonalAccessToken, fetchUserSettings } = useUserSettings();
   const { initFavicon, updateBadge } = useFaviconBadge();
   const {
@@ -275,7 +393,33 @@ const expandedGroups = ref<Record<string, boolean>>({});
 const hasAttemptedLoad = ref(false);
 const patWarningDismissed = ref(false);
 
-const isCompactMode = computed(() => preferences.value.listViewMode === 'compact');
+const listViewMode = computed(() => preferences.value.listViewMode ?? 'comfortable');
+const isCompactMode = computed(() => listViewMode.value === 'compact');
+
+// Dashboard layout
+const editLayoutMode = ref(false);
+
+const defaultGroupOrder = ['ReadyToMerge', 'AwaitingReview', 'Approved', 'ChangesRequested', 'Reviewed', 'Draft'];
+
+const orderedGroupKeys = computed(() => {
+  const customOrder = preferences.value.dashboardGroupOrder;
+  const hiddenGroups = preferences.value.hiddenDashboardGroups ?? [];
+  const availableKeys = Object.keys(pullRequests.value);
+
+  if (customOrder && customOrder.length > 0) {
+    // Merge custom order with any new groups not in the order
+    const ordered = customOrder.filter(k => availableKeys.includes(k) && !hiddenGroups.includes(k));
+    const remaining = availableKeys.filter(k => !customOrder.includes(k) && !hiddenGroups.includes(k));
+    return [...ordered, ...remaining];
+  }
+
+  // Default order: use predefined order, then any remaining groups
+  const ordered = defaultGroupOrder.filter(k => availableKeys.includes(k) && !hiddenGroups.includes(k));
+  const remaining = availableKeys.filter(k => !defaultGroupOrder.includes(k) && !hiddenGroups.includes(k));
+  return [...ordered, ...remaining];
+});
+
+const hiddenGroups = computed(() => preferences.value.hiddenDashboardGroups ?? []);
 
 const hasPRData = computed(() => Object.keys(pullRequests.value).length > 0);
 
@@ -289,9 +433,102 @@ const dismissPATWarning = () => {
   patWarningDismissed.value = true;
 };
 
-const toggleCompactMode = async () => {
-  const newMode = isCompactMode.value ? 'normal' : 'compact';
-  await setListViewMode(newMode);
+// Context menu state
+const contextMenuVisible = ref(false);
+const contextMenuX = ref(0);
+const contextMenuY = ref(0);
+const contextMenuPr = ref<any>(null);
+
+const contextMenuItems = computed<MenuItem[]>(() => {
+  if (!contextMenuPr.value) return [];
+  const pr = contextMenuPr.value;
+  const pinned = isPrPinned(pr.id);
+  return [
+    { label: 'Open PR Detail', action: 'open', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />', iconClass: 'text-blue-400' },
+    { label: pinned ? 'Unpin from Dashboard' : 'Pin to Dashboard', action: 'pin', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />', iconClass: pinned ? 'text-amber-400' : 'text-slate-400' },
+    { divider: true, label: '' },
+    { label: 'Copy PR Link', action: 'copyLink', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />', iconClass: 'text-slate-400' },
+    { label: 'Copy Branch Name', action: 'copyBranch', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />', iconClass: 'text-slate-400' },
+    { label: 'View on GitHub', action: 'viewGithub', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />', iconClass: 'text-purple-400' },
+  ];
+});
+
+const onPRContextMenu = (payload: { pr: any; x: number; y: number }) => {
+  contextMenuPr.value = payload.pr;
+  contextMenuX.value = payload.x;
+  contextMenuY.value = payload.y;
+  contextMenuVisible.value = true;
+};
+
+const onContextMenuSelect = async (action: string) => {
+  const pr = contextMenuPr.value;
+  if (!pr) return;
+
+  switch (action) {
+    case 'open':
+      // Navigation handled by router-link, but right-click context can also trigger this
+      break;
+    case 'pin':
+      await togglePinnedPr(pr.id);
+      break;
+    case 'copyLink':
+      await navigator.clipboard.writeText(pr.url);
+      break;
+    case 'copyBranch':
+      // Branch name isn't on the PullRequest type, use a fallback
+      await navigator.clipboard.writeText(pr.repository ? `${pr.repository}-pr-${pr.gitHubId}` : `pr-${pr.gitHubId}`);
+      break;
+    case 'viewGithub':
+      window.open(pr.url, '_blank');
+      break;
+  }
+  contextMenuVisible.value = false;
+};
+
+// Drag-and-drop for dashboard layout
+const draggedGroup = ref<string | null>(null);
+
+const onDragStart = (e: DragEvent, status: string) => {
+  if (!editLayoutMode.value) return;
+  draggedGroup.value = status;
+  (e.dataTransfer as DataTransfer).effectAllowed = 'move';
+};
+
+const onDragOver = (e: DragEvent, status: string) => {
+  if (!draggedGroup.value || draggedGroup.value === status) return;
+  (e.target as HTMLElement).closest('[draggable]')?.classList.add('ring-2', 'ring-blue-500/50');
+};
+
+const onDrop = async (e: DragEvent, targetStatus: string) => {
+  if (!draggedGroup.value || draggedGroup.value === targetStatus) return;
+  (e.target as HTMLElement).closest('[draggable]')?.classList.remove('ring-2', 'ring-blue-500/50');
+
+  const currentOrder = [...orderedGroupKeys.value];
+  const fromIndex = currentOrder.indexOf(draggedGroup.value);
+  const toIndex = currentOrder.indexOf(targetStatus);
+  if (fromIndex === -1 || toIndex === -1) return;
+
+  currentOrder.splice(fromIndex, 1);
+  currentOrder.splice(toIndex, 0, draggedGroup.value);
+  await setDashboardGroupOrder(currentOrder);
+  draggedGroup.value = null;
+};
+
+const onDragEnd = (_e: DragEvent) => {
+  draggedGroup.value = null;
+  document.querySelectorAll('.ring-blue-500\\/50').forEach(el => el.classList.remove('ring-2', 'ring-blue-500/50'));
+};
+
+const hideGroup = async (status: string) => {
+  const current = preferences.value.hiddenDashboardGroups ?? [];
+  if (!current.includes(status)) {
+    await setHiddenDashboardGroups([...current, status]);
+  }
+};
+
+const showGroup = async (status: string) => {
+  const current = preferences.value.hiddenDashboardGroups ?? [];
+  await setHiddenDashboardGroups(current.filter(g => g !== status));
 };
 
 const fetchUnreadCount = async () => {
