@@ -117,5 +117,14 @@ PRs are categorized based on reviews:
 - `appsettings.Development.json` - Development config
 - Required sections: `Jwt`, `GitHub` (ClientId, ClientSecret, WebhookSecret, RedirectUri)
 
+## Documentation
+
+Project documentation is organized in `docs/` with three categories:
+- `docs/ideas/<topic>/` — early-stage concepts, brain dumps, unstructured notes
+- `docs/specs/<topic>/` — refined designs, architecture decisions, technical details
+- `docs/plans/<topic>/` — implementation plans with step-by-step tasks
+
+Each topic gets its own folder. A topic flows from ideas → specs → plans as it matures. See `docs/README.md` for full convention details.
+
 ## CORS Policy
 The backend allows frontend at `http://localhost:5173` and `http://localhost:3000`. Update `AllowVueDev` policy in `Program.cs` for different origins.
