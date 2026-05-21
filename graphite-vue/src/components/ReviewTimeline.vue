@@ -28,54 +28,57 @@
 
     <div v-else class="relative">
       <div class="absolute left-4 top-0 bottom-0 w-px bg-slate-700"></div>
-      
+
       <div class="space-y-3">
-        <div
-          v-for="event in displayedEvents"
-          :key="event.id"
-          class="relative pl-10"
-        >
+        <TransitionGroup name="timeline">
           <div
-            :class="[
-              'absolute left-2 top-1 w-4 h-4 rounded-full border-2 border-slate-800 flex items-center justify-center',
-              getEventBgColor(event.type, event.state)
-            ]"
+            v-for="(event, index) in displayedEvents"
+            :key="event.id"
+            class="relative pl-10"
+            :style="{ animationDelay: `${index * 30}ms` }"
           >
-            <component :is="getEventIcon(event.type, event.state)" class="w-2.5 h-2.5" />
-          </div>
-          
-          <div class="bg-slate-800/50 rounded p-2.5 hover:bg-slate-800 transition-colors">
-            <div class="flex items-start gap-2">
-              <img
-                v-if="event.actorAvatar"
-                :src="event.actorAvatar"
-                :alt="event.actor"
-                class="w-5 h-5 rounded-full flex-shrink-0"
-              />
-              <div v-else class="w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center flex-shrink-0">
-                <span class="text-[10px] text-slate-400">{{ event.actor[0]?.toUpperCase() }}</span>
-              </div>
-              <div class="flex-1 min-w-0 overflow-hidden">
-                <div class="text-sm text-slate-200">
-                  <span class="font-medium">{{ event.actor }}</span>
-                  <span class="text-slate-400 ml-1">{{ event.summary }}</span>
+            <div
+              :class="[
+                'absolute left-2 top-1 w-4 h-4 rounded-full border-2 border-slate-800 flex items-center justify-center',
+                getEventBgColor(event.type, event.state)
+              ]"
+            >
+              <component :is="getEventIcon(event.type, event.state)" class="w-2.5 h-2.5" />
+            </div>
+
+            <div class="bg-slate-800/50 rounded p-2.5 hover:bg-slate-800 transition-colors">
+              <div class="flex items-start gap-2">
+                <img
+                  v-if="event.actorAvatar"
+                  :src="event.actorAvatar"
+                  :alt="event.actor"
+                  class="w-5 h-5 rounded-full flex-shrink-0"
+                />
+                <div v-else class="w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center flex-shrink-0">
+                  <span class="text-[10px] text-slate-400">{{ event.actor[0]?.toUpperCase() }}</span>
                 </div>
-                <div class="flex items-center gap-2 mt-1">
-                  <span class="text-xs text-slate-500">{{ formatTimestamp(event.timestamp) }}</span>
-                  <span
-                    v-if="event.state && event.type === 'REVIEW_SUBMITTED'"
-                    :class="['text-xs px-1.5 py-0.5 rounded', getStateBadgeClass(event.state)]"
-                  >
-                    {{ event.state }}
-                  </span>
-                </div>
-                <div v-if="event.filePath" class="mt-1 overflow-hidden">
-                  <span class="text-xs text-slate-500 font-mono truncate block">{{ event.filePath }}</span>
+                <div class="flex-1 min-w-0 overflow-hidden">
+                  <div class="text-sm text-slate-200">
+                    <span class="font-medium">{{ event.actor }}</span>
+                    <span class="text-slate-400 ml-1">{{ event.summary }}</span>
+                  </div>
+                  <div class="flex items-center gap-2 mt-1">
+                    <span class="text-xs text-slate-500">{{ formatTimestamp(event.timestamp) }}</span>
+                    <span
+                      v-if="event.state && event.type === 'REVIEW_SUBMITTED'"
+                      :class="['text-xs px-1.5 py-0.5 rounded', getStateBadgeClass(event.state)]"
+                    >
+                      {{ event.state }}
+                    </span>
+                  </div>
+                  <div v-if="event.filePath" class="mt-1 overflow-hidden">
+                    <span class="text-xs text-slate-500 font-mono truncate block">{{ event.filePath }}</span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        </TransitionGroup>
       </div>
     </div>
   </div>
@@ -204,3 +207,20 @@ onMounted(fetchTimeline);
 
 watch(() => props.pullRequestId, fetchTimeline);
 </script>
+
+<style scoped>
+.timeline-enter-active {
+  animation: timelineFadeIn 0.3s ease-out both;
+}
+
+@keyframes timelineFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+</style>

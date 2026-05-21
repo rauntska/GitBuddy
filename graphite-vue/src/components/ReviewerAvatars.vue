@@ -3,12 +3,14 @@
     <div
       v-for="review in displayedReviews"
       :key="review.reviewer"
-      class="relative group"
+      class="relative group/avatar"
+      @mouseenter="showTooltip($event, `${review.reviewer} — ${getReviewStateLabel(review.state)}`)"
+      @mouseleave="hideTooltip"
+      @mousemove="moveTooltip"
     >
       <img
         :src="review.reviewerAvatar"
         :alt="review.reviewer"
-        :title="`${review.reviewer} - ${getReviewStateLabel(review.state)}`"
         :class="[avatarSize, 'rounded-full border-2 border-slate-800 ring-2', getReviewStateColor(review.state)]"
       />
       <div
@@ -18,15 +20,26 @@
     <div
       v-if="remainingCount > 0"
       :class="[avatarSize, 'flex items-center justify-center rounded-full border-2 border-slate-800 bg-slate-700 text-slate-300 font-medium', compact ? 'text-[10px]' : 'text-xs']"
-      :title="`${remainingCount} more reviewers`"
+      @mouseenter="showTooltip($event, `${remainingCount} more reviewers`)"
+      @mouseleave="hideTooltip"
+      @mousemove="moveTooltip"
     >
       +{{ remainingCount }}
     </div>
+    <Teleport to="body">
+      <div
+        v-if="tooltipVisible"
+        class="fixed z-[9999] bg-slate-700 text-sm text-slate-200 rounded px-2 py-1 shadow-lg pointer-events-none whitespace-nowrap"
+        :style="{ top: `${tooltipY}px`, left: `${tooltipX}px` }"
+      >
+        {{ tooltipText }}
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import type { Review } from '../types';
 
 const props = defineProps<{
@@ -43,6 +56,27 @@ const dotSize = computed(() => compact.value ? 'w-2 h-2' : 'w-3 h-3');
 
 const displayedReviews = computed(() => props.reviews.slice(0, maxDisplay.value));
 const remainingCount = computed(() => Math.max(0, props.reviews.length - maxDisplay.value));
+
+const tooltipVisible = ref(false);
+const tooltipText = ref('');
+const tooltipX = ref(0);
+const tooltipY = ref(0);
+
+const showTooltip = (event: MouseEvent, text: string) => {
+  tooltipText.value = text;
+  tooltipX.value = event.clientX;
+  tooltipY.value = event.clientY - 36;
+  tooltipVisible.value = true;
+};
+
+const moveTooltip = (event: MouseEvent) => {
+  tooltipX.value = event.clientX;
+  tooltipY.value = event.clientY - 36;
+};
+
+const hideTooltip = () => {
+  tooltipVisible.value = false;
+};
 
 const getReviewStateColor = (state: string): string => {
   const colors: Record<string, string> = {

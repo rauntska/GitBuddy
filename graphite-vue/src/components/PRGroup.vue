@@ -4,7 +4,7 @@
       <h2 class="text-lg font-semibold text-slate-200 flex items-center gap-2">
         <span
           class="w-3 h-3 rounded-full"
-          :class="statusColor"
+          :class="[statusColor, { 'stale-pulse': isGroupStale }]"
         ></span>
         {{ title }}
         <span class="text-sm font-normal text-slate-500">({{ pullRequests.length }})</span>
@@ -31,26 +31,35 @@
        </button>
     </div>
 
-     <Transition name="collapse">
-     <div
-       v-if="isExpanded"
-       class="space-y-2"
-     >
-      <PRRow
-        v-for="pr in pullRequests"
-        :key="pr.gitHubId"
-        :pr="pr"
-        :compact="compact"
-      />
+    <div
+      class="collapse-wrapper"
+      :class="{ collapsed: !isExpanded }"
+    >
+      <div class="collapse-inner">
+        <div class="space-y-2">
+          <TransitionGroup name="pr-list">
+            <PRRow
+              v-for="(pr, index) in pullRequests"
+              :key="pr.gitHubId"
+              :pr="pr"
+              :compact="compact"
+              :style="index < 20 ? { animationDelay: `${index * 50}ms` } : undefined"
+            />
+          </TransitionGroup>
 
-      <div
-        v-if="pullRequests.length === 0"
-        class="text-center py-2 text-slate-600 text-sm"
-      >
-        No pull requests in this category
+          <!-- Contextual Empty State -->
+          <div
+            v-if="pullRequests.length === 0"
+            class="text-center py-6"
+          >
+            <div class="flex flex-col items-center gap-2">
+              <div class="text-slate-600" v-html="emptyStateIcon"></div>
+              <p class="text-slate-500 text-sm">{{ emptyStateMessage }}</p>
+            </div>
+          </div>
+        </div>
       </div>
-     </div>
-    </Transition>
+    </div>
   </div>
 </template>
 
@@ -89,22 +98,80 @@ const props = defineProps<{
    };
    return colors[props.status] || 'bg-gray-500';
  });
+
+const isGroupStale = computed(() => {
+  if (props.status !== 'AwaitingReview') return false;
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  return props.pullRequests.some(pr => new Date(pr.createdAt) < oneDayAgo);
+});
+
+const emptyStateMessage = computed(() => {
+  const messages: Record<string, string> = {
+    AwaitingReview: 'All caught up — no PRs waiting for review',
+    ChangesRequested: 'No PRs with changes requested',
+    Approved: 'No approved PRs ready to merge',
+    Reviewed: 'No reviewed PRs at the moment',
+    Draft: 'No draft PRs',
+    Merged: 'No merged or closed PRs',
+  };
+  return messages[props.status] || 'No pull requests in this category';
+});
+
+const emptyStateIcon = computed(() => {
+  const icons: Record<string, string> = {
+    AwaitingReview: '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>',
+    ChangesRequested: '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>',
+    Approved: '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 13l4 4L19 7" /></svg>',
+    Reviewed: '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>',
+    Draft: '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>',
+    Merged: '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>',
+  };
+  return icons[props.status] || '';
+});
 </script>
 
 <style scoped>
-.collapse-enter-active,
-.collapse-leave-active {
-  transition: max-height 0.3s ease, opacity 0.3s ease;
+/* Grid-template-rows collapse — no max-height measurement needed */
+.collapse-wrapper {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.3s ease-out;
+}
+
+.collapse-wrapper.collapsed {
+  grid-template-rows: 0fr;
+}
+
+.collapse-inner {
   overflow: hidden;
 }
-.collapse-enter-from,
-.collapse-leave-to {
-  max-height: 0;
-  opacity: 0;
+
+/* Staggered list entrance */
+.pr-list-enter-active {
+  animation: fadeSlideIn 0.3s ease-out both;
 }
-.collapse-enter-to,
-.collapse-leave-from {
-  max-height: 2000px;
-  opacity: 1;
+
+.pr-list-leave-active {
+  transition: opacity 0.2s ease-in, transform 0.2s ease-in;
+}
+
+.pr-list-leave-to {
+  opacity: 0;
+  transform: translateX(-8px);
+}
+
+.pr-list-move {
+  transition: transform 0.3s ease;
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

@@ -5,11 +5,12 @@
     :class="[
       'group relative flex items-center border cursor-pointer',
       'border-slate-700/50 bg-slate-800/50',
-      'hover:bg-slate-800 hover:shadow-lg',
+      'hover:bg-slate-800 hover:shadow-xl hover:-translate-y-px',
       'transition-all duration-200 ease-out',
       getStatusBorderClass(pr.status),
       getStatusShadowClass(pr.status),
       { 'opacity-75': isStale(pr.createdAt) },
+      { 'activity-flash': flashActive },
       compact ? 'rounded p-1.5 gap-2' : 'rounded-lg p-2 gap-4'
     ]"
   >
@@ -139,7 +140,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { PullRequest } from '../types';
 import ReviewerAvatars from './ReviewerAvatars.vue';
 import PRSizeBadge from './PRSizeBadge.vue';
@@ -158,6 +159,13 @@ const props = defineProps<{
 }>();
 
 const compact = computed(() => props.compact ?? false);
+
+const flashActive = ref(false);
+
+watch(() => props.pr.updatedAt, () => {
+  flashActive.value = true;
+  setTimeout(() => { flashActive.value = false; }, 800);
+});
 
 const totalThreadsCount = computed(() => props.pr.reviewThreads?.length || 0);
 const resolvedThreadsCount = computed(() => props.pr.reviewThreads?.filter(rt => rt.isResolved).length || 0);
