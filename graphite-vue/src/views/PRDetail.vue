@@ -113,7 +113,7 @@
           </button>
 
           <div v-if="prDetail && !prDetail.draft && !prDetail.isMerged" class="relative">
-            <div class="flex items-center gap-0">
+            <div class="flex items-stretch gap-0">
               <button
                 @click="canMerge && handleMerge()"
                 :disabled="!canMerge || merging"
