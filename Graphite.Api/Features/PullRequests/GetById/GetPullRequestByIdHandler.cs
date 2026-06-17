@@ -19,6 +19,7 @@ public class GetPullRequestByIdHandler(
             .Include(p => p.Reviews)
             .Include(p => p.ReviewThreads)
             .Include(p => p.CheckRuns)
+            .AsNoTracking()
             .FirstOrDefaultAsync(p => p.Id == request.Id, cancellationToken);
 
         if (pr == null)
@@ -26,10 +27,12 @@ public class GetPullRequestByIdHandler(
 
         var files = await context.FileDiffs
             .Where(f => f.PullRequestId == request.Id)
+            .AsNoTracking()
             .ToListAsync(cancellationToken);
 
         var comments = await context.Comments
             .Where(c => c.PullRequestId == request.Id)
+            .AsNoTracking()
             .ToListAsync(cancellationToken);
 
         var user = await validationService.GetUserAsync(request.User);
@@ -40,6 +43,7 @@ public class GetPullRequestByIdHandler(
         {
             viewedStates = await context.UserFileViewedStates
                 .Where(uvs => uvs.UserId == user.Id && files.Select(f => f.Id).Contains(uvs.FileDiffId))
+                .AsNoTracking()
                 .ToListAsync(cancellationToken);
 
             if (!string.IsNullOrEmpty(user.AccessToken))

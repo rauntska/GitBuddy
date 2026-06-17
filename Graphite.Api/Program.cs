@@ -6,8 +6,10 @@ using Graphite.Api.Services;
 using Graphite.Domain.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.IdentityModel.Tokens;
 using Octokit.Webhooks.AspNetCore;
+using System.IO.Compression;
 using System.Text;
 using Octokit.Webhooks;
 using System.Text.Json.Serialization;
@@ -108,6 +110,25 @@ builder.Services.AddCors(options =>
 builder.Services.AddSignalR();
 builder.Services.AddHealthChecks();
 
+builder.Services.AddResponseCompression(options =>
+{
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+    options.MimeTypes = new[]
+    {
+        "application/json",
+        "text/json",
+        "text/plain",
+        "text/event-stream",
+        "application/javascript",
+        "text/css",
+        "image/svg+xml"
+    };
+});
+
+builder.Services.Configure<BrotliCompressionProviderOptions>(options => options.Level = CompressionLevel.Fastest);
+builder.Services.Configure<GzipCompressionProviderOptions>(options => options.Level = CompressionLevel.Fastest);
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
@@ -116,6 +137,7 @@ using (var scope = app.Services.CreateScope())
     await dbContext.Database.MigrateAsync();
 }
 
+app.UseResponseCompression();
 app.UseCors("AllowVueDev");
 
 app.UseAuthentication();

@@ -433,6 +433,7 @@ public class CacheService(
             .Include(pr => pr.Reviews)
             .Include(pr => pr.ReviewThreads)
             .OrderByDescending(pr => pr.UpdatedAt)
+            .AsNoTracking()
             .ToListAsync();
 
         return new Dictionary<string, List<PullRequest>>
@@ -450,6 +451,7 @@ public class CacheService(
     {
         var pullRequests = await context.PullRequests
             .Include(pullRequest => pullRequest.ReviewThreads)
+            .AsNoTracking()
             .ToListAsync();
 
         var totalThreads = pullRequests.Sum(pr => pr.ReviewThreads.Count);

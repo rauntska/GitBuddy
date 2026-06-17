@@ -576,14 +576,14 @@ onMounted(async () => {
     hasAttemptedLoad.value = true;
     await loadPreferences();
     await fetchUserSettings();
-    await fetchPullRequests();
-    await fetchUnreadCount();
-    loadMergedPRs(true);
-    fetchBranchesWithoutPR();
-    
-    if (authStore.token) {
-      await signalR.connect(authStore.token);
-    }
+
+    await Promise.all([
+      fetchPullRequests(),
+      fetchUnreadCount(),
+      loadMergedPRs(true),
+      fetchBranchesWithoutPR(),
+      authStore.token ? signalR.connect(authStore.token) : Promise.resolve(),
+    ]);
   }
 });
 

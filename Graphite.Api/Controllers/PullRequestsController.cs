@@ -138,6 +138,7 @@ public class PullRequestsController(
             .OrderByDescending(pr => pr.MergedAt)
             .Skip(skip)
             .Take(take)
+            .AsNoTracking()
             .ToListAsync();
 
         var totalCount = await _context.PullRequests.CountAsync(pr => pr.IsMerged);
