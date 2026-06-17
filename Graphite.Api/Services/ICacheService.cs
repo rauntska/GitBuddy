@@ -6,6 +6,8 @@ public interface ICacheService
 {
     Task RefreshPullRequestsAsync(GitHubConfig config, long? prNumber = null, string? repository = null);
     Task<Dictionary<string, List<PullRequest>>> GetCachedPullRequestsAsync();
+    Task<Dictionary<string, object>> GetCachedPullRequestDtosAsync();
+    void InvalidateDashboardCache();
     Task<PRStats> GetPullRequestStatsAsync();
     Task<GitHubConfig?> GetConfigAsync();
     Task SaveConfigAsync(string organization, string? token, int refreshIntervalMinutes, string? appId = "", string? privateKey = "", string? installationId = "", bool useGitHubApp = false, bool deleteOldPRs = false);

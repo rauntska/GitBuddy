@@ -55,6 +55,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 builder.Services.AddHttpClient();
+builder.Services.AddMemoryCache();
 
 // Core services
 builder.Services.AddScoped<IGitHubService, GitHubService>();

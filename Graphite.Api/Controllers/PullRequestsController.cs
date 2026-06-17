@@ -51,14 +51,7 @@ public class PullRequestsController(
     [HttpGet]
     public async Task<IActionResult> Get()
     {
-        var groupedPRs = await cacheService.GetCachedPullRequestsAsync();
-        
-        var groupedPRsDtos = new Dictionary<string, object>();
-        foreach (var group in groupedPRs)
-        {
-            groupedPRsDtos[group.Key] = group.Value.ToDto();
-        }
-        
+        var groupedPRsDtos = await cacheService.GetCachedPullRequestDtosAsync();
         return Ok(groupedPRsDtos);
     }
 

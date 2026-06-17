@@ -1,6 +1,8 @@
+using Graphite.Api.Extensions;
 using Graphite.Domain.Data;
 using Graphite.Domain.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace Graphite.Api.Services;
 
@@ -10,25 +12,33 @@ public class CacheService(
     ILanguageDetectionService languageDetectionService,
     IRepositoryRuleService repositoryRuleService,
     IPullRequestStatusService statusService,
+    IMemoryCache memoryCache,
     ILogger<CacheService> logger)
     : ICacheService
 {
+    private const string DashboardDtosCacheKey = "dashboard-dtos";
+    private static readonly TimeSpan DashboardDtosTtl = TimeSpan.FromSeconds(10);
+
     public async Task RefreshPullRequestsAsync(GitHubConfig config, long? prNumber = null, string? repository = null)
     {
         var prDataList = await FetchPullRequestsAsync(config, prNumber, repository);
-        
+
         foreach (var prData in prDataList)
         {
             await SyncPullRequestAsync(config, prData);
         }
 
         await context.SaveChangesAsync();
-        
+
         if (!prNumber.HasValue)
         {
             await CleanupOldPRsAsync(prDataList);
         }
+
+        InvalidateDashboardCache();
     }
+
+    public void InvalidateDashboardCache() => memoryCache.Remove(DashboardDtosCacheKey);
 
     private async Task<List<GitHubPRData>> FetchPullRequestsAsync(GitHubConfig config, long? prNumber, string? repository)
     {
@@ -445,6 +455,22 @@ public class CacheService(
             ["ChangesRequested"] = pullRequests.Where(pr => pr.Status == "ChangesRequested").ToList(),
             ["Draft"] = pullRequests.Where(pr => pr.Status == "Draft").ToList()
         };
+    }
+
+    public async Task<Dictionary<string, object>> GetCachedPullRequestDtosAsync()
+    {
+        return (await memoryCache.GetOrCreateAsync(DashboardDtosCacheKey, async entry =>
+        {
+            entry.SetAbsoluteExpiration(DashboardDtosTtl);
+            var groupedPRs = await GetCachedPullRequestsAsync();
+
+            var groupedDtos = new Dictionary<string, object>();
+            foreach (var group in groupedPRs)
+            {
+                groupedDtos[group.Key] = group.Value.ToDto();
+            }
+            return groupedDtos;
+        }))!;
     }
 
     public async Task<PRStats> GetPullRequestStatsAsync()

@@ -18,6 +18,14 @@ export function usePRDetail() {
     error.value = null;
     try {
       prDetail.value = await apiService.getPRDetail(id);
+
+      apiService.getPendingReview(id).then(pendingReview => {
+        if (prDetail.value) {
+          prDetail.value.pendingReview = pendingReview ?? undefined;
+        }
+      }).catch(err => {
+        console.error('Failed to fetch pending review:', err);
+      });
     } catch (err: any) {
       error.value = err.response?.data?.message || 'Failed to fetch PR details';
       console.error('Error fetching PR details:', err);

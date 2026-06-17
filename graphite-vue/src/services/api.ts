@@ -142,8 +142,8 @@ export const apiService = {
     await api.post(`/pullrequests/${prId}/files/viewed`, { path, viewed });
   },
 
-  getPendingReview: async (prId: number): Promise<PendingReview> => {
-    const response = await api.get<PendingReview>(`/pullrequests/${prId}/pending-review`);
+  getPendingReview: async (prId: number): Promise<PendingReview | null> => {
+    const response = await api.get<PendingReview | null>(`/pullrequests/${prId}/pending-review`);
     return response.data;
   },
 
