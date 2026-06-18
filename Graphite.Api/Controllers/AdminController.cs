@@ -1,3 +1,4 @@
+using Graphite.Api.DTOs.Analytics;
 using Graphite.Api.Services;
 using Graphite.Domain.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -12,6 +13,7 @@ public class AdminController(
     IUserService userService,
     IInvitationService invitationService,
     IAllowlistService allowlistService,
+    IAnalyticsService analyticsService,
     IConfiguration configuration)
     : ControllerBase
 {
@@ -194,6 +196,39 @@ public class AdminController(
             PendingInvitations = invitations.Count(i => i.AcceptedAt == null && (i.ExpiresAt == null || i.ExpiresAt > DateTime.UtcNow)),
             AllowlistEntries = allowlist.Count()
         });
+    }
+
+    [HttpGet("analytics/throughput")]
+    public async Task<IActionResult> GetAnalyticsThroughput([FromQuery] DateTime? from, [FromQuery] DateTime? to)
+    {
+        var (f, t) = NormalizeWindow(from, to);
+        var result = await analyticsService.GetThroughputAsync(f, t);
+        return Ok(result);
+    }
+
+    [HttpGet("analytics/reviewers")]
+    public async Task<IActionResult> GetAnalyticsReviewers([FromQuery] DateTime? from, [FromQuery] DateTime? to)
+    {
+        var (f, t) = NormalizeWindow(from, to);
+        var result = await analyticsService.GetReviewerStatsAsync(f, t);
+        return Ok(result);
+    }
+
+    [HttpGet("analytics/health")]
+    public async Task<IActionResult> GetAnalyticsHealth([FromQuery] DateTime? from, [FromQuery] DateTime? to)
+    {
+        var (f, t) = NormalizeWindow(from, to);
+        var result = await analyticsService.GetHealthAsync(f, t);
+        return Ok(result);
+    }
+
+    private static (DateTime from, DateTime to) NormalizeWindow(DateTime? from, DateTime? to)
+    {
+        var end = to ?? DateTime.UtcNow;
+        var start = from ?? end.AddDays(-30);
+        if (start.Kind == DateTimeKind.Unspecified) start = DateTime.SpecifyKind(start, DateTimeKind.Utc);
+        if (end.Kind == DateTimeKind.Unspecified) end = DateTime.SpecifyKind(end, DateTimeKind.Utc);
+        return (start.ToUniversalTime(), end.ToUniversalTime());
     }
 }
 

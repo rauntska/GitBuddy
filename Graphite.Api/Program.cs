@@ -66,6 +66,7 @@ builder.Services.AddScoped<IWebhookService, WebhookService>();
 builder.Services.AddSingleton<INotificationService, SignalRNotificationService>();
 builder.Services.AddScoped<IInvitationService, InvitationService>();
 builder.Services.AddScoped<IAllowlistService, AllowlistService>();
+builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 
 // GitHub-related services
 builder.Services.AddSingleton<IGitHubTokenService, GitHubTokenService>();

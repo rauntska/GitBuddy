@@ -22,10 +22,11 @@
 import { computed, h } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAuthStore } from '../../stores/auth';
-import { 
+import {
   UserCircleIcon,
   Cog8ToothIcon,
-  ShieldCheckIcon
+  ShieldCheckIcon,
+  ChartBarIcon
 } from '@heroicons/vue/24/outline';
 
 const route = useRoute();
@@ -60,6 +61,13 @@ const menuItems = computed<MenuItem[]>(() => {
       label: 'Administration',
       path: '/settings/admin',
       icon: h(ShieldCheckIcon),
+      adminOnly: true
+    },
+    {
+      id: 'analytics',
+      label: 'Analytics',
+      path: '/settings/analytics',
+      icon: h(ChartBarIcon),
       adminOnly: true
     }
   ];
