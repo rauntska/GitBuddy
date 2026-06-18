@@ -53,11 +53,11 @@ The frontend runs on `http://localhost:5173` (development).
 ### Backend Structure
 
 - **Graphite.Api/** - Web API project
-  - `Controllers/` - API endpoints (PullRequests, Settings, Auth, Webhooks, UserPreferences)
-  - `Services/` - Business logic (GitHubService, CacheService, JwtService, GitHubGraphQLService, etc.)
-  - `BackgroundServices/` - Hosted services (PRRefreshService for auto-refresh)
+  - `Controllers/` - API endpoints (PullRequests, Auth, Webhooks, Settings, UserSettings, UserPreferences, Comments, CommentDrafts, CommentTemplates, Repositories, Images, Admin; plus `BaseController` shared base)
+  - `Services/` - Business logic (GitHubService, GitHubGraphQLService, CacheService, JwtService, PullRequestStatusService, PullRequestValidationService, SignalRNotificationService, UserService, WebhookService, AllowlistService, RepositoryRuleService, InvitationService, etc.)
+  - `BackgroundServices/` - Hosted services (`PRRefreshService` for auto-refresh, `RepositoryRuleSyncWorker` for rule sync)
   - `Hubs/` - SignalR hub (PRHub for real-time updates)
-  - `Processors/` - GitHub webhook processing
+  - `Processors/` - GitHub webhook processing (`GitHubWebhookProcessor`)
   - `DTOs/` - Data transfer objects
   - `Program.cs` - Application entry point with DI configuration
 
@@ -69,8 +69,8 @@ The frontend runs on `http://localhost:5173` (development).
 ### Frontend Structure
 
 - `src/components/` - Vue components (PRRow, PRGroup, FileDiffViewer, CommentsPanel, etc.)
-- `src/views/` - Page views (Dashboard, PRDetail, SettingsModal, AuthCallback)
-- `src/composables/` - Vue composables (usePullRequests, usePRDetail, useAuth, useSettings, useSignalR)
+- `src/views/` - Page views (Dashboard, PRDetail, SettingsModal, SettingsPage, AuthCallback, AccessDenied, AdminPanel)
+- `src/composables/` - Vue composables (usePullRequests, usePRDetail, useAuth, useSettings, useUserSettings, useUserPreferences, useSignalR, useToast, useDraftAutosave, useImageUpload, useCreatePR, useBranchesWithoutPR, useFaviconBadge, useBrowserNotifications, etc.)
 - `src/stores/` - Pinia stores (auth store)
 - `src/services/` - API client
 - `src/utils/` - Utility functions (prHelpers, diffHelpers, syntaxHighlight, api with axios interceptors)
@@ -119,12 +119,14 @@ PRs are categorized based on reviews:
 
 ## Documentation
 
-Project documentation is organized in `docs/` with three categories:
-- `docs/ideas/<topic>/` — early-stage concepts, brain dumps, unstructured notes
-- `docs/specs/<topic>/` — refined designs, architecture decisions, technical details
-- `docs/plans/<topic>/` — implementation plans with step-by-step tasks
+Durable project documentation lives in `docs/`, organized into three maturity stages:
+- `docs/ideas/<topic>/idea.md` — early-stage concepts, brain dumps, unstructured notes
+- `docs/specs/<topic>/design.md` — refined designs, architecture decisions, technical details
+- `docs/plans/<topic>/plan.md` — implementation plans with step-by-step tasks
 
-Each topic gets its own folder. A topic flows from ideas → specs → plans as it matures. See `docs/README.md` for full convention details.
+Each topic gets its own folder; a topic flows from `ideas/` → `specs/` → `plans/` as it matures. Shipped ideas are tagged in place with a top-of-file `> **Status: Implemented**` marker. See `docs/README.md` for full convention details.
+
+Execution specs produced by the `/feature-spec` skill live in `specs/YYYY-MM-DD-<feature>/` at the **repo root** (not under `docs/`) and contain `requirements.md`, `plan.md`, `validation.md`. Those are ephemeral — tied to a feature branch and consumed during implementation.
 
 ## CORS Policy
 The backend allows frontend at `http://localhost:5173` and `http://localhost:3000`. Update `AllowVueDev` policy in `Program.cs` for different origins.

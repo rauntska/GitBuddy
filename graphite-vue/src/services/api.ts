@@ -1,5 +1,5 @@
 import apiClient from '../utils/api';
-import type { GroupedPRs, PRStats, Settings, PRDetail, FileDiff, Comment, UserPreferences, PullRequest, CommentTemplate, CommentDraft, MentionableUser, ReactionGroup, User, UserRole, Invitation, AllowedUser, AdminStats, PendingReview, UserSettings, ReviewerStatus, ReviewTimeline, PotentialReviewer, Repository, Branch, BranchComparison, CreatePullRequestRequest, CreatePullRequestResult, BranchWithoutPR } from '../types';
+import type { GroupedPRs, PRStats, Settings, PRDetail, FileDiff, Comment, UserPreferences, PullRequest, CommentTemplate, CommentDraft, MentionableUser, ReactionGroup, User, UserRole, Invitation, AllowedUser, AdminStats, PendingReview, UserSettings, ReviewerStatus, ReviewTimeline, PotentialReviewer, Repository, Branch, BranchComparison, CreatePullRequestRequest, CreatePullRequestResult, BranchWithoutPR, ThroughputAnalytics, ReviewerAnalytics, HealthAnalytics } from '../types';
 
 const api = apiClient;
 
@@ -357,6 +357,28 @@ export const apiService = {
   // Admin - Stats
   getAdminStats: async (): Promise<AdminStats> => {
     const response = await api.get<AdminStats>('/admin/stats');
+    return response.data;
+  },
+
+  // Admin - Analytics
+  getAnalyticsThroughput: async (from?: string, to?: string): Promise<ThroughputAnalytics> => {
+    const response = await api.get<ThroughputAnalytics>('/admin/analytics/throughput', {
+      params: { from, to },
+    });
+    return response.data;
+  },
+
+  getAnalyticsReviewers: async (from?: string, to?: string): Promise<ReviewerAnalytics> => {
+    const response = await api.get<ReviewerAnalytics>('/admin/analytics/reviewers', {
+      params: { from, to },
+    });
+    return response.data;
+  },
+
+  getAnalyticsHealth: async (from?: string, to?: string): Promise<HealthAnalytics> => {
+    const response = await api.get<HealthAnalytics>('/admin/analytics/health', {
+      params: { from, to },
+    });
     return response.data;
   },
 

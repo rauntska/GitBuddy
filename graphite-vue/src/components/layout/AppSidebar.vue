@@ -29,6 +29,16 @@
         >
           <ShieldCheckIcon class="w-6 h-6" />
         </router-link>
+
+        <router-link
+          v-if="isAdmin"
+          to="/settings/analytics"
+          class="p-2 rounded-lg transition-colors"
+          :class="isActiveRoute('/settings/analytics') ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'"
+          aria-label="Analytics"
+        >
+          <ChartBarIcon class="w-6 h-6" />
+        </router-link>
       </div>
     </nav>
 
@@ -53,7 +63,8 @@ import {
   HomeIcon, 
   Cog6ToothIcon, 
   ShieldCheckIcon,
-  ArrowRightOnRectangleIcon 
+  ChartBarIcon,
+  ArrowRightOnRectangleIcon
 } from '@heroicons/vue/24/outline';
 
 const route = useRoute();

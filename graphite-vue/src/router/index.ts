@@ -57,6 +57,12 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
+      path: '/settings/analytics',
+      name: 'settings-analytics',
+      component: SettingsPage,
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
       path: '/admin',
       redirect: '/settings/admin',
     },

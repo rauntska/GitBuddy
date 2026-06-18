@@ -20,6 +20,7 @@
     "@tiptap/vue-3": "^3.22.5",
     "@types/prismjs": "^1.26.5",
     "axios": "^1.13.2",
+    "chart.js": "^4.5.1",
     "diff-match-patch": "^1.0.5",
     "lowlight": "^3.3.0",
     "marked": "^17.0.1",
@@ -27,6 +28,7 @@
     "prismjs": "^1.30.0",
     "tiptap-markdown": "^0.9.0",
     "vue": "^3.5.24",
+    "vue-chartjs": "^5.3.3",
     "vue-router": "^4.6.4"
   },
   "devDependencies": {
