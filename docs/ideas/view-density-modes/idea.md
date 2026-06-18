@@ -1,6 +1,6 @@
-# View Density Modes
+> **Status: Implemented** — see commit history for the shipped code.
 
-## Status: Implemented
+# View Density Modes
 
 ## Summary
 Three density levels for PR rows: Compact (single-line, minimal), Comfortable (current default), and Expanded (2-line with metadata bar). Controlled via a segmented toggle in the dashboard toolbar.

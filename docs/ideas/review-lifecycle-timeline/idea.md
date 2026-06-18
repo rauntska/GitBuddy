@@ -1,6 +1,6 @@
-# Review Progress Timeline
+> **Status: Implemented** — see commit history for the shipped code.
 
-## Status: Implemented
+# Review Progress Timeline
 
 ## Summary
 Enhanced ReviewTimeline with a lifecycle view showing the review progression as a color-coded vertical timeline. Toggle between Events (original) and Lifecycle views via a segmented control.

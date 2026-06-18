@@ -1,6 +1,6 @@
-# Dashboard Layout Customization
+> **Status: Implemented** — see commit history for the shipped code.
 
-## Status: Implemented
+# Dashboard Layout Customization
 
 ## Summary
 Users can reorder PR groups via drag-and-drop, show/hide groups, and reset to defaults. Edit mode is toggled via a "Customize" button. Layout preferences persist via UserPreferences API.

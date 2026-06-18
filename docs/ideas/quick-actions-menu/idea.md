@@ -1,6 +1,6 @@
-# Quick Actions Context Menu
+> **Status: Implemented** — see commit history for the shipped code.
 
-## Status: Implemented
+# Quick Actions Context Menu
 
 ## Summary
 A "..." menu on each PR row (plus right-click) exposing common actions without opening PR detail. Includes: Open PR Detail, Pin/Unpin, Copy PR Link, Copy Branch Name, View on GitHub.
