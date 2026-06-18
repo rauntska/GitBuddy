@@ -59,6 +59,52 @@ export interface AdminStats {
   allowlistEntries: number;
 }
 
+export type AnalyticsPreset = '7d' | '30d' | '90d' | 'all';
+
+export interface DailyCount {
+  date: string;
+  count: number;
+}
+
+export interface ThroughputAnalytics {
+  openedDaily: DailyCount[];
+  mergedDaily: DailyCount[];
+  medianTimeToMergeHours: number | null;
+  medianTimeToFirstReviewHours: number | null;
+  totalOpened: number;
+  totalMerged: number;
+}
+
+export interface ReviewerStat {
+  username: string;
+  avatarUrl: string | null;
+  totalReviews: number;
+  totalPRsAuthored: number;
+  approvals: number;
+  changesRequested: number;
+  comments: number;
+  medianReviewLatencyHours: number | null;
+}
+
+export interface ReviewerAnalytics {
+  reviewers: ReviewerStat[];
+}
+
+export interface StalePR {
+  id: number;
+  title: string;
+  updatedAt: string;
+  daysStale: number;
+}
+
+export interface HealthAnalytics {
+  stalePRs: StalePR[];
+  stuckInReviewCount: number;
+  failingChecksCount: number;
+  unresolvedThreadsCount: number;
+  totalOpenPRs: number;
+}
+
 export interface ReviewThread {
   id: number;
   gitHubId: string;
