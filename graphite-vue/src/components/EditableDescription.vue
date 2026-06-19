@@ -103,9 +103,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
-import { marked } from 'marked';
-import apiClient from '../utils/api';
+import { ref, toRef } from 'vue';
+import { useProxiedHtml } from '../composables/useProxiedHtml';
 import TiptapEditor from './TiptapEditor.vue';
 
 const props = defineProps<{
@@ -120,66 +119,9 @@ const emit = defineEmits<{
 const isEditing = ref(false);
 const editContent = ref('');
 const saving = ref(false);
-const loading = ref(false);
 const expanded = ref(false);
-const processedHtml = ref('');
-const processedImages = ref<Map<string, string>>(new Map());
 
-const processImages = async () => {
-  const content = props.content || '';
-  if (!content) {
-    processedHtml.value = '';
-    return;
-  }
-
-  loading.value = true;
-
-  try {
-    const envUrl = import.meta.env.VITE_API_BASE_URL;
-    const apiBaseUrl = typeof envUrl === 'string' ? envUrl : 'http://localhost:5248/api';
-    const proxyUrl = `${apiBaseUrl}/images/proxy`;
-
-    const html = content.replace(/\r\n/g, '\n');
-
-    const imgRegex = /<img[^>]*src="(https:\/\/github\.com\/user-attachments\/[^"]*)"[^>]*>/g;
-    const imageUrls: string[] = [];
-    let match: RegExpExecArray | null;
-
-    while ((match = imgRegex.exec(html)) !== null) {
-      if (match[1]) {
-        imageUrls.push(match[1]);
-      }
-    }
-
-    for (const imageUrl of imageUrls) {
-      try {
-        const response = await apiClient.get(`${proxyUrl}?url=${encodeURIComponent(imageUrl)}`, {
-          responseType: 'blob',
-        });
-
-        const blob = response.data;
-        const objectUrl = URL.createObjectURL(blob);
-        processedImages.value.set(imageUrl, objectUrl);
-      } catch (error: any) {
-        console.error('Failed to load image:', imageUrl, error);
-      }
-    }
-
-    let newHtml = html;
-    processedImages.value.forEach((blobUrl, originalUrl) => {
-      newHtml = newHtml.replace(originalUrl, blobUrl);
-    });
-
-    marked.setOptions({ breaks: true, gfm: true });
-    processedHtml.value = marked.parse(newHtml) as string;
-  } catch (error) {
-    console.error('Error processing images:', error);
-    marked.setOptions({ breaks: true, gfm: true });
-    processedHtml.value = marked.parse(content) as string;
-  } finally {
-    loading.value = false;
-  }
-};
+const { html: processedHtml, loading } = useProxiedHtml(toRef(props, 'content'), { isMarkdown: true });
 
 const startEditing = () => {
   editContent.value = props.content || '';
@@ -200,10 +142,6 @@ const saveChanges = async () => {
     saving.value = false;
   }
 };
-
-watch(() => props.content, () => {
-  processImages();
-}, { immediate: true });
 </script>
 
 <style scoped>
