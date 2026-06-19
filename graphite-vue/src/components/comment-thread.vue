@@ -130,11 +130,13 @@
               </div>
             </div>
 
-            <p 
-              v-else 
-              class="text-slate-300/90 leading-snug whitespace-pre-wrap"
+            <div
+              v-else
+              class="text-slate-300/90 leading-snug markdown-content"
               :class="index === 0 ? 'text-xs mt-1' : 'text-[11px]'"
-            >{{ comment.body }}</p>
+            >
+              <CommentBody :body="comment.body" />
+            </div>
 
             <div v-if="isReplyingTo(comment.id)" class="mt-2 p-2 bg-slate-800/40 rounded border border-slate-700/20">
               <div class="flex items-center gap-1.5 mb-1.5 text-[10px] text-slate-400">
@@ -214,7 +216,9 @@
                   Pending
                 </span>
               </div>
-              <p class="text-[11px] text-slate-300/90 whitespace-pre-wrap leading-snug mt-0.5">{{ pendingReply.body }}</p>
+              <div class="text-[11px] text-slate-300/90 leading-snug mt-0.5 markdown-content">
+                <CommentBody :body="pendingReply.body" />
+              </div>
             </div>
             <button
               @click="$emit('deletePendingComment', pendingReply.gitHubId)"
@@ -238,6 +242,7 @@ import { ref, computed, watch, nextTick } from 'vue';
 import type { Comment, ReviewThread, PendingReviewComment } from '../types';
 import ThreadHeader from './thread-header.vue';
 import RichTextEditor from './RichTextEditor.vue';
+import CommentBody from './CommentBody.vue';
 
 const props = defineProps<{
   comments: Comment[];
