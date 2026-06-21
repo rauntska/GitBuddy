@@ -10,11 +10,12 @@
       @apply-custom="() => { if (customFrom && customTo) setCustomRange(customFrom, customTo) }"
     />
 
-    <div v-if="loading && !throughput" class="flex flex-col items-center justify-center py-16 text-slate-400">
-      <ArrowPathIcon class="w-8 h-8 animate-spin text-blue-400 mb-3" />
+    <div v-if="loading && !throughput" class="flex flex-col items-center justify-center py-12 text-slate-200/60">
+      <ArrowPathIcon class="w-5 h-5 animate-spin text-slate-400 mb-2" />
       <span class="text-sm">Loading analytics…</span>
     </div>
-    <div v-else-if="error" class="text-center text-red-400 py-12 rounded-xl border border-red-500/20 bg-red-500/5">
+    <div v-else-if="error" class="inline-flex items-center gap-2 px-3 py-2 rounded border border-red-900/40 bg-red-950/20 text-red-400 text-sm">
+      <span class="font-mono">✕</span>
       {{ error }}
     </div>
 

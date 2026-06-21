@@ -1,14 +1,14 @@
 <template>
-  <div class="space-y-6">
+  <div class="space-y-3">
     <div>
-      <h3 class="text-lg font-semibold text-white mb-4">Personal Access Token</h3>
-      <p class="text-sm text-slate-400 mb-4">
+      <h3 class="text-sm font-semibold uppercase tracking-wider text-slate-300 mb-2">Personal Access Token</h3>
+      <p class="text-sm text-slate-200/60 mb-4">
         Your Personal Access Token is used for user-specific operations like submitting reviews,
         marking files as viewed, and posting comments.
       </p>
-      <form @submit.prevent="savePAT" class="space-y-4">
+      <form @submit.prevent="savePAT" class="space-y-4 border-t border-slate-800 pt-4">
         <div>
-          <label class="block text-sm font-medium text-slate-300 mb-2">
+          <label class="block text-xs uppercase tracking-wider text-slate-500 mb-1.5">
             Personal Access Token
           </label>
           <div class="flex gap-2">
@@ -16,24 +16,24 @@
               v-model="localPAT"
               :type="showPAT ? 'text' : 'password'"
               :placeholder="hasExistingPAT ? '••••••••••••••••••••' : 'ghp_xxxxxxxxxxxx'"
-              class="flex-1 px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              class="flex-1 px-3 py-2 bg-slate-900/60 border border-slate-700 rounded text-slate-200 placeholder-slate-500 focus:outline-none focus:border-slate-600 transition-colors font-mono text-sm"
             />
             <button
               type="button"
               @click="showPAT = !showPAT"
-              class="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 hover:text-slate-200 transition-colors"
+              class="px-2.5 py-2 rounded border border-slate-800 text-slate-300 hover:bg-slate-800 transition-colors"
             >
-              <EyeIcon v-if="!showPAT" class="w-5 h-5" />
-              <EyeSlashIcon v-else class="w-5 h-5" />
+              <EyeIcon v-if="!showPAT" class="w-4 h-4" />
+              <EyeSlashIcon v-else class="w-4 h-4" />
             </button>
           </div>
-          <p class="mt-2 text-xs text-slate-500">
+          <p class="mt-1.5 text-[11px] text-slate-500">
             Token requires 'repo' and 'read:org' scopes.
             <a
               href="https://github.com/settings/tokens/new"
               target="_blank"
               rel="noopener noreferrer"
-              class="text-blue-400 hover:text-blue-300"
+              class="text-slate-300 hover:text-white underline underline-offset-2"
             >
               Create new token
             </a>
@@ -43,7 +43,7 @@
           <button
             type="submit"
             :disabled="savingPAT"
-            class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors disabled:opacity-50"
+            class="px-3 py-1.5 rounded bg-slate-200 hover:bg-white text-slate-900 text-sm transition-colors disabled:opacity-50"
           >
             {{ savingPAT ? 'Saving...' : 'Save Token' }}
           </button>
@@ -51,7 +51,7 @@
             v-if="hasExistingPAT"
             type="button"
             @click="clearPAT"
-            class="px-4 py-2 rounded-lg bg-red-600/20 hover:bg-red-600/30 text-red-400 text-sm font-medium transition-colors"
+            class="px-3 py-1.5 rounded border border-red-900/40 bg-red-950/20 hover:bg-red-950/40 hover:border-red-900/60 text-red-400 text-sm transition-colors"
           >
             Clear Token
           </button>
@@ -60,10 +60,13 @@
       <div
         v-if="patMessage"
         :class="[
-          'mt-3 p-3 rounded-lg text-sm',
-          patMessageType === 'success' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
+          'mt-3 inline-flex items-center gap-2 px-3 py-2 rounded border text-sm',
+          patMessageType === 'success'
+            ? 'border-slate-700 bg-slate-900 text-slate-200'
+            : 'border-red-900/40 bg-red-950/20 text-red-400'
         ]"
       >
+        <span class="font-mono" :class="patMessageType === 'success' ? 'text-emerald-400' : 'text-red-400'">{{ patMessageType === 'success' ? '✓' : '✕' }}</span>
         {{ patMessage }}
       </div>
     </div>
@@ -71,23 +74,22 @@
     <hr class="border-slate-800" />
 
     <div>
-      <h3 class="text-lg font-semibold text-white mb-4">Desktop Notifications</h3>
-      <p class="text-sm text-slate-400 mb-4">
+      <h3 class="text-sm font-semibold uppercase tracking-wider text-slate-300 mb-2">Desktop Notifications</h3>
+      <p class="text-sm text-slate-200/60 mb-4">
         Receive browser notifications for PR activity when the tab is in the background.
       </p>
 
-      <!-- Permission status -->
-      <div class="flex items-center gap-3 mb-4">
+      <div class="flex items-center gap-3 mb-4 border-t border-slate-800 pt-4">
         <div class="flex items-center gap-2">
           <span
-            class="w-2.5 h-2.5 rounded-full"
+            class="w-2 h-2 rounded-full"
             :class="{
-              'bg-green-500': notificationPermission === 'granted',
-              'bg-yellow-500': notificationPermission === 'default',
-              'bg-red-500': notificationPermission === 'denied'
+              'bg-emerald-400': notificationPermission === 'granted',
+              'bg-amber-400': notificationPermission === 'default',
+              'bg-red-400': notificationPermission === 'denied'
             }"
           ></span>
-          <span class="text-sm text-slate-300">
+          <span class="text-sm text-slate-200">
             <template v-if="notificationPermission === 'granted'">Notifications enabled</template>
             <template v-else-if="notificationPermission === 'default'">Not yet enabled</template>
             <template v-else>Blocked by browser</template>
@@ -96,70 +98,67 @@
         <button
           v-if="notificationPermission === 'default'"
           @click="enableNotifications"
-          class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors"
+          class="px-2.5 py-1 text-xs text-slate-900 bg-slate-200 hover:bg-white rounded transition-colors"
         >
           Enable
         </button>
-        <span v-else-if="notificationPermission === 'denied'" class="text-xs text-slate-500">
+        <span v-else-if="notificationPermission === 'denied'" class="text-[11px] text-slate-500">
           Enable in your browser settings
         </span>
       </div>
 
-      <!-- Master toggle -->
       <div class="space-y-4">
         <label class="flex items-center justify-between">
-          <span class="text-sm font-medium text-slate-300">Enable desktop notifications</span>
+          <span class="text-sm text-slate-200">Enable desktop notifications</span>
           <button
             type="button"
             role="switch"
             :aria-checked="notifPrefs.enabled"
             @click="updateNotifPref('enabled', !notifPrefs.enabled)"
-            class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
-            :class="notifPrefs.enabled ? 'bg-blue-600' : 'bg-slate-700'"
+            class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors"
+            :class="notifPrefs.enabled ? 'bg-emerald-400/80' : 'bg-slate-700'"
           >
             <span
-              class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
-              :class="notifPrefs.enabled ? 'translate-x-6' : 'translate-x-1'"
+              class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform"
+              :class="notifPrefs.enabled ? 'translate-x-5' : 'translate-x-1'"
             ></span>
           </button>
         </label>
 
-        <!-- Event toggles -->
-        <div v-if="notifPrefs.enabled" class="pl-2 border-l-2 border-slate-700 space-y-3">
-          <p class="text-xs text-slate-500 uppercase tracking-wider font-medium">Notify me when...</p>
+        <div v-if="notifPrefs.enabled" class="pl-3 border-l border-slate-800 space-y-3">
+          <p class="text-[11px] text-slate-500 uppercase tracking-wider">Notify me when...</p>
           <label v-for="(label, key) in eventLabels" :key="key" class="flex items-center justify-between">
-            <span class="text-sm text-slate-400">{{ label }}</span>
+            <span class="text-sm text-slate-200/80">{{ label }}</span>
             <button
               type="button"
               role="switch"
               :aria-checked="notifPrefs.events[key as keyof typeof notifPrefs.events]"
               @click="toggleEvent(key as keyof typeof notifPrefs.events)"
-              class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors"
-              :class="notifPrefs.events[key as keyof typeof notifPrefs.events] ? 'bg-blue-600' : 'bg-slate-700'"
+              class="relative inline-flex h-4 w-7 items-center rounded-full transition-colors"
+              :class="notifPrefs.events[key as keyof typeof notifPrefs.events] ? 'bg-emerald-400/80' : 'bg-slate-700'"
             >
               <span
-                class="inline-block h-3 w-3 transform rounded-full bg-white transition-transform"
-                :class="notifPrefs.events[key as keyof typeof notifPrefs.events] ? 'translate-x-5' : 'translate-x-1'"
+                class="inline-block h-2.5 w-2.5 transform rounded-full bg-white transition-transform"
+                :class="notifPrefs.events[key as keyof typeof notifPrefs.events] ? 'translate-x-4' : 'translate-x-1'"
               ></span>
             </button>
           </label>
         </div>
 
-        <!-- Quiet hours -->
-        <div v-if="notifPrefs.enabled" class="pl-2 border-l-2 border-slate-700 space-y-3">
+        <div v-if="notifPrefs.enabled" class="pl-3 border-l border-slate-800 space-y-3">
           <label class="flex items-center justify-between">
-            <span class="text-sm text-slate-400">Quiet hours</span>
+            <span class="text-sm text-slate-200/80">Quiet hours</span>
             <button
               type="button"
               role="switch"
               :aria-checked="notifPrefs.quietHours.enabled"
               @click="updateQuietHours('enabled', !notifPrefs.quietHours.enabled)"
-              class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors"
-              :class="notifPrefs.quietHours.enabled ? 'bg-blue-600' : 'bg-slate-700'"
+              class="relative inline-flex h-4 w-7 items-center rounded-full transition-colors"
+              :class="notifPrefs.quietHours.enabled ? 'bg-emerald-400/80' : 'bg-slate-700'"
             >
               <span
-                class="inline-block h-3 w-3 transform rounded-full bg-white transition-transform"
-                :class="notifPrefs.quietHours.enabled ? 'translate-x-5' : 'translate-x-1'"
+                class="inline-block h-2.5 w-2.5 transform rounded-full bg-white transition-transform"
+                :class="notifPrefs.quietHours.enabled ? 'translate-x-4' : 'translate-x-1'"
               ></span>
             </button>
           </label>
@@ -168,23 +167,22 @@
               type="time"
               :value="notifPrefs.quietHours.start"
               @change="(e: any) => updateQuietHours('start', e.target.value)"
-              class="px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              class="px-2 py-1 bg-slate-900/60 border border-slate-700 rounded text-slate-200 text-sm focus:outline-none focus:border-slate-600 font-mono tabular-nums"
             />
-            <span class="text-xs text-slate-500">to</span>
+            <span class="text-[11px] text-slate-500">to</span>
             <input
               type="time"
               :value="notifPrefs.quietHours.end"
               @change="(e: any) => updateQuietHours('end', e.target.value)"
-              class="px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              class="px-2 py-1 bg-slate-900/60 border border-slate-700 rounded text-slate-200 text-sm focus:outline-none focus:border-slate-600 font-mono tabular-nums"
             />
           </div>
         </div>
 
-        <!-- Test button -->
         <button
           v-if="notifPrefs.enabled && notificationPermission === 'granted'"
           @click="testNotification"
-          class="px-3 py-2 text-sm font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
+          class="px-2.5 py-1 text-sm border border-slate-800 text-slate-300 hover:bg-slate-800 rounded transition-colors"
         >
           Send test notification
         </button>
@@ -194,7 +192,7 @@
     <hr class="border-slate-800" />
 
     <div>
-      <h3 class="text-lg font-semibold text-white mb-4">Preferences</h3>
+      <h3 class="text-sm font-semibold uppercase tracking-wider text-slate-300 mb-2">Preferences</h3>
 
       <div class="space-y-4">
       </div>
@@ -286,7 +284,7 @@ const loadUserSettings = async () => {
 const savePAT = async () => {
   savingPAT.value = true;
   patMessage.value = '';
-  
+
   try {
     await apiService.updateUserSettings({ personalAccessToken: localPAT.value || null });
     hasExistingPAT.value = !!localPAT.value;
@@ -304,7 +302,7 @@ const savePAT = async () => {
 const clearPAT = async () => {
   savingPAT.value = true;
   patMessage.value = '';
-  
+
   try {
     await apiService.updateUserSettings({ personalAccessToken: null });
     hasExistingPAT.value = false;

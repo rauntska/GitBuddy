@@ -1,77 +1,77 @@
 <template>
-  <div class="admin-panel p-6 max-w-6xl mx-auto">
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-xl font-semibold text-white">Admin Panel</h1>
-      <router-link to="/" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium border border-slate-700 transition-colors">
+  <div class="admin-panel p-6 max-w-6xl mx-auto space-y-3">
+    <div class="flex justify-between items-center mb-3">
+      <h1 class="text-base font-semibold uppercase tracking-wider text-slate-300">Admin Panel</h1>
+      <router-link to="/" class="px-3 py-1.5 rounded border border-slate-800 text-slate-300 hover:bg-slate-800 text-sm transition-colors">
         Back to Dashboard
       </router-link>
     </div>
 
-    <div class="flex gap-2 mb-6 border-b border-slate-700 pb-4">
-      <button 
-        v-for="tab in tabs" 
-        :key="tab.id"
-        @click="activeTab = tab.id"
-        :class="[
-          'px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2',
-          activeTab === tab.id 
-            ? 'bg-blue-600 text-white' 
-            : 'text-slate-400 hover:text-slate-300 hover:bg-slate-800'
-        ]"
-      >
-        {{ tab.label }}
-        <span v-if="tab.count !== undefined" class="px-2 py-0.5 rounded-full text-xs bg-slate-700 text-slate-300">
-          {{ tab.count }}
-        </span>
-      </button>
-    </div>
+    <div>
+      <div class="flex flex-wrap gap-1 border-b border-slate-800 py-1 mb-3">
+        <button
+          v-for="tab in tabs"
+          :key="tab.id"
+          @click="activeTab = tab.id"
+          :class="[
+            'px-3 py-1.5 rounded text-sm transition-all duration-150 ease-out flex items-center gap-2 border',
+            activeTab === tab.id
+              ? 'bg-slate-800/60 border-slate-700 text-slate-200'
+              : 'border-transparent text-slate-300 hover:bg-slate-800/40 hover:border-slate-700'
+          ]"
+        >
+          {{ tab.label }}
+          <span v-if="tab.count !== undefined" class="bg-slate-800 border border-slate-700/60 text-slate-400 font-mono tabular-nums text-[11px] px-1.5 py-0.5 rounded">
+            {{ tab.count }}
+          </span>
+        </button>
+      </div>
 
-    <div class="bg-slate-800/50 rounded-xl border border-slate-700 p-6">
-      <div v-if="loading" class="text-center py-8 text-slate-400">Loading...</div>
-      
+      <div v-if="loading" class="text-center py-8 text-sm text-slate-200/60">Loading...</div>
+
       <div v-else-if="activeTab === 'users'">
-        <div class="flex justify-between items-center mb-4">
-          <h2 class="text-lg font-semibold text-white">Users</h2>
+        <div class="flex justify-between items-center mb-2">
+          <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-300">Users</h2>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full">
             <thead>
-              <tr class="border-b border-slate-700">
-                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase">Username</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase">Email</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase">Role</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase">Created</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase">Last Login</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase">Actions</th>
+              <tr class="border-b border-slate-800">
+                <th class="px-3 py-2 text-left text-[11px] font-normal uppercase tracking-wider text-slate-500">Username</th>
+                <th class="px-3 py-2 text-left text-[11px] font-normal uppercase tracking-wider text-slate-500">Email</th>
+                <th class="px-3 py-2 text-left text-[11px] font-normal uppercase tracking-wider text-slate-500">Role</th>
+                <th class="px-3 py-2 text-left text-[11px] font-normal uppercase tracking-wider text-slate-500">Created</th>
+                <th class="px-3 py-2 text-left text-[11px] font-normal uppercase tracking-wider text-slate-500">Last Login</th>
+                <th class="px-3 py-2 text-left text-[11px] font-normal uppercase tracking-wider text-slate-500">Actions</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="user in users" :key="user.id" class="border-b border-slate-700/50 hover:bg-slate-700/30">
-                <td class="px-4 py-3">
-                  <div class="flex items-center gap-3">
-                    <img v-if="user.avatarUrl" :src="user.avatarUrl" :alt="user.username" class="w-8 h-8 rounded-full" />
-                    <span class="text-slate-200">{{ user.username }}</span>
+              <tr v-for="user in users" :key="user.id" class="border-b border-slate-800 hover:bg-slate-800/40 hover:border-slate-700 transition-all duration-150 ease-out">
+                <td class="px-3 py-2">
+                  <div class="flex items-center gap-2">
+                    <img v-if="user.avatarUrl" :src="user.avatarUrl" :alt="user.username" class="w-6 h-6 rounded-full" />
+                    <span class="text-slate-200 font-mono">{{ user.username }}</span>
                   </div>
                 </td>
-                <td class="px-4 py-3 text-slate-400">{{ user.email }}</td>
-                <td class="px-4 py-3">
-                  <select 
-                    :value="user.role" 
+                <td class="px-3 py-2 text-slate-200/60">{{ user.email }}</td>
+                <td class="px-3 py-2">
+                  <select
+                    :value="user.role"
                     @change="updateUserRole(user.id, ($event.target as HTMLSelectElement).value as UserRole)"
                     :disabled="user.id === currentUserId"
-                    class="px-3 py-1.5 rounded-lg border border-slate-600 bg-slate-700 text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    class="px-2 py-1 rounded border border-slate-700 bg-slate-900/60 text-slate-200 text-sm focus:outline-none focus:border-slate-600 disabled:opacity-50"
                   >
                     <option value="Developer">Developer</option>
                     <option value="Admin">Admin</option>
                   </select>
                 </td>
-                <td class="px-4 py-3 text-slate-400 text-sm">{{ formatDate(user.createdAt) }}</td>
-                <td class="px-4 py-3 text-slate-400 text-sm">{{ user.lastLoginAt ? formatDate(user.lastLoginAt) : 'Never' }}</td>
-                <td class="px-4 py-3">
-                  <button 
+                <td class="px-3 py-2 text-slate-200/60 text-xs font-mono tabular-nums">{{ formatDate(user.createdAt) }}</td>
+                <td class="px-3 py-2 text-slate-200/60 text-xs font-mono tabular-nums">{{ user.lastLoginAt ? formatDate(user.lastLoginAt) : 'Never' }}</td>
+                <td class="px-3 py-2">
+                  <button
                     v-if="user.id !== currentUserId"
                     @click="deleteUser(user.id)"
-                    class="px-3 py-1.5 rounded-lg bg-red-600/20 text-red-400 text-sm hover:bg-red-600/30 transition-colors"
+                    class="px-2.5 py-1 rounded border border-red-900/40 bg-red-950/20 text-red-400 text-xs hover:bg-red-950/40 hover:border-red-900/60 transition-colors"
                   >
                     Delete
                   </button>
@@ -83,39 +83,39 @@
       </div>
 
       <div v-else-if="activeTab === 'invitations'">
-        <div class="flex justify-between items-center mb-4">
-          <h2 class="text-lg font-semibold text-white">Invitations</h2>
-          <button @click="showCreateInvitation = true" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors">
+        <div class="flex justify-between items-center mb-2">
+          <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-300">Invitations</h2>
+          <button @click="showCreateInvitation = true" class="px-3 py-1.5 rounded bg-slate-200 text-slate-900 hover:bg-white text-sm transition-colors">
             Create Invitation
           </button>
         </div>
-        
+
         <div v-if="showCreateInvitation" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50" @click.self="showCreateInvitation = false">
-          <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 w-full max-w-md">
-            <h3 class="text-lg font-semibold text-white mb-4">Create Invitation</h3>
+          <div class="bg-slate-900 p-6 rounded border border-slate-800 w-full max-w-md">
+            <h3 class="text-sm font-semibold uppercase tracking-wider text-slate-300 mb-4">Create Invitation</h3>
             <form @submit.prevent="createInvitation">
               <div class="mb-4">
-                <label class="block text-sm font-medium text-slate-300 mb-2">Email *</label>
-                <input v-model="newInvitation.email" type="email" required class="w-full px-4 py-2.5 rounded-lg bg-slate-700 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <label class="block text-xs uppercase tracking-wider text-slate-500 mb-1.5">Email *</label>
+                <input v-model="newInvitation.email" type="email" required class="w-full px-3 py-2 rounded bg-slate-900/60 border border-slate-700 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-slate-600" />
               </div>
               <div class="mb-4">
-                <label class="block text-sm font-medium text-slate-300 mb-2">GitHub Username (optional)</label>
-                <input v-model="newInvitation.gitHubUsername" type="text" class="w-full px-4 py-2.5 rounded-lg bg-slate-700 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <label class="block text-xs uppercase tracking-wider text-slate-500 mb-1.5">GitHub Username (optional)</label>
+                <input v-model="newInvitation.gitHubUsername" type="text" class="w-full px-3 py-2 rounded bg-slate-900/60 border border-slate-700 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-slate-600 font-mono" />
               </div>
               <div class="mb-4">
-                <label class="block text-sm font-medium text-slate-300 mb-2">Role</label>
-                <select v-model="newInvitation.assignedRole" class="w-full px-4 py-2.5 rounded-lg bg-slate-700 border border-slate-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <label class="block text-xs uppercase tracking-wider text-slate-500 mb-1.5">Role</label>
+                <select v-model="newInvitation.assignedRole" class="w-full px-3 py-2 rounded bg-slate-900/60 border border-slate-700 text-slate-200 focus:outline-none focus:border-slate-600">
                   <option value="Developer">Developer</option>
                   <option value="Admin">Admin</option>
                 </select>
               </div>
               <div class="mb-4">
-                <label class="block text-sm font-medium text-slate-300 mb-2">Expires in (days, 0 = never)</label>
-                <input v-model.number="newInvitation.expiresInDays" type="number" min="0" class="w-full px-4 py-2.5 rounded-lg bg-slate-700 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <label class="block text-xs uppercase tracking-wider text-slate-500 mb-1.5">Expires in (days, 0 = never)</label>
+                <input v-model.number="newInvitation.expiresInDays" type="number" min="0" class="w-full px-3 py-2 rounded bg-slate-900/60 border border-slate-700 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-slate-600 font-mono tabular-nums" />
               </div>
               <div class="flex gap-3 justify-end">
-                <button type="button" @click="showCreateInvitation = false" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 font-medium transition-colors">Cancel</button>
-                <button type="submit" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors">Create</button>
+                <button type="button" @click="showCreateInvitation = false" class="px-3 py-1.5 rounded border border-slate-800 text-slate-300 hover:bg-slate-800 text-sm transition-colors">Cancel</button>
+                <button type="submit" class="px-3 py-1.5 rounded bg-slate-200 text-slate-900 hover:bg-white text-sm transition-colors">Create</button>
               </div>
             </form>
           </div>
@@ -124,49 +124,45 @@
         <div class="overflow-x-auto">
           <table class="w-full">
             <thead>
-              <tr class="border-b border-slate-700">
-                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase">Email</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase">GitHub</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase">Role</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase">Status</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase">Created</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase">Invite Link</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase">Actions</th>
+              <tr class="border-b border-slate-800">
+                <th class="px-3 py-2 text-left text-[11px] font-normal uppercase tracking-wider text-slate-500">Email</th>
+                <th class="px-3 py-2 text-left text-[11px] font-normal uppercase tracking-wider text-slate-500">GitHub</th>
+                <th class="px-3 py-2 text-left text-[11px] font-normal uppercase tracking-wider text-slate-500">Role</th>
+                <th class="px-3 py-2 text-left text-[11px] font-normal uppercase tracking-wider text-slate-500">Status</th>
+                <th class="px-3 py-2 text-left text-[11px] font-normal uppercase tracking-wider text-slate-500">Created</th>
+                <th class="px-3 py-2 text-left text-[11px] font-normal uppercase tracking-wider text-slate-500">Invite Link</th>
+                <th class="px-3 py-2 text-left text-[11px] font-normal uppercase tracking-wider text-slate-500">Actions</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="invitation in invitations" :key="invitation.id" class="border-b border-slate-700/50 hover:bg-slate-700/30">
-                <td class="px-4 py-3 text-slate-200">{{ invitation.email }}</td>
-                <td class="px-4 py-3 text-slate-400">{{ invitation.gitHubUsername || '-' }}</td>
-                <td class="px-4 py-3 text-slate-300">{{ invitation.assignedRole }}</td>
-                <td class="px-4 py-3">
-                  <span :class="[
-                    'px-2.5 py-1 rounded-full text-xs font-medium',
-                    invitation.status === 'Pending' ? 'bg-amber-500/20 text-amber-400' :
-                    invitation.status === 'Accepted' ? 'bg-emerald-500/20 text-emerald-400' :
-                    'bg-slate-600/50 text-slate-400'
-                  ]">
+              <tr v-for="invitation in invitations" :key="invitation.id" class="border-b border-slate-800 hover:bg-slate-800/40 hover:border-slate-700 transition-all duration-150 ease-out">
+                <td class="px-3 py-2 text-slate-200">{{ invitation.email }}</td>
+                <td class="px-3 py-2 text-slate-200/60 font-mono">{{ invitation.gitHubUsername || '–' }}</td>
+                <td class="px-3 py-2 text-slate-200">{{ invitation.assignedRole }}</td>
+                <td class="px-3 py-2">
+                  <span class="inline-flex items-center gap-1 bg-slate-800/60 border border-slate-700/60 rounded px-2 py-0.5 text-xs text-slate-200">
+                    <span class="font-mono" :class="invitation.status === 'Pending' ? 'text-amber-400' : invitation.status === 'Accepted' ? 'text-emerald-400' : 'text-slate-500'">{{ invitation.status === 'Pending' ? '⋯' : invitation.status === 'Accepted' ? '✓' : '✕' }}</span>
                     {{ invitation.status }}
                   </span>
                 </td>
-                <td class="px-4 py-3 text-slate-400 text-sm">{{ formatDate(invitation.createdAt) }}</td>
-                <td class="px-4 py-3">
+                <td class="px-3 py-2 text-slate-200/60 text-xs font-mono tabular-nums">{{ formatDate(invitation.createdAt) }}</td>
+                <td class="px-3 py-2">
                   <div class="flex gap-2 items-center">
-                    <input 
-                      :value="invitation.inviteUrl" 
-                      readonly 
-                      class="w-40 px-2 py-1 text-xs rounded bg-slate-700 border border-slate-600 text-slate-300"
+                    <input
+                      :value="invitation.inviteUrl"
+                      readonly
+                      class="w-40 px-2 py-1 text-xs rounded bg-slate-900/60 border border-slate-800 text-slate-200/60 font-mono"
                     />
-                    <button @click="copyInviteLink(invitation.inviteUrl)" class="px-2 py-1 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors">
+                    <button @click="copyInviteLink(invitation.inviteUrl)" class="px-2 py-1 text-xs rounded border border-slate-800 text-slate-300 hover:bg-slate-800 transition-colors">
                       Copy
                     </button>
                   </div>
                 </td>
-                <td class="px-4 py-3">
-                  <button 
+                <td class="px-3 py-2">
+                  <button
                     v-if="invitation.status === 'Pending'"
                     @click="revokeInvitation(invitation.id)"
-                    class="px-3 py-1.5 rounded-lg bg-red-600/20 text-red-400 text-sm hover:bg-red-600/30 transition-colors"
+                    class="px-2.5 py-1 rounded border border-red-900/40 bg-red-950/20 text-red-400 text-xs hover:bg-red-950/40 hover:border-red-900/60 transition-colors"
                   >
                     Revoke
                   </button>
@@ -178,36 +174,36 @@
       </div>
 
       <div v-else-if="activeTab === 'allowlist'">
-        <div class="flex justify-between items-center mb-4">
-          <h2 class="text-lg font-semibold text-white">Allowlist</h2>
-          <button @click="showAddAllowlist = true" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors">
+        <div class="flex justify-between items-center mb-2">
+          <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-300">Allowlist</h2>
+          <button @click="showAddAllowlist = true" class="px-3 py-1.5 rounded bg-slate-200 text-slate-900 hover:bg-white text-sm transition-colors">
             Add Entry
           </button>
         </div>
 
         <div v-if="showAddAllowlist" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50" @click.self="showAddAllowlist = false">
-          <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 w-full max-w-md">
-            <h3 class="text-lg font-semibold text-white mb-4">Add to Allowlist</h3>
+          <div class="bg-slate-900 p-6 rounded border border-slate-800 w-full max-w-md">
+            <h3 class="text-sm font-semibold uppercase tracking-wider text-slate-300 mb-4">Add to Allowlist</h3>
             <form @submit.prevent="addToAllowlist">
               <div class="mb-4">
-                <label class="block text-sm font-medium text-slate-300 mb-2">Email (optional)</label>
-                <input v-model="newAllowlist.email" type="email" class="w-full px-4 py-2.5 rounded-lg bg-slate-700 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <label class="block text-xs uppercase tracking-wider text-slate-500 mb-1.5">Email (optional)</label>
+                <input v-model="newAllowlist.email" type="email" class="w-full px-3 py-2 rounded bg-slate-900/60 border border-slate-700 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-slate-600" />
               </div>
               <div class="mb-4">
-                <label class="block text-sm font-medium text-slate-300 mb-2">GitHub Username (optional)</label>
-                <input v-model="newAllowlist.gitHubUsername" type="text" class="w-full px-4 py-2.5 rounded-lg bg-slate-700 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <label class="block text-xs uppercase tracking-wider text-slate-500 mb-1.5">GitHub Username (optional)</label>
+                <input v-model="newAllowlist.gitHubUsername" type="text" class="w-full px-3 py-2 rounded bg-slate-900/60 border border-slate-700 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-slate-600 font-mono" />
               </div>
-              <p class="text-xs text-slate-400 mb-4">At least one of email or GitHub username is required.</p>
+              <p class="text-[11px] text-slate-500 mb-4">At least one of email or GitHub username is required.</p>
               <div class="mb-4">
-                <label class="block text-sm font-medium text-slate-300 mb-2">Role</label>
-                <select v-model="newAllowlist.assignedRole" class="w-full px-4 py-2.5 rounded-lg bg-slate-700 border border-slate-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <label class="block text-xs uppercase tracking-wider text-slate-500 mb-1.5">Role</label>
+                <select v-model="newAllowlist.assignedRole" class="w-full px-3 py-2 rounded bg-slate-900/60 border border-slate-700 text-slate-200 focus:outline-none focus:border-slate-600">
                   <option value="Developer">Developer</option>
                   <option value="Admin">Admin</option>
                 </select>
               </div>
               <div class="flex gap-3 justify-end">
-                <button type="button" @click="showAddAllowlist = false" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 font-medium transition-colors">Cancel</button>
-                <button type="submit" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors">Add</button>
+                <button type="button" @click="showAddAllowlist = false" class="px-3 py-1.5 rounded border border-slate-800 text-slate-300 hover:bg-slate-800 text-sm transition-colors">Cancel</button>
+                <button type="submit" class="px-3 py-1.5 rounded bg-slate-200 text-slate-900 hover:bg-white text-sm transition-colors">Add</button>
               </div>
             </form>
           </div>
@@ -216,24 +212,24 @@
         <div class="overflow-x-auto">
           <table class="w-full">
             <thead>
-              <tr class="border-b border-slate-700">
-                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase">Email</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase">GitHub</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase">Role</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase">Created</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase">Created By</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase">Actions</th>
+              <tr class="border-b border-slate-800">
+                <th class="px-3 py-2 text-left text-[11px] font-normal uppercase tracking-wider text-slate-500">Email</th>
+                <th class="px-3 py-2 text-left text-[11px] font-normal uppercase tracking-wider text-slate-500">GitHub</th>
+                <th class="px-3 py-2 text-left text-[11px] font-normal uppercase tracking-wider text-slate-500">Role</th>
+                <th class="px-3 py-2 text-left text-[11px] font-normal uppercase tracking-wider text-slate-500">Created</th>
+                <th class="px-3 py-2 text-left text-[11px] font-normal uppercase tracking-wider text-slate-500">Created By</th>
+                <th class="px-3 py-2 text-left text-[11px] font-normal uppercase tracking-wider text-slate-500">Actions</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="entry in allowlist" :key="entry.id" class="border-b border-slate-700/50 hover:bg-slate-700/30">
-                <td class="px-4 py-3 text-slate-200">{{ entry.email || '-' }}</td>
-                <td class="px-4 py-3 text-slate-400">{{ entry.gitHubUsername || '-' }}</td>
-                <td class="px-4 py-3 text-slate-300">{{ entry.assignedRole }}</td>
-                <td class="px-4 py-3 text-slate-400 text-sm">{{ formatDate(entry.createdAt) }}</td>
-                <td class="px-4 py-3 text-slate-400">{{ entry.createdBy?.username || '-' }}</td>
-                <td class="px-4 py-3">
-                  <button @click="removeFromAllowlist(entry.id)" class="px-3 py-1.5 rounded-lg bg-red-600/20 text-red-400 text-sm hover:bg-red-600/30 transition-colors">
+              <tr v-for="entry in allowlist" :key="entry.id" class="border-b border-slate-800 hover:bg-slate-800/40 hover:border-slate-700 transition-all duration-150 ease-out">
+                <td class="px-3 py-2 text-slate-200">{{ entry.email || '–' }}</td>
+                <td class="px-3 py-2 text-slate-200/60 font-mono">{{ entry.gitHubUsername || '–' }}</td>
+                <td class="px-3 py-2 text-slate-200">{{ entry.assignedRole }}</td>
+                <td class="px-3 py-2 text-slate-200/60 text-xs font-mono tabular-nums">{{ formatDate(entry.createdAt) }}</td>
+                <td class="px-3 py-2 text-slate-200/60 font-mono">{{ entry.createdBy?.username || '–' }}</td>
+                <td class="px-3 py-2">
+                  <button @click="removeFromAllowlist(entry.id)" class="px-2.5 py-1 rounded border border-red-900/40 bg-red-950/20 text-red-400 text-xs hover:bg-red-950/40 hover:border-red-900/60 transition-colors">
                     Remove
                   </button>
                 </td>
@@ -244,29 +240,44 @@
       </div>
 
       <div v-else-if="activeTab === 'stats'">
-        <div class="mb-4">
-          <h2 class="text-lg font-semibold text-white">Statistics</h2>
+        <div class="mb-2">
+          <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-300">Statistics</h2>
         </div>
-        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <div class="bg-slate-700/50 p-6 rounded-xl text-center border border-slate-600">
-            <div class="text-3xl font-bold text-blue-400">{{ stats.totalUsers }}</div>
-            <div class="text-sm text-slate-400 mt-1">Total Users</div>
+        <div class="flex flex-wrap gap-x-8 gap-y-4 border-t border-slate-800 pt-4">
+          <div>
+            <div class="flex items-baseline gap-1.5">
+              <span class="font-mono text-sm text-slate-400">●</span>
+              <span class="text-xl sm:text-2xl font-semibold tabular-nums text-slate-100 font-mono">{{ stats.totalUsers }}</span>
+            </div>
+            <div class="text-[11px] uppercase tracking-wider text-slate-500 mt-1">Total Users</div>
           </div>
-          <div class="bg-slate-700/50 p-6 rounded-xl text-center border border-slate-600">
-            <div class="text-3xl font-bold text-purple-400">{{ stats.adminCount }}</div>
-            <div class="text-sm text-slate-400 mt-1">Admins</div>
+          <div>
+            <div class="flex items-baseline gap-1.5">
+              <span class="font-mono text-sm text-amber-400">⚑</span>
+              <span class="text-xl sm:text-2xl font-semibold tabular-nums text-slate-100 font-mono">{{ stats.adminCount }}</span>
+            </div>
+            <div class="text-[11px] uppercase tracking-wider text-slate-500 mt-1">Admins</div>
           </div>
-          <div class="bg-slate-700/50 p-6 rounded-xl text-center border border-slate-600">
-            <div class="text-3xl font-bold text-emerald-400">{{ stats.developerCount }}</div>
-            <div class="text-sm text-slate-400 mt-1">Developers</div>
+          <div>
+            <div class="flex items-baseline gap-1.5">
+              <span class="font-mono text-sm text-blue-400">●</span>
+              <span class="text-xl sm:text-2xl font-semibold tabular-nums text-slate-100 font-mono">{{ stats.developerCount }}</span>
+            </div>
+            <div class="text-[11px] uppercase tracking-wider text-slate-500 mt-1">Developers</div>
           </div>
-          <div class="bg-slate-700/50 p-6 rounded-xl text-center border border-slate-600">
-            <div class="text-3xl font-bold text-amber-400">{{ stats.pendingInvitations }}</div>
-            <div class="text-sm text-slate-400 mt-1">Pending Invitations</div>
+          <div>
+            <div class="flex items-baseline gap-1.5">
+              <span class="font-mono text-sm text-amber-400">⋯</span>
+              <span class="text-xl sm:text-2xl font-semibold tabular-nums text-slate-100 font-mono">{{ stats.pendingInvitations }}</span>
+            </div>
+            <div class="text-[11px] uppercase tracking-wider text-slate-500 mt-1">Pending Invitations</div>
           </div>
-          <div class="bg-slate-700/50 p-6 rounded-xl text-center border border-slate-600">
-            <div class="text-3xl font-bold text-cyan-400">{{ stats.allowlistEntries }}</div>
-            <div class="text-sm text-slate-400 mt-1">Allowlist Entries</div>
+          <div>
+            <div class="flex items-baseline gap-1.5">
+              <span class="font-mono text-sm text-violet-400">◐</span>
+              <span class="text-xl sm:text-2xl font-semibold tabular-nums text-slate-100 font-mono">{{ stats.allowlistEntries }}</span>
+            </div>
+            <div class="text-[11px] uppercase tracking-wider text-slate-500 mt-1">Allowlist Entries</div>
           </div>
         </div>
       </div>
@@ -281,9 +292,12 @@
       leave-to-class="translate-y-2 opacity-0"
     >
       <div v-if="notification" :class="[
-        'fixed bottom-4 right-4 px-4 py-3 rounded-lg text-sm font-medium shadow-lg z-50',
-        notification.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'
+        'fixed bottom-4 right-4 inline-flex items-center gap-2 px-3 py-2 rounded border text-sm z-50',
+        notification.type === 'success'
+          ? 'bg-slate-900 border-slate-700 text-slate-200'
+          : 'bg-slate-900 border-slate-700 text-slate-200'
       ]">
+        <span class="font-mono" :class="notification.type === 'success' ? 'text-emerald-400' : 'text-red-400'">{{ notification.type === 'success' ? '✓' : '✕' }}</span>
         {{ notification.message }}
       </div>
     </Transition>
@@ -467,9 +481,5 @@ onMounted(() => {
 <style scoped>
 table {
   border-spacing: 0;
-}
-
-table th {
-  letter-spacing: 0.05em;
 }
 </style>

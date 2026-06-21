@@ -1,5 +1,5 @@
 <template>
-  <section class="relative overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-900/40 p-5 backdrop-blur-sm">
+  <section class="border-t border-slate-800 pt-4">
     <SectionHeader
       title="Throughput & Cycle Time"
       subtitle="PR flow and median velocity across the selected window"
@@ -7,27 +7,25 @@
       accent="blue"
     />
 
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-      <KpiCard label="PRs Opened" :value="data?.totalOpened ?? 0" :icon="DocumentPlusIcon" accent="blue" value-color="text-blue-300" />
-      <KpiCard label="PRs Merged" :value="data?.totalMerged ?? 0" :icon="CheckCircleIcon" accent="emerald" value-color="text-emerald-300" />
-      <KpiCard label="Median Time-to-Merge" :value="formatHours(data?.medianTimeToMergeHours)" :icon="ClockIcon" accent="purple" value-color="text-purple-300" />
-      <KpiCard label="Median First Review" :value="formatHours(data?.medianTimeToFirstReviewHours)" :icon="ChatBubbleLeftRightIcon" accent="amber" value-color="text-amber-300" />
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3 mb-5">
+      <KpiCard label="PRs Opened" :value="data?.totalOpened ?? 0" :icon="DocumentPlusIcon" accent="blue" value-color="text-blue-400" />
+      <KpiCard label="PRs Merged" :value="data?.totalMerged ?? 0" :icon="CheckCircleIcon" accent="emerald" value-color="text-emerald-400" />
+      <KpiCard label="Median Time-to-Merge" :value="formatHours(data?.medianTimeToMergeHours)" :icon="ClockIcon" accent="purple" value-color="text-violet-400" />
+      <KpiCard label="Median First Review" :value="formatHours(data?.medianTimeToFirstReviewHours)" :icon="ChatBubbleLeftRightIcon" accent="amber" value-color="text-amber-400" />
     </div>
 
-    <div class="relative rounded-xl border border-slate-800/80 bg-slate-950/40 p-4">
-      <div class="flex items-center justify-between mb-3">
-        <div class="flex items-center gap-4 text-xs">
-          <div class="flex items-center gap-2">
-            <span class="h-2.5 w-2.5 rounded-full bg-blue-400 shadow shadow-blue-500/50"></span>
-            <span class="text-slate-400">Opened</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow shadow-emerald-500/50"></span>
-            <span class="text-slate-400">Merged</span>
-          </div>
+    <div class="border-t border-slate-800 pt-3">
+      <div class="flex items-center gap-4 mb-3 text-xs">
+        <div class="flex items-center gap-1.5">
+          <span class="h-2 w-2 rounded-full bg-blue-400"></span>
+          <span class="text-slate-300">Opened</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
+          <span class="text-slate-300">Merged</span>
         </div>
       </div>
-      <div v-if="!hasChartData" class="text-center text-slate-500 py-12 text-sm">
+      <div v-if="!hasChartData" class="text-center text-slate-200/60 py-10 text-sm">
         No PRs in this window.
       </div>
       <div v-else class="h-72">

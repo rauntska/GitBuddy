@@ -1,16 +1,16 @@
 <template>
-  <nav class="w-56 bg-slate-850 border-r border-slate-800 p-4">
-    <h2 class="text-lg font-semibold text-white mb-4">Settings</h2>
+  <nav class="w-56 border-r border-slate-800 p-4">
+    <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-300 mb-3">Settings</h2>
     <ul class="space-y-1">
       <li v-for="item in menuItems" :key="item.id">
         <router-link
           :to="item.path"
-          class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors"
-          :class="isActive(item.path) 
-            ? 'bg-blue-600 text-white' 
-            : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'"
+          class="flex items-center gap-2 px-2 py-1.5 rounded text-sm transition-all duration-150 ease-out border"
+          :class="isActive(item.path)
+            ? 'bg-slate-800/60 border-slate-700 text-slate-200'
+            : 'border-transparent text-slate-300 hover:bg-slate-800/40 hover:border-slate-700'"
         >
-          <component :is="item.icon" class="w-5 h-5" />
+          <component :is="item.icon" class="w-4 h-4 shrink-0" />
           {{ item.label }}
         </router-link>
       </li>
@@ -71,7 +71,7 @@ const menuItems = computed<MenuItem[]>(() => {
       adminOnly: true
     }
   ];
-  
+
   return items.filter(item => !item.adminOnly || isAdmin.value);
 });
 

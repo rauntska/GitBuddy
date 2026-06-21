@@ -2,7 +2,7 @@
   <div class="flex min-h-[calc(100vh-73px)]">
     <SettingsNav />
     <main class="flex-1 p-6 overflow-auto">
-      <div :class="isAnalytics ? 'max-w-[1600px]' : 'max-w-4xl'">
+      <div class="space-y-3" :class="isAnalytics ? 'max-w-[1600px]' : 'max-w-4xl'">
         <UserSettingsPanel v-if="isUserSettings" />
         <GitHubAppPanel v-else-if="isGitHubApp" />
         <AdminPanel v-else-if="isAdmin" />

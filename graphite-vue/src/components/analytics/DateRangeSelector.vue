@@ -1,43 +1,43 @@
 <template>
-  <div class="flex flex-wrap items-center gap-3 rounded-xl border border-slate-700/60 bg-slate-900/40 p-3 backdrop-blur-sm">
-    <div class="inline-flex gap-1 bg-slate-950/40 rounded-lg p-1 border border-slate-800 w-full sm:w-auto">
+  <div class="flex flex-wrap items-center gap-3 border border-slate-800 rounded p-2">
+    <div class="inline-flex gap-1 bg-slate-900/60 border border-slate-800 rounded p-0.5 w-full sm:w-auto">
       <button
         v-for="p in presets"
         :key="p.value"
         @click="selectPreset(p.value)"
         :class="[
-          'flex-1 sm:flex-initial px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-200',
+          'flex-1 sm:flex-initial px-2.5 py-1 rounded text-xs transition-all duration-150 ease-out border font-mono tabular-nums',
           modelPreset === p.value
-            ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-md shadow-blue-500/30'
-            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+            ? 'bg-slate-800/60 border-slate-700 text-slate-200'
+            : 'border-transparent text-slate-300 hover:bg-slate-800/40 hover:border-slate-700'
         ]"
       >
         {{ p.label }}
       </button>
     </div>
 
-    <div class="h-px w-full sm:h-6 sm:w-px bg-slate-700/60"></div>
+    <div class="h-px w-full sm:h-4 sm:w-px bg-slate-800"></div>
 
     <div class="flex flex-wrap items-center gap-2 text-sm w-full sm:w-auto">
-      <span class="text-slate-500 text-xs uppercase tracking-wider">From</span>
+      <span class="text-[11px] uppercase tracking-wider text-slate-500">From</span>
       <input
         :value="customFrom"
         @input="emit('update:customFrom', ($event.target as HTMLInputElement).value)"
         type="date"
-        class="flex-1 sm:flex-initial min-w-[120px] px-2.5 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700 text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
+        class="flex-1 sm:flex-initial min-w-[120px] px-2 py-1 bg-slate-900/60 border border-slate-700 rounded text-slate-200 text-sm focus:outline-none focus:border-slate-600 transition-colors font-mono tabular-nums"
       />
-      <ArrowRightIcon class="w-3.5 h-3.5 text-slate-600 hidden sm:block" />
-      <span class="text-slate-500 text-xs uppercase tracking-wider sm:ml-2">To</span>
+      <ArrowRightIcon class="w-3 h-3 text-slate-600 hidden sm:block" />
+      <span class="text-[11px] uppercase tracking-wider text-slate-500 sm:ml-1">To</span>
       <input
         :value="customTo"
         @input="emit('update:customTo', ($event.target as HTMLInputElement).value)"
         type="date"
-        class="flex-1 sm:flex-initial min-w-[120px] px-2.5 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700 text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
+        class="flex-1 sm:flex-initial min-w-[120px] px-2 py-1 bg-slate-900/60 border border-slate-700 rounded text-slate-200 text-sm focus:outline-none focus:border-slate-600 transition-colors font-mono tabular-nums"
       />
       <button
         @click="emit('applyCustom')"
         :disabled="!customFrom || !customTo"
-        class="w-full sm:w-auto ml-0 sm:ml-1 px-3 py-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-xs font-semibold transition-all shadow-md shadow-blue-500/20 disabled:opacity-30 disabled:cursor-not-allowed disabled:shadow-none"
+        class="px-2.5 py-1 rounded bg-slate-200 hover:bg-white text-slate-900 text-xs transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
       >
         Apply
       </button>
