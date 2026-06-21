@@ -1,13 +1,13 @@
 <template>
   <div class="space-y-3">
     <div class="flex items-center justify-between">
-      <h3 class="text-sm font-medium text-slate-300">Reviewers</h3>
+      <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wider">Reviewers</h3>
       <button
         v-if="!showAddInput"
         @click="openAddReviewer"
-        class="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+        class="text-xs text-slate-300 hover:text-slate-100 flex items-center gap-1 border border-slate-800 hover:bg-slate-800 rounded px-2 py-0.5 transition-colors"
       >
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
         </svg>
         Add
@@ -25,7 +25,7 @@
       <div class="flex gap-2">
         <button
           @click="showAddInput = false"
-          class="px-3 py-1.5 text-sm bg-slate-700 text-slate-300 rounded hover:bg-slate-600"
+          class="px-3 py-1.5 text-sm border border-slate-800 text-slate-300 rounded hover:bg-slate-800 transition-colors"
         >
           Cancel
         </button>
@@ -33,18 +33,18 @@
     </div>
 
     <div v-if="loading" class="flex justify-center py-4">
-      <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+      <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-slate-400"></div>
     </div>
 
     <div v-else-if="reviewers.length === 0" class="text-sm text-slate-500 py-2">
       No reviewers requested
     </div>
 
-    <div v-else class="space-y-2">
+    <div v-else class="space-y-1.5">
       <div
         v-for="reviewer in reviewers"
         :key="reviewer.username"
-        class="flex items-center justify-between p-2 rounded bg-slate-800/50 hover:bg-slate-800"
+        class="flex items-center justify-between p-2 rounded border border-slate-800 hover:bg-slate-800/40 transition-colors"
       >
         <div class="flex items-center gap-2">
           <img
@@ -53,14 +53,14 @@
             :alt="reviewer.username"
             class="w-6 h-6 rounded-full"
           />
-          <div v-else class="w-6 h-6 rounded-full bg-purple-500/20 flex items-center justify-center">
-            <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div v-else class="w-6 h-6 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center">
+            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
           </div>
           <div>
             <div class="text-sm text-slate-200">{{ reviewer.username }}</div>
-            <div v-if="reviewer.reviewState" class="text-xs font-medium px-1.5 py-0.5 rounded">
+            <div v-if="reviewer.reviewState" class="text-xs px-1.5 py-0.5 rounded font-mono">
               <span :class="getStateColor(reviewer.reviewState)">{{ getStateLabel(reviewer.reviewState) }}</span>
               <span v-if="reviewer.reviewedAt" class="text-slate-500 ml-1">
                 {{ formatDate(reviewer.reviewedAt) }}
@@ -76,7 +76,7 @@
             v-if="reviewer.isRequested"
             @click="removeReviewer(reviewer.username)"
             :disabled="removingReviewer === reviewer.username"
-            class="p-1 text-slate-500 hover:text-red-400 disabled:opacity-50"
+            class="p-1 text-slate-500 hover:text-rose-400 disabled:opacity-50"
             title="Remove reviewer"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -87,9 +87,9 @@
       </div>
     </div>
 
-    <div v-if="summary" class="pt-2 border-t border-slate-700">
-      <div class="flex gap-4 text-xs">
-        <span class="text-green-400">
+    <div v-if="summary" class="pt-2 border-t border-slate-800">
+      <div class="flex gap-4 text-xs font-mono tabular-nums">
+        <span class="text-emerald-400">
           {{ summary.approved }} approved
         </span>
         <span class="text-orange-400">
@@ -140,7 +140,7 @@ const getStateColor = (state: string): string => {
   const colors: Record<string, string> = {
     Approved: 'text-emerald-400',
     ChangesRequested: 'text-amber-400',
-    Commented: 'text-sky-400',
+    Commented: 'text-violet-400',
   };
   return colors[state] || 'text-slate-400';
 };

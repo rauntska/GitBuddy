@@ -1,7 +1,7 @@
 <template>
-  <div class="flex flex-col bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900 text-slate-200 min-h-screen">
+  <div class="flex flex-col bg-slate-900 text-slate-200 min-h-screen">
     <!-- Compact Header -->
-    <div class="sticky top-20 z-20 bg-gradient-to-r from-slate-900/95 to-slate-900/90 border-b border-slate-700/30 backdrop-blur-md">
+    <div class="sticky top-20 z-20 bg-slate-900/95 border-b border-slate-800">
       <div class="px-3 sm:px-5 py-3 flex flex-wrap items-center gap-2 sm:gap-3">
         <Breadcrumb
           v-if="prDetail"
@@ -11,31 +11,27 @@
             { label: `#${prDetail.gitHubId}` },
           ]"
         />
-        <div v-else class="text-slate-500 text-sm">Loading...</div>
+        <div v-else class="text-slate-500 text-sm font-mono">Loading...</div>
 
         <div class="flex-1 min-w-0 flex items-center gap-2 sm:gap-3 overflow-hidden">
           <StatusBadge v-if="prDetail" :status="prDetail.status" />
           
-          <div 
-            v-if="prDetail && !prDetail.isMerged && !prDetail.draft && prDetail.status !== 'Merged' && prDetail.status !== 'Closed'" 
+          <div
+            v-if="prDetail && !prDetail.isMerged && !prDetail.draft && prDetail.status !== 'Merged' && prDetail.status !== 'Closed'"
             :class="[
-              'px-2 sm:px-3 py-1 rounded-full text-xs font-medium border',
-              prDetail.isMergeReady 
-                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' 
-                : 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+              'px-2 sm:px-3 py-1 rounded-full text-xs border',
+              prDetail.isMergeReady
+                ? 'bg-emerald-950/30 text-emerald-400 border-emerald-900/50'
+                : 'bg-amber-950/20 text-amber-400 border-amber-900/50'
             ]"
             :title="prDetail.mergeBlockReason || 'Ready to merge'"
           >
             <span v-if="prDetail.isMergeReady" class="flex items-center gap-1 sm:gap-1.5">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-              </svg>
+              <span class="font-mono leading-none text-emerald-400">✓</span>
               <span class="hidden sm:inline">Ready to merge</span>
             </span>
-            <span v-else-if="prDetail.requiredApprovingReviews" class="flex items-center gap-1 sm:gap-1.5">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+            <span v-else-if="prDetail.requiredApprovingReviews" class="flex items-center gap-1 sm:gap-1.5 font-mono tabular-nums">
+              <span class="leading-none text-amber-400">⋯</span>
               <span class="hidden sm:inline">{{ prDetail.currentApprovingReviews }}/{{ prDetail.requiredApprovingReviews }} approvals</span>
               <span class="sm:hidden">{{ prDetail.currentApprovingReviews }}/{{ prDetail.requiredApprovingReviews }}</span>
               <span v-if="prDetail.hasUnresolvedThreads" class="ml-1 hidden sm:inline">• {{ prDetail.reviewThreads.filter(rt => !rt.isResolved && !rt.isOutdated).length }} unresolved</span>
@@ -53,22 +49,22 @@
                 @keydown="handleTitleKeydown"
                 @blur="savingTitle ? null : saveTitle()"
                 :disabled="savingTitle"
-                class="flex-1 min-w-0 bg-slate-800 border border-blue-500 rounded px-2 py-1 text-lg font-semibold text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                class="flex-1 min-w-0 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-500/50"
                 :class="{ 'opacity-50': savingTitle }"
               />
-              <svg v-if="savingTitle" class="animate-spin h-4 w-4 text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24">
+              <svg v-if="savingTitle" class="animate-spin h-4 w-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
             </template>
             <template v-else>
-              <h1 class="text-lg font-semibold text-slate-100 truncate tracking-tight min-w-0 flex-shrink">
+              <h1 class="text-lg text-slate-100 truncate tracking-tight min-w-0 flex-shrink">
                 {{ prDetail?.title || 'Loading...' }}
               </h1>
               <button
                 v-if="prDetail && !prDetail.isMerged"
                 @click="startEditingTitle"
-                class="p-1 rounded opacity-0 group-hover/title:opacity-100 hover:bg-slate-700 text-slate-400 hover:text-white transition-all flex-shrink-0"
+                class="p-1 rounded opacity-0 group-hover/title:opacity-100 hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-all flex-shrink-0"
                 title="Edit title"
               >
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -80,23 +76,23 @@
         </div>
 
 <div class="flex flex-wrap items-center gap-2 sm:gap-3 text-xs flex-shrink-0">
-          <span class="text-slate-400 font-medium hidden sm:inline">{{ prDetail?.repository }} #{{ prDetail?.gitHubId }}</span>
+          <span class="text-slate-400 hidden sm:inline font-mono tabular-nums">{{ prDetail?.repository }} #{{ prDetail?.gitHubId }}</span>
 
           <button
             v-if="!prDetail?.isMerged"
             @click="showReviewModal = true"
             :class="[
-              'px-3 sm:px-4 py-2 rounded-lg text-xs font-medium text-white transition-all duration-200 shadow-lg relative',
-              prDetail?.pendingReview?.comments?.length 
-                ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-500/20 hover:shadow-amber-500/30' 
-                : 'bg-blue-600 hover:bg-blue-500 shadow-blue-500/20 hover:shadow-blue-500/30'
+              'px-3 sm:px-4 py-2 rounded-lg text-xs transition-all duration-150 relative',
+              prDetail?.pendingReview?.comments?.length
+                ? 'bg-slate-200 text-slate-900 hover:bg-white'
+                : 'border border-slate-800 text-slate-300 hover:bg-slate-800'
             ]"
           >
             <span class="sm:hidden">Review</span>
             <span class="hidden sm:inline">{{ prDetail?.pendingReview?.comments?.length ? 'Finish Review' : 'Review' }}</span>
             <span
               v-if="prDetail?.pendingReview?.comments?.length"
-              class="absolute -top-1.5 -right-1.5 bg-amber-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-0.5 shadow-lg"
+              class="absolute -top-1.5 -right-1.5 bg-amber-400 text-slate-900 text-[10px] rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-0.5 font-mono tabular-nums"
             >
               {{ prDetail.pendingReview.comments.length }}
             </span>
@@ -106,7 +102,7 @@
             v-if="prDetail?.draft && !prDetail?.isMerged"
             @click="handlePublishDraft"
             :disabled="publishingDraft"
-            class="px-3 sm:px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-medium text-white transition-all duration-200 shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="px-3 sm:px-4 py-2 bg-slate-200 hover:bg-white rounded-lg text-xs text-slate-900 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span class="sm:hidden">Pub</span>
             <span class="hidden sm:inline">{{ publishingDraft ? 'Publishing...' : 'Publish' }}</span>
@@ -118,10 +114,10 @@
                 @click="canMerge && handleMerge()"
                 :disabled="!canMerge || merging"
                 :class="[
-                  'px-3 sm:px-4 py-2 rounded-l-lg text-xs font-medium text-white transition-all duration-200',
+                  'px-3 sm:px-4 py-2 rounded-l-lg text-xs transition-all duration-150',
                   canMerge && !merging
-                    ? 'bg-purple-600 hover:bg-purple-500 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30'
-                    : 'bg-slate-600 cursor-not-allowed',
+                    ? 'bg-slate-200 text-slate-900 hover:bg-white'
+                    : 'bg-slate-800 text-slate-500 cursor-not-allowed',
                 ]"
               >
                 <span v-if="merging">Merging...</span>
@@ -132,10 +128,10 @@
                 @click="showMergeDropdown = !showMergeDropdown; loadMergeOptions()"
                 :disabled="!canMerge || merging"
                 :class="[
-                  'px-2 py-2 rounded-r-lg text-xs font-medium text-white border-l border-purple-400/30 transition-all duration-200',
+                  'px-2 py-2 rounded-r-lg text-xs border-l transition-all duration-150',
                   canMerge && !merging
-                    ? 'bg-purple-600 hover:bg-purple-500'
-                    : 'bg-slate-600 cursor-not-allowed',
+                    ? 'bg-slate-200 text-slate-900 hover:bg-white border-slate-300'
+                    : 'bg-slate-800 text-slate-500 cursor-not-allowed border-slate-700',
                 ]"
               >
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -150,12 +146,12 @@
               role="dialog"
               aria-modal="true"
               aria-label="Merge options"
-              class="absolute right-0 top-full mt-2 w-80 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-50"
+              class="absolute right-0 top-full mt-2 w-80 bg-slate-900 border border-slate-800 rounded-lg shadow-xl z-50"
             >
-              <div class="p-3 border-b border-slate-700">
+              <div class="p-3 border-b border-slate-800">
                 <div class="flex items-center justify-between">
                   <span class="text-xs text-slate-400">Merge Method</span>
-                  <span :class="['text-xs font-medium', mergeableStatusColor]">{{ mergeableStatusText }}</span>
+                  <span :class="['text-xs font-mono', mergeableStatusColor]">{{ mergeableStatusText }}</span>
                 </div>
               </div>
 
@@ -163,13 +159,13 @@
                 <label
                   v-for="method in availableMergeMethods"
                   :key="method.value"
-                  class="flex items-start gap-3 p-2 rounded-lg cursor-pointer hover:bg-slate-700/50 transition-colors"
+                  class="flex items-start gap-3 p-2 rounded-lg cursor-pointer hover:bg-slate-800 transition-colors"
                 >
                   <input
                     type="radio"
                     :value="method.value"
                     v-model="selectedMergeMethod"
-                    class="mt-1 accent-purple-500"
+                    class="mt-1 accent-slate-300"
                   />
                   <div class="flex-1 min-w-0">
                     <div class="text-sm text-slate-200">{{ method.label }}</div>
@@ -178,11 +174,11 @@
                 </label>
               </div>
 
-              <div v-if="mergeError" class="px-3 py-2 border-t border-slate-700">
+              <div v-if="mergeError" class="px-3 py-2 border-t border-slate-800">
                 <p class="text-xs text-red-400">{{ mergeError }}</p>
               </div>
 
-              <div class="p-3 border-t border-slate-700 flex justify-end gap-2">
+              <div class="p-3 border-t border-slate-800 flex justify-end gap-2">
                 <button
                   @click="showMergeDropdown = false; mergeError = null"
                   class="px-3 py-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors"
@@ -192,7 +188,7 @@
                 <button
                   @click="handleMerge"
                   :disabled="!canMerge || merging"
-                  class="px-4 py-1.5 bg-purple-600 hover:bg-purple-500 rounded text-xs font-medium text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="px-4 py-1.5 bg-slate-200 hover:bg-white rounded text-xs text-slate-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {{ merging ? 'Merging...' : 'Confirm merge' }}
                 </button>
@@ -203,10 +199,10 @@
           <button
             @click="toggleCommentsPanel"
             :class="[
-              'p-2 rounded-lg relative transition-all duration-200',
-              commentsPanel 
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' 
-                : 'bg-slate-800/60 hover:bg-slate-700/60 text-slate-300 border border-slate-600/50 hover:border-slate-500/50'
+              'p-2 rounded-lg relative transition-all duration-150',
+              commentsPanel
+                ? 'bg-slate-200 text-slate-900'
+                : 'border border-slate-800 text-slate-300 hover:bg-slate-800'
             ]"
             title="Comments"
           >
@@ -215,7 +211,7 @@
             </svg>
             <span
               v-if="unresolvedThreadsCount > 0"
-              class="absolute -top-1.5 -right-1.5 bg-blue-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-0.5 shadow-lg"
+              class="absolute -top-1.5 -right-1.5 bg-slate-200 text-slate-900 text-[10px] rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-0.5 font-mono tabular-nums"
             >
               {{ unresolvedThreadsCount }}
             </span>
@@ -224,13 +220,13 @@
           <button
             @click="refreshFileViewStates"
             :disabled="refreshingViewStates"
-            class="hidden sm:flex px-3 py-2 bg-slate-800/60 hover:bg-slate-700/60 border border-slate-600/50 rounded-lg text-xs text-slate-200 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed items-center gap-2 hover:border-slate-500/50"
+            class="hidden sm:flex px-3 py-2 border border-slate-800 hover:bg-slate-800 rounded-lg text-xs text-slate-300 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed items-center gap-2"
             title="Refresh file viewed states from GitHub"
           >
-            <svg 
-              :class="['w-3.5 h-3.5', { 'animate-spin': refreshingViewStates }]" 
-              fill="none" 
-              stroke="currentColor" 
+            <svg
+              :class="['w-3.5 h-3.5', { 'animate-spin': refreshingViewStates }]"
+              fill="none"
+              stroke="currentColor"
               viewBox="0 0 24 24"
             >
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -242,7 +238,7 @@
             :href="prDetail?.url"
             target="_blank"
             rel="noopener noreferrer"
-            class="px-3 py-2 bg-slate-800/60 hover:bg-slate-700/60 border border-slate-600/50 rounded-lg text-xs text-slate-200 transition-all duration-200 hover:border-slate-500/50"
+            class="px-3 py-2 border border-slate-800 hover:bg-slate-800 rounded-lg text-xs text-slate-300 transition-all duration-150"
           >
             GitHub
           </a>
@@ -253,11 +249,11 @@
     <!-- Loading State -->
     <div v-if="loading" class="flex items-center justify-center flex-1 min-h-[400px]">
       <div class="text-center">
-        <svg class="animate-spin h-16 w-16 mx-auto text-blue-500 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="animate-spin h-16 w-16 mx-auto text-slate-400 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
-        <p class="text-slate-400 text-sm font-medium">Loading PR details...</p>
+        <p class="text-slate-400 text-sm">Loading PR details...</p>
       </div>
     </div>
 
@@ -265,14 +261,14 @@
     <div v-else-if="error" class="flex items-center justify-center flex-1 min-h-[400px]">
       <div class="text-center max-w-md">
         <svg class="w-20 h-20 mx-auto text-red-500 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" 
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                 d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
         </svg>
-        <h2 class="text-2xl font-semibold text-slate-200 mb-3">Failed to load PR</h2>
+        <h2 class="text-2xl text-slate-200 mb-3">Failed to load PR</h2>
         <p class="text-slate-400 mb-6 text-sm">{{ error }}</p>
         <button
           @click="fetchPRDetail(props.id)"
-          class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-white transition-all duration-200 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 font-medium"
+          class="px-5 py-2.5 bg-slate-200 hover:bg-white rounded-lg text-slate-900 transition-all duration-150"
         >
           Retry
         </button>
@@ -284,7 +280,7 @@
       <div
         v-if="preferences.fileTreeVisible"
         :style="{ width: `${fileTreeWidth}px` }"
-        class="hidden md:block flex-shrink-0 overflow-auto bg-gradient-to-b from-slate-900/40 to-slate-950/40 border-r border-slate-700/30 relative sticky top-20 h-[calc(100vh-5rem)] backdrop-blur-sm"
+        class="hidden md:block flex-shrink-0 overflow-auto bg-slate-900/40 border-r border-slate-800 relative sticky top-20 h-[calc(100vh-5rem)]"
       >
         <FileTree
           :files="prDetail.files"
@@ -293,7 +289,7 @@
         />
         <!-- Resize Handle -->
         <div
-          class="absolute top-0 right-0 w-1.5 h-full cursor-ew-resize hover:bg-blue-500/50 bg-slate-600/20 hover:bg-blue-500/30 transition-all duration-200"
+          class="absolute top-0 right-0 w-1.5 h-full cursor-ew-resize bg-slate-800 hover:bg-slate-600 transition-colors duration-150"
           @mousedown="startResizeFileTree"
         />
       </div>
@@ -301,12 +297,12 @@
       <!-- Main Content Area -->
       <div class="flex-1 flex flex-col min-w-0">
         <!-- Top Section: PR Info -->
-        <div class="border-b border-slate-700/30 bg-gradient-to-b from-slate-900/30 to-transparent">
+        <div class="border-b border-slate-800">
           <div class="flex flex-col lg:flex-row gap-4 lg:gap-6 p-4 sm:p-6">
             <div class="flex-1 min-w-0">
               <!-- Branch Info -->
-              <div class="p-4 bg-gradient-to-br from-slate-800/40 to-slate-800/20 border border-slate-700/30 rounded-xl mb-4 shadow-sm">
-                <div class="text-xs font-medium text-slate-400 mb-2">Branches</div>
+              <div class="p-4 border border-slate-800 rounded mb-4">
+                <div class="text-xs text-slate-400 mb-2 uppercase tracking-wider">Branches</div>
                 <div class="flex flex-wrap items-center gap-2 text-sm">
                   <span class="text-emerald-400 font-mono truncate max-w-[200px] sm:max-w-none">{{ prDetail.sourceBranch }}</span>
                   <svg class="w-4 h-4 text-slate-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -317,10 +313,10 @@
               </div>
 
               <!-- Description -->
-              <div class="p-4 bg-gradient-to-br from-slate-800/40 to-slate-800/20 border border-slate-700/30 rounded-xl shadow-sm">
+              <div class="p-4 border border-slate-800 rounded">
                 <div class="flex items-center justify-between mb-3">
-                  <div class="text-xs font-semibold text-slate-200">Description</div>
-                  <div v-if="prDetail?.isMerged" class="text-xs text-slate-500 flex items-center gap-1">
+                  <div class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Description</div>
+                  <div v-if="prDetail?.isMerged" class="text-xs text-slate-500 flex items-center gap-1 font-mono">
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
@@ -351,73 +347,50 @@
 
             <!-- Right: Info & Stats -->
             <div class="lg:w-96 flex-shrink-0 space-y-4">
-<!--              &lt;!&ndash; Stats - Compact Table &ndash;&gt;-->
-<!--              <div class="p-4 bg-gradient-to-br from-slate-800/40 to-slate-800/20 border border-slate-700/30 rounded-xl shadow-sm">-->
-<!--                <div class="text-xs font-medium text-slate-400 mb-3">Stats</div>-->
-<!--                <table class="w-full text-sm">-->
-<!--                  <tr class="border-b border-slate-700/20 last:border-0">-->
-<!--                    <td class="text-slate-500 py-2">Files</td>-->
-<!--                    <td class="text-slate-200 text-right font-semibold">{{ prDetail.changedFiles }}</td>-->
-<!--                  </tr>-->
-<!--                  <tr class="border-b border-slate-700/20 last:border-0">-->
-<!--                    <td class="text-slate-500 py-2">Comments</td>-->
-<!--                    <td class="text-blue-400 text-right font-semibold">{{ prDetail.allComments.length }}</td>-->
-<!--                  </tr>-->
-<!--                  <tr class="border-b border-slate-700/20 last:border-0">-->
-<!--                    <td class="text-slate-500 py-2">Additions</td>-->
-<!--                    <td class="text-emerald-400 text-right font-semibold">+{{ prDetail.additions }}</td>-->
-<!--                  </tr>-->
-<!--                  <tr>-->
-<!--                    <td class="text-slate-500 py-2">Deletions</td>-->
-<!--                    <td class="text-rose-400 text-right font-semibold">-{{ prDetail.deletions }}</td>-->
-<!--                  </tr>-->
-<!--                </table>-->
-<!--              </div>-->
-
                 <!-- Reviewer Manager -->
-                <div class="p-4 bg-gradient-to-br from-slate-800/40 to-slate-800/20 border border-slate-700/30 rounded-xl shadow-sm">
-                  <ReviewerManager 
-                    :pull-request-id="prDetail.id" 
+                <div class="p-4 border border-slate-800 rounded">
+                  <ReviewerManager
+                    :pull-request-id="prDetail.id"
                     @error="handleReviewerError"
                   />
                 </div>
 
                 <!-- Review Timeline -->
-                <div class="p-4 bg-gradient-to-br from-slate-800/40 to-slate-800/20 border border-slate-700/30 rounded-xl shadow-sm">
-                  <ReviewTimeline 
+                <div class="p-4 border border-slate-800 rounded">
+                  <ReviewTimeline
                     :pull-request-id="prDetail.id"
                     @error="handleTimelineError"
                   />
                 </div>
 
                 <!-- CI/CD Checks -->
-                <div v-if="prDetail.checksStatus || (prDetail.checkRuns && prDetail.checkRuns.length > 0)" class="p-4 bg-gradient-to-br from-slate-800/40 to-slate-800/20 border border-slate-700/30 rounded-xl shadow-sm">
-                  <div class="text-xs font-medium text-slate-400 mb-3">CI/CD Checks</div>
+                <div v-if="prDetail.checksStatus || (prDetail.checkRuns && prDetail.checkRuns.length > 0)" class="p-4 border border-slate-800 rounded">
+                  <div class="text-xs text-slate-400 mb-3 uppercase tracking-wider">CI/CD Checks</div>
 
                   <div v-if="prDetail.checksStatus" class="space-y-2">
-                    <div class="flex items-center gap-2 p-2 rounded-lg bg-slate-700/30">
+                    <div class="flex items-center gap-2 p-2 rounded bg-slate-800/40">
                       <CIBadge :status="prDetail.checksStatus" :show-count="true" :total-count="prDetail.checkRuns?.length || 0" />
                       <span class="text-sm text-slate-200">{{ checksStatusLabel }}</span>
                     </div>
 
-                    <div v-if="prDetail.checkRuns && prDetail.checkRuns.length > 0" class="mt-3 space-y-1.5 max-h-48 overflow-y-auto">
+                    <div v-if="prDetail.checkRuns && prDetail.checkRuns.length > 0" class="mt-3 space-y-1 max-h-48 overflow-y-auto">
                       <div
                         v-for="check in prDetail.checkRuns"
                         :key="check.id"
-                        class="flex items-center gap-2 p-2 rounded hover:bg-slate-700/20 transition-colors duration-200"
+                        class="flex items-center gap-2 p-2 rounded hover:bg-slate-800/60 transition-colors duration-150"
                       >
-                        <CIBadge 
+                        <CIBadge
                           :status="getCheckStatusFromCheckRun(check)"
                           :show-count="false"
                           :compact="true"
                         />
-                        <span class="text-xs text-slate-300 truncate flex-1">{{ check.name }}</span>
+                        <span class="text-xs text-slate-200 truncate flex-1 font-mono">{{ check.name }}</span>
                         <a
                           v-if="check.url"
                           :href="check.url"
                           target="_blank"
                           rel="noopener noreferrer"
-                          class="text-slate-400 hover:text-slate-200 transition-colors duration-200"
+                          class="text-slate-400 hover:text-slate-200 transition-colors duration-150"
                           title="View on GitHub"
                         >
                           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -436,13 +409,13 @@
         <div class="flex-1">
           <div class="px-3 sm:px-6 py-4 sm:py-5">
                 <div class="flex items-center justify-between py-2">
-                  <h2 class="text-base font-semibold text-slate-100">
-                    Files Changed <span class="text-slate-500 font-normal">({{ prDetail.files.length }})</span>
+                  <h2 class="text-sm font-semibold text-slate-300 uppercase tracking-wider">
+                    Files Changed <span class="text-slate-500 font-normal font-mono tabular-nums">({{ prDetail.files.length }})</span>
                   </h2>
                   <div class="flex items-center gap-2">
                     <button
                       @click="toggleFileTree"
-                      class="hidden md:flex items-center gap-2 px-3 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg hover:bg-slate-700/60 text-slate-300 text-xs transition-all duration-200 hover:border-slate-500/50"
+                      class="hidden md:flex items-center gap-2 px-3 py-2 border border-slate-800 rounded-lg hover:bg-slate-800 text-slate-300 text-xs transition-all duration-150"
                     >
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -453,7 +426,7 @@
                     <div class="relative">
                       <button
                         @click="showSettingsDropdown = !showSettingsDropdown"
-                        class="p-2 bg-slate-800/50 border border-slate-700/50 rounded-lg hover:bg-slate-700/60 text-slate-300 transition-all duration-200 hover:border-slate-500/50"
+                        class="p-2 border border-slate-800 rounded-lg hover:bg-slate-800 text-slate-300 transition-all duration-150"
                         title="Diff settings"
                       >
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -472,17 +445,17 @@
                       >
                         <div
                           v-if="showSettingsDropdown"
-                          class="absolute right-0 top-full mt-2 bg-slate-900/95 backdrop-blur-xl border border-slate-700/50 rounded-xl shadow-2xl z-50 min-w-[220px] p-2"
+                          class="absolute right-0 top-full mt-2 bg-slate-900 border border-slate-800 rounded-lg shadow-xl z-50 min-w-[220px] p-2"
                         >
                           <div class="space-y-1">
-                            <div class="text-xs font-semibold text-slate-400 px-3 py-2">Diff View</div>
+                            <div class="text-xs font-semibold text-slate-400 px-3 py-2 uppercase tracking-wider">Diff View</div>
                             <button
                               @click="setDiffViewMode('unified'); showSettingsDropdown = false"
                               :class="[
-                                'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs text-left transition-all duration-200',
+                                'w-full flex items-center gap-3 px-3 py-2 rounded text-xs text-left transition-all duration-150',
                                 preferences.diffViewMode === 'unified'
-                                  ? 'bg-blue-600/20 text-blue-300 border border-blue-600/50'
-                                  : 'text-slate-300 hover:bg-slate-800/60'
+                                  ? 'bg-slate-800 text-slate-100 border border-slate-700'
+                                  : 'text-slate-300 hover:bg-slate-800/60 border border-transparent'
                               ]"
                             >
                               <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -493,10 +466,10 @@
                             <button
                               @click="setDiffViewMode('split'); showSettingsDropdown = false"
                               :class="[
-                                'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs text-left transition-all duration-200',
+                                'w-full flex items-center gap-3 px-3 py-2 rounded text-xs text-left transition-all duration-150',
                                 preferences.diffViewMode === 'split'
-                                  ? 'bg-blue-600/20 text-blue-300 border border-blue-600/50'
-                                  : 'text-slate-300 hover:bg-slate-800/60'
+                                  ? 'bg-slate-800 text-slate-100 border border-slate-700'
+                                  : 'text-slate-300 hover:bg-slate-800/60 border border-transparent'
                               ]"
                             >
                               <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -507,10 +480,10 @@
                             <button
                               @click="toggleContext(); showSettingsDropdown = false"
                               :class="[
-                                'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs text-left transition-all duration-200',
+                                'w-full flex items-center gap-3 px-3 py-2 rounded text-xs text-left transition-all duration-150',
                                 preferences.showContext
-                                  ? 'bg-blue-600/20 text-blue-300 border border-blue-600/50'
-                                  : 'text-slate-300 hover:bg-slate-800/60'
+                                  ? 'bg-slate-800 text-slate-100 border border-slate-700'
+                                  : 'text-slate-300 hover:bg-slate-800/60 border border-transparent'
                               ]"
                             >
                               <svg
@@ -606,7 +579,7 @@
             @thread-resolved="handleThreadResolved"
           />
           <div
-            class="hidden md:block absolute top-0 left-0 w-1.5 h-full cursor-ew-resize hover:bg-blue-500/50 bg-slate-600/20 hover:bg-blue-500/30 transition-all duration-200"
+            class="hidden md:block absolute top-0 left-0 w-1.5 h-full cursor-ew-resize bg-slate-800 hover:bg-slate-600 transition-colors duration-150"
             @mousedown="startResizeCommentsPanel"
           />
         </div>
@@ -627,25 +600,25 @@
         role="dialog"
         aria-modal="true"
         aria-label="Review pull request"
-        class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+        class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
         @click.self="showReviewModal = false"
       >
-        <div class="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-700/40 rounded-2xl p-6 max-w-lg w-full shadow-2xl shadow-black/50 max-h-[90vh] overflow-y-auto">
+        <div class="bg-slate-900 border border-slate-800 rounded-lg p-6 max-w-lg w-full shadow-2xl shadow-black/50 max-h-[90vh] overflow-y-auto">
           <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-slate-100">Review PR</h3>
+            <h3 class="text-lg text-slate-100">Review PR</h3>
             <div v-if="prDetail?.pendingReview?.comments?.length" class="flex items-center gap-2">
-              <span class="px-2 py-1 text-xs font-medium bg-amber-500/20 text-amber-400 rounded-full border border-amber-500/30">
+              <span class="px-2 py-1 text-xs bg-amber-950/30 text-amber-400 rounded border border-amber-900/50 font-mono tabular-nums">
                 {{ prDetail.pendingReview.comments.length }} pending comment{{ prDetail.pendingReview.comments.length !== 1 ? 's' : '' }}
               </span>
             </div>
           </div>
 
           <!-- Pending Review Comments -->
-          <div v-if="prDetail?.pendingReview?.comments?.length" class="mb-4 border border-slate-700/40 rounded-xl overflow-hidden">
-            <div class="px-4 py-2 bg-slate-800/60 border-b border-slate-700/40">
-              <span class="text-xs font-medium text-slate-400">Your Draft Comments</span>
+          <div v-if="prDetail?.pendingReview?.comments?.length" class="mb-4 border border-slate-800 rounded overflow-hidden">
+            <div class="px-4 py-2 bg-slate-800/40 border-b border-slate-800">
+              <span class="text-xs text-slate-400 uppercase tracking-wider">Your Draft Comments</span>
             </div>
-            <div class="divide-y divide-slate-700/30 max-h-48 overflow-y-auto">
+            <div class="divide-y divide-slate-800 max-h-48 overflow-y-auto">
               <div
                 v-for="comment in prDetail.pendingReview.comments"
                 :key="comment.gitHubId"
@@ -653,8 +626,8 @@
               >
                 <div class="flex items-start justify-between gap-2">
                   <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2 text-xs text-slate-400 mb-1">
-                      <span class="font-mono truncate">{{ comment.path }}</span>
+                    <div class="flex items-center gap-2 text-xs text-slate-400 mb-1 font-mono">
+                      <span class="truncate">{{ comment.path }}</span>
                       <span v-if="comment.line" class="text-slate-500">:{{ comment.line }}</span>
                     </div>
                     <p class="text-sm text-slate-200 line-clamp-2">{{ comment.body }}</p>
@@ -677,10 +650,10 @@
             <button
               @click="reviewAction = 'APPROVED'"
               :class="[
-                'px-3 py-2.5 rounded-lg text-xs font-medium transition-all duration-200 border',
+                'px-3 py-2.5 rounded-lg text-xs transition-all duration-150 border',
                 reviewAction === 'APPROVED'
-                  ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg shadow-emerald-500/20'
-                  : 'bg-slate-800/50 border-slate-700/50 hover:bg-slate-800 text-slate-300 hover:border-slate-600/50'
+                  ? 'bg-slate-200 border-slate-200 text-slate-900'
+                  : 'border-slate-800 text-slate-300 hover:bg-slate-800'
               ]"
             >
               Approve
@@ -688,10 +661,10 @@
             <button
               @click="reviewAction = 'CHANGES_REQUESTED'"
               :class="[
-                'px-3 py-2.5 rounded-lg text-xs font-medium transition-all duration-200 border',
+                'px-3 py-2.5 rounded-lg text-xs transition-all duration-150 border',
                 reviewAction === 'CHANGES_REQUESTED'
-                  ? 'bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20'
-                  : 'bg-slate-800/50 border-slate-700/50 hover:bg-slate-800 text-slate-300 hover:border-slate-600/50'
+                  ? 'bg-slate-200 border-slate-200 text-slate-900'
+                  : 'border-slate-800 text-slate-300 hover:bg-slate-800'
               ]"
             >
               Changes
@@ -699,10 +672,10 @@
             <button
               @click="reviewAction = 'COMMENT'"
               :class="[
-                'px-3 py-2.5 rounded-lg text-xs font-medium transition-all duration-200 border',
+                'px-3 py-2.5 rounded-lg text-xs transition-all duration-150 border',
                 reviewAction === 'COMMENT'
-                  ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20'
-                  : 'bg-slate-800/50 border-slate-700/50 hover:bg-slate-800 text-slate-300 hover:border-slate-600/50'
+                  ? 'bg-slate-200 border-slate-200 text-slate-900'
+                  : 'border-slate-800 text-slate-300 hover:bg-slate-800'
               ]"
             >
               Comment
@@ -713,10 +686,10 @@
             v-model="reviewComment"
             :placeholder="reviewAction === 'APPROVED' ? 'Add your approval comment (optional)...' : reviewAction === 'CHANGES_REQUESTED' ? 'Describe changes requested... (required)' : 'Add your comment... (required)'"
             :class="[
-              'w-full px-4 py-3 border rounded-xl text-slate-200 text-sm resize-none focus:outline-none focus:ring-2 mb-4 transition-all duration-200 placeholder:text-slate-500',
+              'w-full px-4 py-3 border rounded text-slate-200 text-sm resize-none focus:outline-none focus:ring-2 mb-4 transition-all duration-150 placeholder:text-slate-500',
               (reviewAction === 'CHANGES_REQUESTED' || reviewAction === 'COMMENT') && !reviewComment.trim()
-                ? 'bg-slate-800/50 border-rose-500 focus:ring-rose-500/50 focus:border-rose-500'
-                : 'bg-slate-800/50 border-slate-700/50 focus:ring-blue-500/50 focus:border-blue-500'
+                ? 'bg-slate-900 border-rose-500 focus:ring-rose-500/40 focus:border-rose-500'
+                : 'bg-slate-900 border-slate-800 focus:ring-slate-500/40 focus:border-slate-600'
             ]"
             rows="4"
           />
@@ -730,14 +703,14 @@
             <button
               v-if="prDetail?.pendingReview?.comments?.length"
               @click="handleDiscardPendingReview"
-              class="px-4 py-2 bg-rose-600/20 hover:bg-rose-600/30 rounded-lg text-sm text-rose-400 transition-all duration-200 border border-rose-500/30"
+              class="px-4 py-2 bg-rose-500/10 hover:bg-rose-500/20 rounded-lg text-sm text-rose-400 transition-all duration-150 border border-rose-500/30"
             >
               Discard Draft
             </button>
             <div class="flex-1"></div>
             <button
               @click="showReviewModal = false"
-              class="px-4 py-2 bg-slate-700/50 hover:bg-slate-700 rounded-lg text-sm text-slate-200 transition-all duration-200 border border-slate-600/50 hover:border-slate-500/50"
+              class="px-4 py-2 border border-slate-800 hover:bg-slate-800 rounded-lg text-sm text-slate-300 transition-all duration-150"
             >
               Cancel
             </button>
@@ -745,11 +718,9 @@
               @click="handleSubmitReview"
               :disabled="submittingReview || ((reviewAction === 'CHANGES_REQUESTED' || reviewAction === 'COMMENT') && !reviewComment.trim())"
               :class="[
-                'px-5 py-2 rounded-lg text-sm text-white transition-all duration-200 font-medium shadow-lg',
-                reviewAction === 'APPROVED' ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20 hover:shadow-emerald-500/30' :
-                reviewAction === 'CHANGES_REQUESTED' ? 'bg-rose-600 hover:bg-rose-500 shadow-rose-500/20 hover:shadow-rose-500/30' :
-                'bg-blue-600 hover:bg-blue-500 shadow-blue-500/20 hover:shadow-blue-500/30',
-                { 'opacity-50 cursor-not-allowed shadow-none': submittingReview || ((reviewAction === 'CHANGES_REQUESTED' || reviewAction === 'COMMENT') && !reviewComment.trim()) }
+                'px-5 py-2 rounded-lg text-sm transition-all duration-150',
+                'bg-slate-200 hover:bg-white text-slate-900',
+                { 'opacity-50 cursor-not-allowed': submittingReview || ((reviewAction === 'CHANGES_REQUESTED' || reviewAction === 'COMMENT') && !reviewComment.trim()) }
               ]"
             >
               {{ submittingReview ? 'Submitting...' : (prDetail?.pendingReview?.comments?.length ? 'Submit Review' : 'Submit') }}

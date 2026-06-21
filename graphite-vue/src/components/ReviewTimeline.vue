@@ -1,15 +1,15 @@
 <template>
   <div class="space-y-3">
     <div class="flex items-center justify-between">
-      <h3 class="text-sm font-medium text-slate-300">Review Timeline</h3>
+      <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wider">Review Timeline</h3>
       <div class="flex items-center gap-3">
         <!-- Mode toggle -->
-        <div class="flex items-center bg-slate-800 rounded-md border border-slate-700/50 p-0.5">
+        <div class="flex items-center bg-slate-900 border border-slate-800 rounded p-0.5 font-mono text-xs">
           <button
             @click="viewMode = 'events'"
             :class="[
-              'px-2 py-0.5 text-xs rounded transition-colors',
-              viewMode === 'events' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:text-slate-200'
+              'px-2 py-0.5 rounded transition-colors',
+              viewMode === 'events' ? 'bg-slate-700 text-slate-100' : 'text-slate-400 hover:text-slate-200'
             ]"
           >
             Events
@@ -17,8 +17,8 @@
           <button
             @click="viewMode = 'lifecycle'"
             :class="[
-              'px-2 py-0.5 text-xs rounded transition-colors',
-              viewMode === 'lifecycle' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:text-slate-200'
+              'px-2 py-0.5 rounded transition-colors',
+              viewMode === 'lifecycle' ? 'bg-slate-700 text-slate-100' : 'text-slate-400 hover:text-slate-200'
             ]"
           >
             Lifecycle
@@ -28,14 +28,14 @@
           <button
             v-if="!expanded"
             @click="expanded = true"
-            class="text-xs text-blue-400 hover:text-blue-300"
+            class="text-xs text-slate-300 hover:text-slate-100 font-mono"
           >
             Show all
           </button>
           <button
             v-else
             @click="expanded = false"
-            class="text-xs text-blue-400 hover:text-blue-300"
+            class="text-xs text-slate-300 hover:text-slate-100 font-mono"
           >
             Show less
           </button>
@@ -44,7 +44,7 @@
     </div>
 
     <div v-if="loading" class="flex justify-center py-4">
-      <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+      <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-slate-400"></div>
     </div>
 
     <div v-else-if="events.length === 0" class="text-sm text-slate-500 py-2">
@@ -75,15 +75,15 @@
           <!-- Content -->
           <div>
             <div class="text-sm">
-              <span :class="step.labelClass" class="font-medium">{{ step.label }}</span>
-              <span v-if="step.actor" class="text-slate-500 text-xs ml-2">
+              <span :class="step.labelClass">{{ step.label }}</span>
+              <span v-if="step.actor" class="text-slate-500 text-xs ml-2 font-mono">
                 by {{ step.actor }} &bull; {{ formatTimestamp(step.timestamp) }}
               </span>
             </div>
-            <div v-if="step.detail" class="text-xs text-slate-500 mt-1">
+            <div v-if="step.detail" class="text-xs text-slate-400 mt-1 font-mono">
               {{ step.detail }}
             </div>
-            <div v-if="step.excerpt" class="mt-1.5 text-xs text-slate-400 bg-slate-800/50 rounded p-2 border-l-2" :class="step.excerptBorderClass">
+            <div v-if="step.excerpt" class="mt-1.5 text-xs text-slate-300 bg-slate-800/40 rounded p-2 border-l-2" :class="step.excerptBorderClass">
               {{ step.excerpt }}
             </div>
           </div>
@@ -93,7 +93,7 @@
 
     <!-- Events View (original) -->
     <div v-else class="relative">
-      <div class="absolute left-4 top-0 bottom-0 w-px bg-slate-700"></div>
+      <div class="absolute left-4 top-0 bottom-0 w-px bg-slate-800"></div>
 
       <div class="space-y-3">
         <TransitionGroup name="timeline">
@@ -105,14 +105,14 @@
           >
             <div
               :class="[
-                'absolute left-2 top-1 w-4 h-4 rounded-full border-2 border-slate-800 flex items-center justify-center',
+                'absolute left-2 top-1 w-4 h-4 rounded-full border-2 border-slate-900 flex items-center justify-center',
                 getEventBgColor(event.type, event.state)
               ]"
             >
               <component :is="getEventIcon(event.type, event.state)" class="w-2.5 h-2.5" />
             </div>
 
-            <div class="bg-slate-800/50 rounded p-2.5 hover:bg-slate-800 transition-colors">
+            <div class="bg-slate-800/30 rounded p-2.5 hover:bg-slate-800/60 transition-colors border border-slate-800">
               <div class="flex items-start gap-2">
                 <img
                   v-if="event.actorAvatar"
@@ -120,19 +120,19 @@
                   :alt="event.actor"
                   class="w-5 h-5 rounded-full flex-shrink-0"
                 />
-                <div v-else class="w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center flex-shrink-0">
+                <div v-else class="w-5 h-5 rounded-full bg-slate-800 flex items-center justify-center flex-shrink-0">
                   <span class="text-[10px] text-slate-400">{{ event.actor[0]?.toUpperCase() }}</span>
                 </div>
                 <div class="flex-1 min-w-0 overflow-hidden">
                   <div class="text-sm text-slate-200">
-                    <span class="font-medium">{{ event.actor }}</span>
+                    <span>{{ event.actor }}</span>
                     <span class="text-slate-400 ml-1">{{ event.summary }}</span>
                   </div>
                   <div class="flex items-center gap-2 mt-1">
-                    <span class="text-xs text-slate-500">{{ formatTimestamp(event.timestamp) }}</span>
+                    <span class="text-xs text-slate-500 font-mono">{{ formatTimestamp(event.timestamp) }}</span>
                     <span
                       v-if="event.state && event.type === 'REVIEW_SUBMITTED'"
-                      :class="['text-xs px-1.5 py-0.5 rounded', getStateBadgeClass(event.state)]"
+                      :class="['text-xs px-1.5 py-0.5 rounded font-mono', getStateBadgeClass(event.state)]"
                     >
                       {{ event.state }}
                     </span>
@@ -281,11 +281,11 @@ const getEventBgColor = (type: string, state?: string): string => {
 
 const getStateBadgeClass = (state: string): string => {
   const classes: Record<string, string> = {
-    APPROVED: 'bg-green-500/20 text-green-400',
-    CHANGES_REQUESTED: 'bg-orange-500/20 text-orange-400',
-    COMMENTED: 'bg-blue-500/20 text-blue-400',
+    APPROVED: 'bg-emerald-950/30 text-emerald-400 border border-emerald-900/50',
+    CHANGES_REQUESTED: 'bg-orange-950/30 text-orange-400 border border-orange-900/50',
+    COMMENTED: 'bg-violet-950/30 text-violet-400 border border-violet-900/50',
   };
-  return classes[state] || 'bg-slate-700 text-slate-400';
+  return classes[state] || 'bg-slate-800 text-slate-400 border border-slate-700';
 };
 
 const getEventIcon = (type: string, state?: string) => {

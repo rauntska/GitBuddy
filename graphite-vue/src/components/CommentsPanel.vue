@@ -1,14 +1,14 @@
 <template>
-  <div class="h-full flex flex-col bg-slate-900 border-l border-slate-700 overflow-hidden">
+  <div class="h-full flex flex-col bg-slate-900 border-l border-slate-800 overflow-hidden">
     <!-- Header -->
-    <div class="flex items-center justify-between px-4 py-3 border-b border-slate-700">
-      <h3 class="text-sm font-semibold text-slate-200">
+    <div class="flex items-center justify-between px-4 py-3 border-b border-slate-800">
+      <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wider">
         Comments
-        <span class="text-slate-500 font-normal">({{ comments.length }})</span>
+        <span class="text-slate-500 font-normal font-mono tabular-nums">({{ comments.length }})</span>
       </h3>
-      <button 
-        @click="$emit('close')" 
-        class="p-1.5 hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-slate-200"
+      <button
+        @click="$emit('close')"
+        class="p-1.5 hover:bg-slate-800 rounded transition-colors text-slate-400 hover:text-slate-200"
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -17,15 +17,15 @@
     </div>
 
     <!-- Filter Tabs -->
-    <div class="flex gap-0.5 px-2 py-1.5 border-b border-slate-700/50 bg-slate-900/50">
+    <div class="flex gap-0.5 px-2 py-1.5 border-b border-slate-800 bg-slate-900/60">
       <button
         v-for="filter in filters"
         :key="filter.value"
         @click="activeFilter = filter.value"
         :class="[
-          'flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-all flex-1 justify-center min-w-0',
+          'flex items-center gap-1 px-2 py-1 rounded text-xs transition-all flex-1 justify-center min-w-0 font-mono tabular-nums',
           activeFilter === filter.value
-            ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
+            ? 'bg-slate-800 text-slate-100 border border-slate-700'
             : 'text-slate-400 hover:bg-slate-800 hover:text-slate-300 border border-transparent'
         ]"
       >
@@ -44,11 +44,11 @@
           :key="thread.threadInfo.id"
           class="border-l-2 transition-colors"
           :class="[
-            thread.threadInfo.isResolved 
-              ? 'border-l-green-500/50 bg-green-500/5' 
-              : thread.threadInfo.isOutdated 
-                ? 'border-l-orange-500/50 bg-orange-500/5' 
-                : 'border-l-blue-500/50'
+            thread.threadInfo.isResolved
+              ? 'border-l-emerald-500/50 bg-emerald-950/10'
+              : thread.threadInfo.isOutdated
+                ? 'border-l-orange-500/50 bg-orange-950/10'
+                : 'border-l-slate-600'
           ]"
         >
           <!-- Thread Header (always visible) -->
@@ -68,55 +68,55 @@
               </div>
               <div
                 v-if="thread.threadInfo.isResolved"
-                class="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-slate-900"
+                class="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-slate-900"
               />
             </div>
             
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 mb-1">
-                <span class="text-sm font-medium text-slate-200">
+                <span class="text-sm text-slate-200">
                   {{ thread.threadInfo.firstCommentAuthor }}
                 </span>
-                <span class="text-xs text-slate-500">
+                <span class="text-xs text-slate-500 font-mono">
                   {{ formatRelativeTime(thread.threadInfo.createdAt) }}
                 </span>
               </div>
-              
+
               <p class="text-xs text-slate-400 line-clamp-2 mb-1.5">
                 {{ thread.threadInfo.firstCommentBody }}
               </p>
-              
+
               <div class="flex items-center gap-2 text-xs">
                 <button
                   @click.stop="$emit('scrollToThread', thread.threadInfo.gitHubId, thread.threadInfo.line)"
-                  class="flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-800/50 hover:bg-slate-700 hover:text-blue-400 transition-colors group cursor-pointer"
+                  class="flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-800/50 hover:bg-slate-700 hover:text-slate-100 transition-colors group cursor-pointer"
                 >
-                  <svg class="w-3 h-3 text-slate-500 group-hover:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-3 h-3 text-slate-500 group-hover:text-slate-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                   </svg>
-                  <span class="font-mono text-slate-400 group-hover:text-blue-400 truncate max-w-[150px]">
+                  <span class="font-mono text-slate-400 group-hover:text-slate-200 truncate max-w-[150px]">
                     {{ thread.threadInfo.path }}
                   </span>
-                  <span class="text-slate-600 group-hover:text-blue-500">:</span>
-                  <span class="text-slate-400 group-hover:text-blue-400">{{ thread.threadInfo.line }}</span>
+                  <span class="text-slate-600 group-hover:text-slate-400">:</span>
+                  <span class="text-slate-400 group-hover:text-slate-200 font-mono tabular-nums">{{ thread.threadInfo.line }}</span>
                 </button>
-                <span v-if="thread.comments.length > 1" class="px-1.5 py-0.5 rounded bg-slate-800/50 text-slate-400 text-[10px]">
+                <span v-if="thread.comments.length > 1" class="px-1.5 py-0.5 rounded bg-slate-800/50 text-slate-400 text-[10px] font-mono tabular-nums">
                   {{ thread.comments.length - 1 }} {{ thread.comments.length - 1 === 1 ? 'reply' : 'replies' }}
                 </span>
               </div>
             </div>
-            
+
             <!-- Status badges & expand icon -->
             <div class="flex items-center gap-2 flex-shrink-0">
               <span
                 v-if="thread.threadInfo.isResolved"
-                class="px-2 py-0.5 text-[10px] font-medium bg-green-500/20 text-green-400 rounded-full border border-green-500/30"
+                class="px-2 py-0.5 text-[10px] bg-emerald-950/30 text-emerald-400 rounded border border-emerald-900/50 font-mono"
               >
                 Resolved
               </span>
               <span
                 v-else-if="thread.threadInfo.isOutdated"
-                class="px-2 py-0.5 text-[10px] font-medium bg-orange-500/20 text-orange-400 rounded-full border border-orange-500/30"
+                class="px-2 py-0.5 text-[10px] bg-orange-950/30 text-orange-400 rounded border border-orange-900/50 font-mono"
               >
                 Outdated
               </span>
@@ -199,51 +199,51 @@
                 
                 <!-- Chat Messages (excluding first comment - shown in header) -->
                 <div v-if="thread.comments.length > 1" class="p-4 space-y-3 bg-slate-900/30">
-                  <div 
-                    v-for="comment in thread.comments.slice(1)" 
+                  <div
+                    v-for="comment in thread.comments.slice(1)"
                     :key="comment.id"
-                    class="flex gap-2.5 ml-6 pl-4 border-l border-slate-700/50"
+                    class="flex gap-2.5 ml-6 pl-4 border-l border-slate-800"
                   >
                     <img
                       v-if="comment.authorAvatar"
                       :src="comment.authorAvatar"
                       :alt="comment.author"
-                      class="w-6 h-6 rounded-full flex-shrink-0 mt-0.5 ring-1 ring-slate-700"
+                      class="w-6 h-6 rounded-full flex-shrink-0 mt-0.5 ring-1 ring-slate-800"
                     />
-                    <div v-else class="w-6 h-6 rounded-full bg-slate-700 flex-shrink-0 mt-0.5 flex items-center justify-center">
-                      <span class="text-[10px] font-medium text-slate-400">{{ comment.author?.charAt(0)?.toUpperCase() }}</span>
+                    <div v-else class="w-6 h-6 rounded-full bg-slate-800 flex-shrink-0 mt-0.5 flex items-center justify-center">
+                      <span class="text-[10px] text-slate-400">{{ comment.author?.charAt(0)?.toUpperCase() }}</span>
                     </div>
-                    
-                    <div class="flex-1 min-w-0 bg-slate-800/50 rounded-lg p-2.5">
+
+                    <div class="flex-1 min-w-0 bg-slate-800/50 rounded p-2.5">
                       <div class="flex items-center gap-2 mb-1">
-                        <span 
-                          class="text-xs font-medium"
-                          :class="comment.author === currentUsername ? 'text-blue-400' : 'text-slate-200'"
+                        <span
+                          class="text-xs"
+                          :class="comment.author === currentUsername ? 'text-slate-100' : 'text-slate-200'"
                         >
                           {{ comment.author }}
-                          <span v-if="comment.author === currentUsername" class="text-[9px] text-blue-500 ml-1">(you)</span>
+                          <span v-if="comment.author === currentUsername" class="text-[9px] text-slate-500 ml-1 font-mono">(you)</span>
                         </span>
-                        <span class="text-[10px] text-slate-500">
+                        <span class="text-[10px] text-slate-500 font-mono">
                           {{ formatRelativeTime(comment.createdAt) }}
                         </span>
-                        <span 
+                        <span
                           v-if="comment.updatedAt && comment.updatedAt !== comment.createdAt"
-                          class="text-[10px] text-slate-600 italic"
+                          class="text-[10px] text-slate-600 italic font-mono"
                         >
                           (edited)
                         </span>
                       </div>
-                      <p class="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed break-words">
+                      <p class="text-xs text-slate-200 whitespace-pre-wrap leading-relaxed break-words">
                         {{ comment.body }}
                       </p>
                     </div>
                   </div>
                 </div>
-                
+
                 <!-- Reply Input -->
                 <div class="px-4 pb-4 pt-1">
                   <div class="relative">
-                    <div class="flex items-start gap-2 bg-slate-800/50 rounded-lg border border-slate-700 p-2 focus-within:border-slate-600 focus-within:ring-1 focus-within:ring-slate-600/50 transition-colors">
+                    <div class="flex items-start gap-2 bg-slate-800/50 rounded border border-slate-800 p-2 focus-within:border-slate-600 focus-within:ring-1 focus-within:ring-slate-600/50 transition-colors">
                       <textarea
                         v-model="replyText[thread.threadInfo.id]"
                         @input="handleReplyInputWithResize(thread.threadInfo.id, $event)"
@@ -256,7 +256,7 @@
                       <button
                         @click="submitReply(thread.threadInfo.id)"
                         :disabled="!replyText[thread.threadInfo.id]?.trim() || submittingReply[thread.threadInfo.id]"
-                        class="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded text-xs font-medium text-white transition-colors flex-shrink-0"
+                        class="px-2.5 py-1 bg-slate-200 hover:bg-white disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed rounded text-xs text-slate-900 transition-colors flex-shrink-0"
                       >
                         <span v-if="submittingReply[thread.threadInfo.id]" class="flex items-center gap-1">
                           <svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -278,26 +278,26 @@
                       leave-from-class="opacity-100 translate-y-0"
                       leave-to-class="opacity-0 -translate-y-1"
                     >
-                      <div 
+                      <div
                         v-if="showMentions[thread.threadInfo.id] && filteredMentionableUsers(thread.threadInfo.id).length > 0"
-                        class="absolute left-0 right-0 bottom-full mb-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-20"
+                        class="absolute left-0 right-0 bottom-full mb-1 bg-slate-900 border border-slate-800 rounded shadow-xl overflow-hidden z-20"
                       >
                         <div class="max-h-40 overflow-y-auto">
                           <button
                             v-for="user in filteredMentionableUsers(thread.threadInfo.id)"
                             :key="user.username"
                             @click="selectMention(thread.threadInfo.id, user.username)"
-                            class="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-700 transition-colors text-left"
+                            class="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-800 transition-colors text-left"
                           >
-                            <img 
-                              v-if="user.avatarUrl" 
-                              :src="user.avatarUrl" 
-                              class="w-5 h-5 rounded-full" 
+                            <img
+                              v-if="user.avatarUrl"
+                              :src="user.avatarUrl"
+                              class="w-5 h-5 rounded-full"
                             />
-                            <div v-else class="w-5 h-5 rounded-full bg-slate-600 flex items-center justify-center">
+                            <div v-else class="w-5 h-5 rounded-full bg-slate-800 flex items-center justify-center">
                               <span class="text-[9px] text-slate-400">{{ user.username?.charAt(0)?.toUpperCase() }}</span>
                             </div>
-                            <span class="text-xs text-slate-200 font-medium">@{{ user.username }}</span>
+                            <span class="text-xs text-slate-200">@{{ user.username }}</span>
                             <span v-if="user.name" class="text-xs text-slate-500">{{ user.name }}</span>
                           </button>
                         </div>
@@ -312,8 +312,8 @@
                       :class="[
                         'flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors',
                         thread.threadInfo.isResolved
-                          ? 'text-green-400 hover:text-green-300 hover:bg-green-500/10'
-                          : 'text-slate-500 hover:text-green-400 hover:bg-green-500/10'
+                          ? 'text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/20'
+                          : 'text-slate-500 hover:text-emerald-400 hover:bg-emerald-950/20'
                       ]"
                     >
                       <svg v-if="thread.threadInfo.isResolved" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -334,19 +334,19 @@
       </div>
       
       <!-- Standalone Comments Section -->
-      <div 
-        v-if="standaloneComments.length > 0 && activeFilter === 'open'" 
-        class="border-t border-slate-700"
+      <div
+        v-if="standaloneComments.length > 0 && activeFilter === 'open'"
+        class="border-t border-slate-800"
       >
         <div class="px-4 py-2 bg-slate-800/30 flex items-center gap-2">
           <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
           </svg>
-          <span class="text-xs font-medium text-slate-400">
+          <span class="text-xs text-slate-400 uppercase tracking-wider font-mono tabular-nums">
             General Comments ({{ standaloneComments.length }})
           </span>
         </div>
-        
+
         <div class="divide-y divide-slate-800">
           <div
             v-for="comment in standaloneComments"
@@ -359,31 +359,31 @@
                 v-if="comment.authorAvatar"
                 :src="comment.authorAvatar"
                 :alt="comment.author"
-                class="w-8 h-8 rounded-full ring-2 ring-slate-700"
+                class="w-8 h-8 rounded-full ring-2 ring-slate-800"
               />
-              <div v-else class="w-8 h-8 rounded-full bg-slate-700 ring-2 ring-slate-600 flex items-center justify-center">
-                <span class="text-xs font-medium text-slate-400">{{ comment.author?.charAt(0)?.toUpperCase() }}</span>
+              <div v-else class="w-8 h-8 rounded-full bg-slate-800 ring-2 ring-slate-700 flex items-center justify-center">
+                <span class="text-xs text-slate-400">{{ comment.author?.charAt(0)?.toUpperCase() }}</span>
               </div>
             </div>
-            
+
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 mb-1">
-                <span 
-                  class="text-sm font-medium"
-                  :class="comment.author === currentUsername ? 'text-blue-400' : 'text-slate-200'"
+                <span
+                  class="text-sm"
+                  :class="comment.author === currentUsername ? 'text-slate-100' : 'text-slate-200'"
                 >
                   {{ comment.author }}
                 </span>
-                <span class="text-xs text-slate-500">{{ formatRelativeTime(comment.createdAt) }}</span>
+                <span class="text-xs text-slate-500 font-mono">{{ formatRelativeTime(comment.createdAt) }}</span>
               </div>
-              <p class="text-xs text-slate-300 line-clamp-3 whitespace-pre-wrap">{{ comment.body }}</p>
-              
-              <div v-if="comment.path" class="flex items-center gap-2 text-xs mt-1.5 text-slate-500">
+              <p class="text-xs text-slate-200 line-clamp-3 whitespace-pre-wrap">{{ comment.body }}</p>
+
+              <div v-if="comment.path" class="flex items-center gap-2 text-xs mt-1.5 text-slate-500 font-mono">
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
-                <span class="font-mono truncate">{{ comment.path }}</span>
-                <span v-if="comment.line">:{{ comment.line }}</span>
+                <span class="truncate">{{ comment.path }}</span>
+                <span v-if="comment.line" class="tabular-nums">:{{ comment.line }}</span>
               </div>
             </div>
           </div>
@@ -391,8 +391,8 @@
       </div>
       
       <!-- Empty State -->
-      <div 
-        v-if="groupedThreadsWithComments.length === 0 && (activeFilter !== 'open' || standaloneComments.length === 0)" 
+      <div
+        v-if="groupedThreadsWithComments.length === 0 && (activeFilter !== 'open' || standaloneComments.length === 0)"
         class="flex flex-col items-center justify-center py-16 px-4"
       >
         <div class="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mb-4">
@@ -400,7 +400,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
           </svg>
         </div>
-        <p class="text-sm text-slate-400 text-center font-medium">
+        <p class="text-sm text-slate-400 text-center">
           No {{ activeFilter !== 'open' ? activeFilter : '' }} comments
         </p>
         <p class="text-xs text-slate-500 mt-1 text-center">
