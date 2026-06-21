@@ -16,7 +16,7 @@
     opacity: 1;
   }
   50% {
-    opacity: 0.4;
+    opacity: 0.65;
   }
 }
 
@@ -54,7 +54,7 @@
 }
 
 .stale-pulse {
-  animation: subtlePulse 2s ease-in-out infinite;
+  animation: subtlePulse 3s ease-in-out infinite;
 }
 
 /* Reduced motion: disable all animations */

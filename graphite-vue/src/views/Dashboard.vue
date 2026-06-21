@@ -95,43 +95,31 @@
           <StatsSummary :stats="stats" />
           <div class="flex items-center gap-2 flex-shrink-0">
             <!-- Density Toggle -->
-            <div class="flex items-center bg-slate-800 rounded-lg border border-slate-700/50 p-0.5">
+            <div class="flex items-center rounded border border-slate-800 bg-slate-900/60 p-0.5 font-mono text-xs">
               <button
                 @click="setListViewMode('compact')"
                 :title="'Compact view'"
                 :class="[
-                  'p-1.5 rounded-md transition-colors',
-                  listViewMode === 'compact' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:text-slate-200'
+                  'px-2 py-1 transition-colors',
+                  listViewMode === 'compact' ? 'bg-slate-700 text-slate-100' : 'text-slate-500 hover:text-slate-300'
                 ]"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                </svg>
-              </button>
+              >C</button>
               <button
                 @click="setListViewMode('comfortable')"
                 :title="'Comfortable view'"
                 :class="[
-                  'p-1.5 rounded-md transition-colors',
-                  listViewMode === 'comfortable' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:text-slate-200'
+                  'px-2 py-1 transition-colors',
+                  listViewMode === 'comfortable' ? 'bg-slate-700 text-slate-100' : 'text-slate-500 hover:text-slate-300'
                 ]"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16" />
-                </svg>
-              </button>
+              >M</button>
               <button
                 @click="setListViewMode('expanded')"
                 :title="'Expanded view'"
                 :class="[
-                  'p-1.5 rounded-md transition-colors',
-                  listViewMode === 'expanded' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:text-slate-200'
+                  'px-2 py-1 transition-colors',
+                  listViewMode === 'expanded' ? 'bg-slate-700 text-slate-100' : 'text-slate-500 hover:text-slate-300'
                 ]"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                </svg>
-              </button>
+              >E</button>
             </div>
           </div>
         </div>
@@ -208,20 +196,20 @@
       />
 
       <!-- PR Groups -->
-      <div v-if="authStore.isAuthenticated && hasPRData" class="space-y-6">
+      <div v-if="authStore.isAuthenticated && hasPRData" class="space-y-3">
         <!-- Edit Layout Toolbar -->
-        <div v-if="editLayoutMode" class="flex items-center gap-3 p-3 bg-slate-800/50 border border-slate-700/50 rounded-lg mb-4">
+        <div v-if="editLayoutMode" class="flex items-center gap-3 py-2 px-3 bg-slate-800/40 border border-slate-800 rounded mb-4">
           <span class="text-sm text-slate-400">Drag groups to reorder &bull; Click eye to hide</span>
           <div class="ml-auto flex gap-2">
             <button
               @click="resetDashboardLayout"
-              class="px-3 py-1 text-xs rounded bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors"
+              class="px-3 py-1 text-xs rounded border border-slate-700 text-slate-300 hover:bg-slate-800 transition-colors"
             >
               Reset Layout
             </button>
             <button
               @click="editLayoutMode = false"
-              class="px-3 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-500 transition-colors"
+              class="px-3 py-1 text-xs rounded bg-slate-200 text-slate-900 hover:bg-white transition-colors"
             >
               Done
             </button>
@@ -325,7 +313,7 @@
           <button
             @click="loadMoreMergedPRs"
             :disabled="mergedPRsLoading"
-            class="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-300 text-sm rounded transition-colors"
+            class="px-4 py-2 border border-slate-800 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed text-slate-300 text-sm rounded transition-colors"
           >
             {{ mergedPRsLoading ? 'Loading...' : 'Load More Merged / Closed PRs' }}
           </button>

@@ -15,15 +15,16 @@ export function getPRSize(totalLines: number): string {
 
 /**
  * Get Tailwind CSS classes for PR size badge
+ * Dense/pro: text-only, no fill background.
  */
 export function getSizeBadgeClass(totalLines: number): string {
   const size = getPRSize(totalLines);
   const classes = {
-    'XS': 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
-    'S': 'bg-teal-500/20 text-teal-400 border border-teal-500/30',
-    'M': 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
-    'L': 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30',
-    'XL': 'bg-red-500/20 text-red-400 border border-red-500/30',
+    'XS': 'text-emerald-400',
+    'S': 'text-teal-400',
+    'M': 'text-slate-300',
+    'L': 'text-amber-400',
+    'XL': 'text-red-400',
   } as const;
   return classes[size as keyof typeof classes];
 }
@@ -88,26 +89,76 @@ export function formatDate(dateString: string): string {
  * Get border color class based on status for hover effect
  */
 export function getStatusBorderClass(status: string): string {
-  const classes: Record<string, string> = {
-    AwaitingReview: 'hover:border-blue-500/30',
-    Approved: 'hover:border-green-500/30',
-    Reviewed: 'hover:border-purple-500/30',
-    ChangesRequested: 'hover:border-orange-500/30',
-    Draft: 'hover:border-gray-500/30',
-  };
-  return classes[status] || 'hover:border-slate-600/30';
+  // Dense/pro look: single neutral hover border, no per-status glow.
+  void status;
+  return 'hover:border-slate-600';
 }
 
 /**
- * Get shadow color class based on status for hover effect
+ * Get shadow color class based on status for hover effect.
+ * @deprecated Dense/pro restyle removes colored hover glows. Returns empty string.
  */
-export function getStatusShadowClass(status: string): string {
+export function getStatusShadowClass(_status: string): string {
+  return '';
+}
+
+/**
+ * Faint row tint per status. Replaces the old neutral row fill so groups
+ * become visually distinct without saturated backgrounds.
+ */
+export function getStatusTintClass(status: string): string {
   const classes: Record<string, string> = {
-    AwaitingReview: 'hover:shadow-blue-900/20',
-    Approved: 'hover:shadow-green-900/20',
-    Reviewed: 'hover:shadow-purple-900/20',
-    ChangesRequested: 'hover:shadow-orange-900/20',
-    Draft: 'hover:shadow-gray-900/20',
+    AwaitingReview: 'bg-blue-950/20',
+    Approved: 'bg-emerald-950/20',
+    Reviewed: 'bg-violet-950/20',
+    ChangesRequested: 'bg-orange-950/20',
+    Draft: 'bg-slate-800/30',
+    Merged: 'bg-violet-950/10',
+    Closed: 'bg-slate-800/20',
   };
-  return classes[status] || 'hover:shadow-slate-900/20';
+  return classes[status] || 'bg-slate-800/30';
+}
+
+/**
+ * One-char status glyph + tailwind text color for compact badges.
+ */
+export function getStatusGlyph(status: string): { char: string; color: string } {
+  const map: Record<string, { char: string; color: string }> = {
+    AwaitingReview: { char: '●', color: 'text-blue-400' },
+    Approved: { char: '✓', color: 'text-emerald-400' },
+    Reviewed: { char: '◐', color: 'text-violet-400' },
+    ChangesRequested: { char: '✕', color: 'text-orange-400' },
+    Draft: { char: '○', color: 'text-slate-500' },
+    Merged: { char: 'Ⓜ', color: 'text-violet-400' },
+    Closed: { char: '—', color: 'text-slate-500' },
+  };
+  return map[status] || { char: '–', color: 'text-slate-500' };
+}
+
+/**
+ * One-char CI glyph + tailwind text color.
+ * checksStatus values: SUCCESS, FAILURE, PENDING, NONE (or empty).
+ */
+export function getCIGlyph(checksStatus: string | null | undefined): { char: string; color: string } {
+  const map: Record<string, { char: string; color: string }> = {
+    SUCCESS: { char: '✓', color: 'text-emerald-400' },
+    FAILURE: { char: '✗', color: 'text-red-400' },
+    PENDING: { char: '⋯', color: 'text-amber-400' },
+  };
+  return map[(checksStatus || '').toUpperCase()] || { char: '–', color: 'text-slate-500' };
+}
+
+/**
+ * Compact reviewer-state string. Each reviewer becomes a single char:
+ *   Approved → ●, Commented → ◐, ChangesRequested → ✕, others → ○
+ * Returned value is monospace-friendly for column alignment.
+ */
+export function getReviewerDots(reviews: { state: string }[]): string {
+  const map: Record<string, string> = {
+    Approved: '●',
+    Commented: '◐',
+    ChangesRequested: '✕',
+    Dismissed: '○',
+  };
+  return reviews.map(r => map[r.state] || '○').join('');
 }

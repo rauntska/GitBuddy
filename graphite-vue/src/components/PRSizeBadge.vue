@@ -1,10 +1,8 @@
 <template>
-  <span 
-    :class="[badgeClass, compact ? 'px-1 py-0.5 text-[9px]' : 'px-1.5 py-0.5 text-[10px]']"
+  <span
+    :class="[badgeClass, compact ? 'text-[10px]' : 'text-xs', 'font-mono font-semibold tracking-wide']"
     :title="tooltipText"
-    class="rounded font-bold uppercase tracking-wide">
-    {{ size }}
-  </span>
+  >{{ size }}</span>
 </template>
 
 <script setup lang="ts">
@@ -20,7 +18,7 @@ const props = defineProps<{
 const totalLines = computed(() => props.additions + props.deletions);
 const size = computed(() => getPRSize(totalLines.value));
 const badgeClass = computed(() => getSizeBadgeClass(totalLines.value));
-const tooltipText = computed(() => 
+const tooltipText = computed(() =>
   `${totalLines.value} total lines changed (${size.value})`
 );
 </script>

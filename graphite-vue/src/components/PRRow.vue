@@ -1,15 +1,14 @@
 <template>
   <div
     :class="[
-      'group relative flex border',
-      'border-slate-700/50 bg-slate-800/50',
-      'hover:bg-slate-800 hover:shadow-xl hover:-translate-y-px',
-      'transition-all duration-200 ease-out',
+      'group relative flex border border-slate-800 rounded',
+      getStatusTintClass(pr.status),
+      'hover:bg-slate-800/40 hover:border-slate-700 hover:-translate-y-px',
+      'transition-all duration-150 ease-out',
       getStatusBorderClass(pr.status),
-      getStatusShadowClass(pr.status),
-      { 'opacity-75': isStale(pr.createdAt) },
+      { 'opacity-70': isStale(pr.createdAt) },
       { 'activity-flash': flashActive },
-      isExpanded ? 'rounded-lg p-3 gap-3 flex-col' : (compact ? 'rounded p-1.5 gap-2 items-center' : 'rounded-lg p-2 gap-4 items-center')
+      isExpanded ? 'py-3 px-4 gap-3 flex-col' : (compact ? 'py-1 px-2 gap-2 items-center' : 'py-2 px-3 gap-4 items-center')
     ]"
     @contextmenu.prevent="onContextMenu"
   >
@@ -23,14 +22,14 @@
     <template v-if="isExpanded">
       <!-- Row 1: Author + Title + Status -->
       <div class="flex items-center gap-3 min-w-0">
-        <div class="flex-shrink-0 w-[32px] h-[32px] rounded-full bg-slate-700 flex items-center justify-center text-xs font-semibold text-slate-300">
+        <div class="flex-shrink-0 w-[32px] h-[32px] rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs text-slate-200">
           {{ pr.author?.substring(0, 2).toUpperCase() }}
         </div>
         <div class="flex-1 min-w-0">
-          <div class="text-sm font-medium text-slate-200 truncate group-hover:text-white transition-colors">
-            {{ pr.title }} <span class="text-slate-500 font-normal">#{{ pr.gitHubId }}</span>
+          <div class="text-base text-slate-200 truncate">
+            {{ pr.title }} <span class="font-mono text-sm">#{{ pr.gitHubId }}</span>
           </div>
-          <div class="text-xs text-slate-500 mt-0.5">{{ pr.repository }} &bull; by {{ pr.author }}</div>
+          <div class="text-xs text-slate-200 mt-0.5 font-mono">{{ pr.repository }} <span>·</span> {{ pr.author }}</div>
         </div>
         <div class="flex items-center gap-2 flex-shrink-0">
           <PRSizeBadge :additions="pr.additions" :deletions="pr.deletions" :compact="false" />
@@ -47,58 +46,56 @@
         </div>
       </div>
       <!-- Row 2: Metadata bar -->
-      <div class="flex items-center gap-4 text-xs text-slate-500 pl-11">
+      <div class="flex items-center gap-4 text-xs text-slate-200 pl-11 font-mono">
         <span class="flex items-center gap-1">
-          <span class="text-green-400 font-mono">+{{ pr.additions }}</span>
-          <span class="text-slate-600">/</span>
-          <span class="text-red-400 font-mono">-{{ pr.deletions }}</span>
+          <span class="text-emerald-400">+{{ pr.additions }}</span>
+          <span>/</span>
+          <span class="text-red-400">-{{ pr.deletions }}</span>
         </span>
-        <span>{{ pr.changedFiles }} {{ pr.changedFiles === 1 ? 'file' : 'files' }}</span>
-        <span v-if="pendingThreadsCount > 0">{{ pendingThreadsCount }} threads</span>
+        <span class="font-sans">{{ pr.changedFiles }} {{ pr.changedFiles === 1 ? 'file' : 'files' }}</span>
+        <span v-if="pendingThreadsCount > 0" class="font-sans">{{ pendingThreadsCount }} threads</span>
         <ReviewerAvatars :reviews="pr.reviews.filter(r => r.reviewer !== pr.author)" :max-display="3" size="sm" />
         <span class="ml-auto">{{ formatRelativeTime(pr.updatedAt) }}</span>
-        <div
+        <span
           v-if="isStale(pr.createdAt)"
           class="flex items-center gap-1 text-amber-400"
           :title="`Stale: created ${formatAge(pr.createdAt)} ago`"
         >
-          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          {{ formatAge(pr.createdAt) }}
-        </div>
+          <span>⚑</span>
+          <span class="font-sans">{{ formatAge(pr.createdAt) }}</span>
+        </span>
       </div>
     </template>
 
-    <!-- Compact / Comfortable mode: existing single-line layout -->
+    <!-- Compact / Comfortable mode: single-line layout -->
     <template v-else>
      <!-- Repository & PR Number -->
      <div class="flex-shrink-0" :class="compact ? 'w-[80px] sm:w-[100px]' : 'w-[100px] sm:w-[140px]'">
-       <div :class="compact ? 'text-xs' : 'text-sm'" class="font-medium text-slate-200 truncate">{{ pr.repository }}</div>
-       <div class="text-xs text-slate-500">PR #{{ pr.gitHubId }}</div>
+       <div :class="compact ? 'text-xs' : 'text-sm'" class="text-slate-200 truncate">{{ pr.repository }}</div>
+       <div class="text-xs text-slate-200 font-mono">#{{ pr.gitHubId }}</div>
      </div>
 
      <!-- Author (hidden on small screens) -->
      <div class="hidden md:flex flex-shrink-0" :class="compact ? 'w-[80px]' : 'w-[120px]'">
-       <div :class="compact ? 'text-xs' : 'text-sm'" class="text-slate-300 truncate">{{ pr.author }}</div>
+       <div :class="compact ? 'text-xs' : 'text-sm'" class="text-slate-200 truncate">{{ pr.author }}</div>
      </div>
 
      <!-- PR Title (Flexible) -->
      <div class="flex-1 min-w-0">
-       <div :class="compact ? 'text-xs' : 'text-sm'" class="text-slate-300 truncate group-hover:text-white transition-colors">
+       <div :class="compact ? 'text-xs' : 'text-sm'" class="text-slate-200 truncate">
          {{ pr.title }}
        </div>
      </div>
 
       <!-- Metadata Section -->
-      <div class="flex items-center flex-shrink-0 flex-wrap justify-end gap-1 sm:gap-2 md:gap-3">
+      <div class="flex items-center flex-shrink-0 flex-wrap justify-end gap-1 sm:gap-2 md:gap-3 font-mono">
       <!-- PR Size Badge -->
-      <div :class="compact ? 'w-[50px]' : 'w-[60px]'" class="flex justify-center">
+      <div :class="compact ? 'w-[36px]' : 'w-[44px]'" class="flex justify-center">
         <PRSizeBadge :additions="pr.additions" :deletions="pr.deletions" :compact="compact" />
       </div>
 
-      <!-- CI/CD Status Badge -->
-      <div :class="compact ? 'w-[30px]' : 'w-[40px]'" class="flex justify-center">
+      <!-- CI/CD Status Glyph -->
+      <div :class="compact ? 'w-[24px]' : 'w-[32px]'" class="flex justify-center">
         <CIBadge
           :status="pr.checksStatus"
           :compact="true"
@@ -118,74 +115,46 @@
         />
       </div>
 
-      <!-- Stale Indicator / Spacer (hidden on small screens) -->
-      <div :class="compact ? 'w-[30px]' : 'w-[45px]'" class="hidden md:flex justify-center">
-        <div
-          v-if="isStale(pr.createdAt)"
-          :class="compact ? 'px-1 py-0.5' : 'px-1.5 py-0.5'"
-          class="flex items-center gap-1 rounded bg-amber-500/10 border border-amber-500/30"
-          :title="`Stale: created ${formatAge(pr.createdAt)} ago`"
-        >
-          <svg class="w-3 h-3 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span v-if="!compact" class="text-xs text-amber-300 font-medium">{{ formatAge(pr.createdAt) }}</span>
-        </div>
-      </div>
-
       <!-- Reviewer Avatars (hidden on small screens) -->
       <div :class="compact ? 'w-[60px]' : 'w-[80px]'" class="hidden lg:flex justify-center">
         <ReviewerAvatars :reviews="pr.reviews.filter(r => r.reviewer !== pr.author)" :max-display="compact ? 2 : 3" :size="compact ? 'sm' : 'md'" />
       </div>
 
-      <!-- Comments (Resolved/Total) (hidden on small screens) -->
-      <div :class="compact ? 'w-[40px]' : 'w-[50px]'" class="hidden md:flex justify-center">
-        <div
-          v-if="pendingThreadsCount > 0"
-          :class="compact ? 'px-1 py-0.5' : 'px-1.5 py-0.5'"
-          class="flex items-center gap-1 rounded bg-slate-700/30 text-xs"
+      <!-- Comments (Resolved/Total) -->
+      <div :class="compact ? 'w-[36px]' : 'w-[44px]'" class="hidden md:flex justify-center">
+        <span
+          v-if="totalThreadsCount > 0"
+          class="text-xs tabular-nums"
+          :class="pendingThreadsCount > 0 ? 'text-orange-400' : 'text-slate-200'"
           :title="`${resolvedThreadsCount} resolved, ${pendingThreadsCount} pending`"
-        >
-          <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-          </svg>
-          <span class="text-slate-300 font-medium">
-            {{ resolvedThreadsCount }}/{{ totalThreadsCount }}
-          </span>
-        </div>
+        >{{ resolvedThreadsCount }}/{{ totalThreadsCount }}</span>
       </div>
 
-      <!-- Files Changed (hidden on small screens) -->
-      <div :class="compact ? 'w-[35px]' : 'w-[45px]'" class="hidden md:flex justify-center">
-        <div
-          :class="compact ? 'px-1 py-0.5' : 'px-1.5 py-0.5'"
-          class="flex items-center gap-1 rounded bg-slate-700/30 text-xs text-slate-300"
+      <!-- Files Changed -->
+      <div :class="compact ? 'w-[30px]' : 'w-[40px]'" class="hidden md:flex justify-center">
+        <span
+          class="text-xs tabular-nums text-slate-200"
           :title="`${pr.changedFiles} ${pr.changedFiles === 1 ? 'file' : 'files'} changed`"
-        >
-          <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-          </svg>
-          <span class="font-medium">{{ pr.changedFiles }}</span>
-        </div>
+        >{{ pr.changedFiles }}</span>
       </div>
 
-      <!-- Line Changes (hidden on small screens) -->
-      <div :class="compact ? 'w-[70px]' : 'w-[90px]'" class="hidden sm:flex justify-center">
-        <div
-          class="flex items-center gap-1 text-xs font-mono"
-          title="Lines changed"
-        >
-          <span class="text-green-400 font-medium">+{{ pr.additions }}</span>
-          <span class="text-slate-600">/</span>
-          <span class="text-red-400 font-medium">-{{ pr.deletions }}</span>
-        </div>
+      <!-- Line Changes -->
+      <div :class="compact ? 'w-[70px]' : 'w-[90px]'" class="hidden sm:flex justify-end gap-1 text-xs">
+          <span class="text-emerald-400">+{{ pr.additions }}</span>
+          <span class="text-red-400">-{{ pr.deletions }}</span>
       </div>
 
-      <!-- Last Updated Time (hidden on small screens) -->
-      <div :class="compact ? 'w-[40px]' : 'w-[50px]'" class="hidden md:block text-xs text-slate-500 text-right">
+      <!-- Stale glyph (compact) -->
+      <div v-if="compact" class="hidden md:flex w-[16px] justify-center">
+        <span
+          v-if="isStale(pr.createdAt)"
+          class="text-amber-400"
+          :title="`Stale: created ${formatAge(pr.createdAt)} ago`"
+        >⚑</span>
+      </div>
+
+      <!-- Last Updated Time -->
+      <div :class="compact ? 'w-[36px]' : 'w-[44px]'" class="hidden md:block text-xs text-slate-200 text-right">
         {{ formatRelativeTime(pr.updatedAt) }}
       </div>
     </div>
@@ -216,7 +185,7 @@ import {
   isStale,
   formatAge,
   getStatusBorderClass,
-  getStatusShadowClass,
+  getStatusTintClass,
 } from '../utils/prHelpers';
 
 const props = defineProps<{
