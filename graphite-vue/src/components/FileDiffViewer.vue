@@ -1,5 +1,5 @@
 <template>
-  <div class="border border-slate-700/30 rounded-xl bg-gradient-to-b from-slate-900/80 to-slate-950/80 shadow-lg mb-4">
+  <div class="border border-slate-700 rounded-xl bg-slate-900 mb-4">
     <FileDiffHeader
       :path="file.path || ''"
       :status="file.status"
@@ -11,7 +11,7 @@
       @toggle-viewed="toggleViewed"
     />
 
-    <div v-if="expanded && !loading" class="relative bg-slate-950/50 backdrop-blur">
+    <div v-if="expanded && !loading" class="relative bg-slate-950">
       <div v-if="hunks.length === 0" class="p-8 text-center">
         <div class="flex flex-col items-center gap-3">
           <svg class="w-12 h-12 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -61,7 +61,7 @@
               </template>
 
               <template v-for="(hunk, hunkIndex) in hunks" :key="hunkIndex">
-                <tr class="bg-gradient-to-r from-slate-800/40 to-slate-800/30 border-y border-slate-700/30">
+                <tr class="bg-slate-800/40 border-y border-slate-700">
                   <td colspan="6" class="px-4 py-2 text-slate-400 text-xs font-mono">
                     <span class="text-slate-500">@</span>@ -{{ hunk.oldStart }},{{ hunk.oldLines }} <span class="text-blue-400">+</span>{{ hunk.newStart }},{{ hunk.newLines }} <span class="text-slate-500">@</span>@
                   </td>
@@ -77,7 +77,7 @@
                   />
 
                   <tr v-if="row.leftLine?.lineNumber && (getCommentsForLine(row.leftLine.lineNumber, 'left').length > 0 || (commentingLine === row.leftLine.lineNumber && commentingSide === 'left'))">
-                    <td colspan="3" class="p-0 bg-gradient-to-b from-slate-900/50 to-slate-950/30 border-t border-slate-700/20">
+                    <td colspan="3" class="p-0 bg-slate-900 border-t border-slate-700">
                       <div v-if="getCommentsForLine(row.leftLine.lineNumber, 'left').length > 0" class="p-2">
                         <CommentThread
                           v-for="[threadId, comments] in getCommentsGroupedByThread(row.leftLine.lineNumber, 'left')"
@@ -118,7 +118,7 @@
 
                   <tr v-if="row.rightLine?.lineNumber && (getCommentsForLine(row.rightLine.lineNumber, 'right').length > 0 || (commentingLine === row.rightLine.lineNumber && commentingSide === 'right') || getPendingCommentsForLine(row.rightLine.lineNumber).length > 0)">
                     <td colspan="3" class="p-0"></td>
-                    <td colspan="3" class="p-0 bg-gradient-to-b from-slate-900/50 to-slate-950/30 border-t border-slate-700/20">
+                    <td colspan="3" class="p-0 bg-slate-900 border-t border-slate-700">
                       <div v-if="getCommentsForLine(row.rightLine.lineNumber, 'right').length > 0" class="p-2">
                         <CommentThread
                           v-for="[threadId, comments] in getCommentsGroupedByThread(row.rightLine.lineNumber, 'right')"

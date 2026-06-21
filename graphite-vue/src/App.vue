@@ -60,7 +60,7 @@ const handlePRCreated = (pr: { id: number; url: string }) => {
 <template>
   <MainLayout>
     <NotificationPermissionBanner />
-    <header class="sticky top-0 z-20 bg-slate-900/95 backdrop-blur border-b border-slate-800 pl-14">
+    <header class="sticky top-0 z-20 bg-slate-900 border-b border-slate-800 pl-14">
       <div class="px-4 py-4">
         <div class="flex items-center justify-between">
           <router-link to="/" class="text-xl font-semibold text-white flex items-center gap-2 hover:opacity-80 transition-opacity">

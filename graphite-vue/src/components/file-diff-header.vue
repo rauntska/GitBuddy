@@ -1,6 +1,6 @@
 <template>
   <button
-    class="sticky top-[8.5rem] z-10 flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-slate-800/60 to-slate-800/40 border-b border-slate-700/30 cursor-pointer hover:from-slate-800/80 hover:to-slate-800/60 select-none w-full text-left transition-all duration-200 backdrop-blur-sm"
+    class="sticky top-[8.5rem] z-10 flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-2 bg-slate-800 border-b border-slate-700 cursor-pointer hover:bg-slate-700 select-none w-full text-left transition-colors duration-150"
     type="button"
     @click="$emit('toggle')"
   >
