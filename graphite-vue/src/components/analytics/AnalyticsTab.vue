@@ -10,6 +10,13 @@
       @apply-custom="() => { if (customFrom && customTo) setCustomRange(customFrom, customTo) }"
     />
 
+    <UserSelector
+      :available="availableAuthors"
+      :selected="selectedAuthors"
+      :loading="loading"
+      @update:selected="setSelectedAuthors"
+    />
+
     <div v-if="loading && !throughput" class="flex flex-col items-center justify-center py-12 text-slate-200/60">
       <ArrowPathIcon class="w-5 h-5 animate-spin text-slate-400 mb-2" />
       <span class="text-sm">Loading analytics…</span>
@@ -37,6 +44,7 @@
 import { ArrowPathIcon } from '@heroicons/vue/24/outline';
 import { useAnalytics } from '../../composables/useAnalytics';
 import DateRangeSelector from './DateRangeSelector.vue';
+import UserSelector from './UserSelector.vue';
 import ThroughputSection from './ThroughputSection.vue';
 import ReviewerSection from './ReviewerSection.vue';
 import HealthSection from './HealthSection.vue';
@@ -45,6 +53,8 @@ const {
   preset,
   customFrom,
   customTo,
+  selectedAuthors,
+  availableAuthors,
   throughput,
   reviewers,
   health,
@@ -52,5 +62,6 @@ const {
   error,
   setPreset,
   setCustomRange,
+  setSelectedAuthors,
 } = useAnalytics();
 </script>

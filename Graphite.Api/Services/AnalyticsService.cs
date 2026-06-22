@@ -9,12 +9,14 @@ public class AnalyticsService(AppDbContext db) : IAnalyticsService
     private const int StaleThresholdDays = 14;
     private const int MaxStalePRs = 50;
 
-    public async Task<ThroughputAnalytics> GetThroughputAsync(DateTime from, DateTime to, CancellationToken ct = default)
+    public async Task<ThroughputAnalytics> GetThroughputAsync(DateTime from, DateTime to, string[]? authors = null, CancellationToken ct = default)
     {
         var (utcFrom, utcTo) = NormalizeWindow(from, to);
+        var authorFilter = NormalizeAuthors(authors);
 
         var openedPRs = await db.PullRequests.AsNoTracking()
-            .Where(pr => pr.CreatedAt >= utcFrom && pr.CreatedAt <= utcTo)
+            .Where(pr => pr.CreatedAt >= utcFrom && pr.CreatedAt <= utcTo
+                && (authorFilter == null || authorFilter.Contains(pr.Author)))
             .Select(pr => new { pr.Id, pr.CreatedAt })
             .ToListAsync(ct);
 
@@ -25,7 +27,8 @@ public class AnalyticsService(AppDbContext db) : IAnalyticsService
             .ToList();
 
         var mergedPRs = await db.PullRequests.AsNoTracking()
-            .Where(pr => pr.MergedAt.HasValue && pr.MergedAt >= utcFrom && pr.MergedAt <= utcTo)
+            .Where(pr => pr.MergedAt.HasValue && pr.MergedAt >= utcFrom && pr.MergedAt <= utcTo
+                && (authorFilter == null || authorFilter.Contains(pr.Author)))
             .Select(pr => new { pr.Id, pr.CreatedAt, pr.MergedAt!.Value })
             .ToListAsync(ct);
 
@@ -68,15 +71,17 @@ public class AnalyticsService(AppDbContext db) : IAnalyticsService
             mergedPRs.Count);
     }
 
-    public async Task<ReviewerAnalytics> GetReviewerStatsAsync(DateTime from, DateTime to, CancellationToken ct = default)
+    public async Task<ReviewerAnalytics> GetReviewerStatsAsync(DateTime from, DateTime to, string[]? authors = null, CancellationToken ct = default)
     {
         var (utcFrom, utcTo) = NormalizeWindow(from, to);
+        var authorFilter = NormalizeAuthors(authors);
 
         var reviews = await db.Reviews.AsNoTracking()
             .Where(r => r.SubmittedAt.HasValue
                 && r.SubmittedAt >= utcFrom
                 && r.SubmittedAt <= utcTo
-                && r.State != "PENDING")
+                && r.State != "PENDING"
+                && (authorFilter == null || authorFilter.Contains(r.PullRequest.Author)))
             .Select(r => new
             {
                 r.Reviewer,
@@ -88,6 +93,12 @@ public class AnalyticsService(AppDbContext db) : IAnalyticsService
             .ToListAsync(ct);
 
         var authoredRaw = await db.PullRequests.AsNoTracking()
+            .Where(pr => pr.CreatedAt >= utcFrom && pr.CreatedAt <= utcTo
+                && (authorFilter == null || authorFilter.Contains(pr.Author)))
+            .Select(pr => new { pr.Author, pr.AuthorAvatar })
+            .ToListAsync(ct);
+
+        var windowAuthorsRaw = await db.PullRequests.AsNoTracking()
             .Where(pr => pr.CreatedAt >= utcFrom && pr.CreatedAt <= utcTo)
             .Select(pr => new { pr.Author, pr.AuthorAvatar })
             .ToListAsync(ct);
@@ -131,16 +142,26 @@ public class AnalyticsService(AppDbContext db) : IAnalyticsService
             .ThenByDescending(r => r.TotalReviews)
             .ToList();
 
-        return new ReviewerAnalytics(stats);
+        var authorOptions = windowAuthorsRaw
+            .GroupBy(a => a.Author)
+            .Select(g => new AuthorOption(
+                g.Key,
+                g.FirstOrDefault(x => !string.IsNullOrEmpty(x.AuthorAvatar))?.AuthorAvatar))
+            .OrderBy(a => a.Username, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return new ReviewerAnalytics(stats, authorOptions);
     }
 
-    public async Task<HealthAnalytics> GetHealthAsync(DateTime from, DateTime to, CancellationToken ct = default)
+    public async Task<HealthAnalytics> GetHealthAsync(DateTime from, DateTime to, string[]? authors = null, CancellationToken ct = default)
     {
+        var authorFilter = NormalizeAuthors(authors);
         var staleCutoff = DateTime.UtcNow.AddDays(-StaleThresholdDays);
         var now = DateTime.UtcNow;
 
         var staleRows = await db.PullRequests.AsNoTracking()
-            .Where(pr => pr.Status != "Closed" && pr.Status != "Merged" && pr.UpdatedAt < staleCutoff)
+            .Where(pr => pr.Status != "Closed" && pr.Status != "Merged" && pr.UpdatedAt < staleCutoff
+                && (authorFilter == null || authorFilter.Contains(pr.Author)))
             .OrderBy(pr => pr.UpdatedAt)
             .Take(MaxStalePRs)
             .Select(pr => new { pr.Id, pr.Title, pr.UpdatedAt })
@@ -151,18 +172,22 @@ public class AnalyticsService(AppDbContext db) : IAnalyticsService
             .ToList();
 
         var stuckCount = await db.PullRequests.AsNoTracking()
-            .CountAsync(pr => pr.Status != "Closed" && pr.Status != "Merged" && pr.Status == "ChangesRequested", ct);
+            .CountAsync(pr => pr.Status != "Closed" && pr.Status != "Merged" && pr.Status == "ChangesRequested"
+                && (authorFilter == null || authorFilter.Contains(pr.Author)), ct);
 
         var failingCount = await db.PullRequests.AsNoTracking()
             .Where(pr => pr.Status != "Closed" && pr.Status != "Merged"
-                && pr.CheckRuns.Any(c => c.Status == "completed" && c.Conclusion == "failure"))
+                && pr.CheckRuns.Any(c => c.Status == "completed" && c.Conclusion == "failure")
+                && (authorFilter == null || authorFilter.Contains(pr.Author)))
             .CountAsync(ct);
 
         var unresolvedCount = await db.ReviewThreads.AsNoTracking()
-            .CountAsync(rt => !rt.IsResolved && !rt.IsOutdated, ct);
+            .CountAsync(rt => !rt.IsResolved && !rt.IsOutdated
+                && (authorFilter == null || authorFilter.Contains(rt.PullRequest.Author)), ct);
 
         var totalOpen = await db.PullRequests.AsNoTracking()
-            .CountAsync(pr => pr.Status != "Closed" && pr.Status != "Merged", ct);
+            .CountAsync(pr => pr.Status != "Closed" && pr.Status != "Merged"
+                && (authorFilter == null || authorFilter.Contains(pr.Author)), ct);
 
         return new HealthAnalytics(staleDtos, stuckCount, failingCount, unresolvedCount, totalOpen);
     }
@@ -180,6 +205,17 @@ public class AnalyticsService(AppDbContext db) : IAnalyticsService
             (utcFrom, utcTo) = (utcTo, utcFrom);
         }
         return (utcFrom, utcTo);
+    }
+
+    private static string[]? NormalizeAuthors(string[]? authors)
+    {
+        if (authors is null || authors.Length == 0) return null;
+        var set = authors
+            .Where(a => !string.IsNullOrWhiteSpace(a))
+            .Select(a => a.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        return set.Length == 0 ? null : set;
     }
 
     private static double? Median(List<double?> values)

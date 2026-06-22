@@ -199,26 +199,26 @@ public class AdminController(
     }
 
     [HttpGet("analytics/throughput")]
-    public async Task<IActionResult> GetAnalyticsThroughput([FromQuery] DateTime? from, [FromQuery] DateTime? to)
+    public async Task<IActionResult> GetAnalyticsThroughput([FromQuery] DateTime? from, [FromQuery] DateTime? to, [FromQuery] string[]? authors)
     {
         var (f, t) = NormalizeWindow(from, to);
-        var result = await analyticsService.GetThroughputAsync(f, t);
+        var result = await analyticsService.GetThroughputAsync(f, t, authors);
         return Ok(result);
     }
 
     [HttpGet("analytics/reviewers")]
-    public async Task<IActionResult> GetAnalyticsReviewers([FromQuery] DateTime? from, [FromQuery] DateTime? to)
+    public async Task<IActionResult> GetAnalyticsReviewers([FromQuery] DateTime? from, [FromQuery] DateTime? to, [FromQuery] string[]? authors)
     {
         var (f, t) = NormalizeWindow(from, to);
-        var result = await analyticsService.GetReviewerStatsAsync(f, t);
+        var result = await analyticsService.GetReviewerStatsAsync(f, t, authors);
         return Ok(result);
     }
 
     [HttpGet("analytics/health")]
-    public async Task<IActionResult> GetAnalyticsHealth([FromQuery] DateTime? from, [FromQuery] DateTime? to)
+    public async Task<IActionResult> GetAnalyticsHealth([FromQuery] DateTime? from, [FromQuery] DateTime? to, [FromQuery] string[]? authors)
     {
         var (f, t) = NormalizeWindow(from, to);
-        var result = await analyticsService.GetHealthAsync(f, t);
+        var result = await analyticsService.GetHealthAsync(f, t, authors);
         return Ok(result);
     }
 

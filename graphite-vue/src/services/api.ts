@@ -361,23 +361,23 @@ export const apiService = {
   },
 
   // Admin - Analytics
-  getAnalyticsThroughput: async (from?: string, to?: string): Promise<ThroughputAnalytics> => {
+  getAnalyticsThroughput: async (from?: string, to?: string, authors?: string[]): Promise<ThroughputAnalytics> => {
     const response = await api.get<ThroughputAnalytics>('/admin/analytics/throughput', {
-      params: { from, to },
+      params: { from, to, authors },
     });
     return response.data;
   },
 
-  getAnalyticsReviewers: async (from?: string, to?: string): Promise<ReviewerAnalytics> => {
+  getAnalyticsReviewers: async (from?: string, to?: string, authors?: string[]): Promise<ReviewerAnalytics> => {
     const response = await api.get<ReviewerAnalytics>('/admin/analytics/reviewers', {
-      params: { from, to },
+      params: { from, to, authors },
     });
     return response.data;
   },
 
-  getAnalyticsHealth: async (from?: string, to?: string): Promise<HealthAnalytics> => {
+  getAnalyticsHealth: async (from?: string, to?: string, authors?: string[]): Promise<HealthAnalytics> => {
     const response = await api.get<HealthAnalytics>('/admin/analytics/health', {
-      params: { from, to },
+      params: { from, to, authors },
     });
     return response.data;
   },
