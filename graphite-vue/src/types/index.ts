@@ -88,6 +88,12 @@ export interface ReviewerStat {
 
 export interface ReviewerAnalytics {
   reviewers: ReviewerStat[];
+  authors: AuthorOption[];
+}
+
+export interface AuthorOption {
+  username: string;
+  avatarUrl?: string | null;
 }
 
 export interface StalePR {

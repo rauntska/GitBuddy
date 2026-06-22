@@ -20,7 +20,11 @@ public record ReviewerStat(
     int Comments,
     double? MedianReviewLatencyHours);
 
-public record ReviewerAnalytics(IReadOnlyList<ReviewerStat> Reviewers);
+public record ReviewerAnalytics(
+    IReadOnlyList<ReviewerStat> Reviewers,
+    IReadOnlyList<AuthorOption> Authors);
+
+public record AuthorOption(string Username, string? AvatarUrl);
 
 public record StalePR(int Id, string Title, DateTime UpdatedAt, int DaysStale);
 

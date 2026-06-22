@@ -1,6 +1,6 @@
 import { computed, ref, watch } from 'vue';
 import { apiService } from '../services/api';
-import type { AnalyticsPreset, HealthAnalytics, ReviewerAnalytics, ThroughputAnalytics } from '../types';
+import type { AnalyticsPreset, AuthorOption, HealthAnalytics, ReviewerAnalytics, ThroughputAnalytics } from '../types';
 
 function presetToRange(preset: AnalyticsPreset): { from?: string; to?: string } {
   const now = new Date();
@@ -16,6 +16,7 @@ function presetToRange(preset: AnalyticsPreset): { from?: string; to?: string } 
 const preset = ref<AnalyticsPreset | 'custom'>('30d');
 const customFrom = ref<string>('');
 const customTo = ref<string>('');
+const selectedAuthors = ref<string[]>([]);
 
 const throughput = ref<ThroughputAnalytics | null>(null);
 const reviewers = ref<ReviewerAnalytics | null>(null);
@@ -32,14 +33,17 @@ const activeRange = computed<{ from?: string; to?: string }>(() => {
   return presetToRange(preset.value);
 });
 
+const availableAuthors = computed<AuthorOption[]>(() => reviewers.value?.authors ?? []);
+
 async function refresh() {
   loading.value = true;
   error.value = null;
   const { from, to } = activeRange.value;
+  const authors = selectedAuthors.value.length > 0 ? selectedAuthors.value : undefined;
   const results = await Promise.allSettled([
-    apiService.getAnalyticsThroughput(from, to),
-    apiService.getAnalyticsReviewers(from, to),
-    apiService.getAnalyticsHealth(from, to),
+    apiService.getAnalyticsThroughput(from, to, authors),
+    apiService.getAnalyticsReviewers(from, to, authors),
+    apiService.getAnalyticsHealth(from, to, authors),
   ]);
   if (results[0].status === 'fulfilled') throughput.value = results[0].value;
   if (results[1].status === 'fulfilled') reviewers.value = results[1].value;
@@ -61,7 +65,11 @@ function setCustomRange(from: string, to: string) {
   customTo.value = to;
 }
 
-watch(activeRange, () => { void refresh(); });
+function setSelectedAuthors(next: string[]) {
+  selectedAuthors.value = next;
+}
+
+watch([activeRange, selectedAuthors], () => { void refresh(); }, { deep: true });
 
 if (!initialized) {
   initialized = true;
@@ -74,6 +82,8 @@ export function useAnalytics() {
     customFrom,
     customTo,
     activeRange,
+    selectedAuthors,
+    availableAuthors,
     throughput,
     reviewers,
     health,
@@ -82,5 +92,6 @@ export function useAnalytics() {
     refresh,
     setPreset,
     setCustomRange,
+    setSelectedAuthors,
   };
 }
