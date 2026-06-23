@@ -4,14 +4,14 @@ Guidelines for coding agents working in this repository.
 
 ## Project Overview
 
-Graphite is a GitHub PR Dashboard with a .NET 9.0 Web API backend and Vue 3 frontend. It aggregates pull requests across repositories with real-time updates via SignalR.
+GitBuddy is a GitHub PR Dashboard with a .NET 9.0 Web API backend and Vue 3 frontend. It aggregates pull requests across repositories with real-time updates via SignalR.
 
 ## Build/Run Commands
 
 ### Backend (.NET API)
 
 ```bash
-cd Graphite.Api
+cd GitBuddy.Api
 
 # Run in development (http://localhost:5247)
 dotnet run
@@ -29,7 +29,7 @@ dotnet ef migrations add <MigrationName>
 ### Frontend (Vue 3)
 
 ```bash
-cd graphite-vue
+cd gitbuddy-vue
 
 # Install dependencies
 npm install
@@ -187,7 +187,7 @@ Controllers → MediatR (Commands/Queries) → Services → Domain
 - **Controllers**: Thin, delegate to MediatR
 - **MediatR Handlers**: Contain request handling logic
 - **Services**: Business logic, external integrations (GitHubService, etc.)
-- **Domain**: Models, DbContext (Graphite.Domain project)
+- **Domain**: Models, DbContext (GitBuddy.Domain project)
 
 ### Frontend Structure
 

@@ -4,7 +4,7 @@
       "Bash(dotnet build:*)",
       "Bash(dotnet ef migrations add:*)",
       "Bash(npm run build:*)",
-      "Bash(find C:\\\\Projects\\\\samples\\\\graphitev2\\\\graphite-vue\\\\src:*)",
+      "Bash(find C:\\\\Projects\\\\samples\\\\gitbuddyv2\\\\gitbuddy-vue\\\\src:*)",
       "Bash(find:*)",
       "Bash(npx vue-tsc:*)",
       "WebSearch",
@@ -13,7 +13,10 @@
       "Bash(npx vite *)",
       "Bash(curl -s http://localhost:5173)",
       "Bash(git checkout *)",
-      "mcp__Claude_Preview__preview_start"
+      "mcp__Claude_Preview__preview_start",
+      "Bash(powershell -NoProfile -Command ' *)",
+      "Bash(git mv *)",
+      "Bash(tasklist)"
     ]
   }
 }

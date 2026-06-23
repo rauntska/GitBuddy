@@ -1,6 +1,6 @@
 # Visual Style Guide — "Dense / Pro"
 
-The shared visual language for the Graphite frontend. Apply these rules when restyling any view, component, or surface so the whole app feels consistent.
+The shared visual language for the GitBuddy frontend. Apply these rules when restyling any view, component, or surface so the whole app feels consistent.
 
 ---
 

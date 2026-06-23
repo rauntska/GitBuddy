@@ -2,7 +2,7 @@
 
 ## Scope
 
-Admin-only analytics dashboard surfacing three views of PR data already captured by the Graphite domain:
+Admin-only analytics dashboard surfacing three views of PR data already captured by the GitBuddy domain:
 
 1. **Throughput & cycle time** — daily counts of PRs opened and merged over the selected window; median time-to-merge and median time-to-first-review across the window.
 2. **User stats** — per-user breakdown of PRs authored, reviews submitted (approved / changes-requested / commented), median review latency, and approval rate. Includes both reviewers and PR authors in the window.
@@ -91,9 +91,9 @@ All routes are admin-only (reuse `[Authorize(Roles = "Admin")]` already applied 
 
 - Mirror the `AdminController` aggregation pattern (`GET /api/admin/stats` at `AdminController.cs:182`).
 - Register the new service scoped in `Program.cs` following the existing `AddScoped<I*Service, *Service>()` style.
-- API client additions go in `graphite-vue/src/services/api.ts` next to existing methods.
+- API client additions go in `gitbuddy-vue/src/services/api.ts` next to existing methods.
 - Use `.AsNoTracking()` on all read queries (recent repo convention — see commit `0932dda`).
-- The `nul` and `Graphite.Api/nul` files in the working tree are unrelated Windows-reserved-name artifacts from prior work; leave them alone.
+- The `nul` and `GitBuddy.Api/nul` files in the working tree are unrelated Windows-reserved-name artifacts from prior work; leave them alone.
 
 ## Open questions
 

@@ -1,6 +1,6 @@
-# Graphite Kubernetes Deployment
+# GitBuddy Kubernetes Deployment
 
-This directory contains Kubernetes manifests for deploying Graphite to a cluster.
+This directory contains Kubernetes manifests for deploying GitBuddy to a cluster.
 
 ## Prerequisites
 
@@ -14,7 +14,7 @@ This directory contains Kubernetes manifests for deploying Graphite to a cluster
 
 ```bash
 kubectl create secret docker-registry ghcr-secret \
-  --namespace=graphite \
+  --namespace=gitbuddy \
   --docker-server=ghcr.io \
   --docker-username=YOUR_GITHUB_USERNAME \
   --docker-password=YOUR_GITHUB_PAT
@@ -65,16 +65,16 @@ kubectl apply -f .
 ### 5. Verify Deployment
 
 ```bash
-kubectl get all -n graphite
-kubectl get ingress -n graphite
-kubectl get certificates -n graphite
+kubectl get all -n gitbuddy
+kubectl get ingress -n gitbuddy
+kubectl get certificates -n gitbuddy
 ```
 
 ## Files
 
 | File | Description |
 |------|-------------|
-| `namespace.yaml` | Creates the `graphite` namespace |
+| `namespace.yaml` | Creates the `gitbuddy` namespace |
 | `configmap.yaml` | Non-sensitive configuration |
 | `secrets.yaml` | Sensitive configuration (template) |
 | `pvc.yaml` | PersistentVolumeClaim for SQLite database |

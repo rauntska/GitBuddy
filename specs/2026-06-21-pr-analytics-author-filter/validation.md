@@ -5,7 +5,7 @@
 From repo root:
 
 - [ ] `dotnet build -c Release` exits 0
-- [ ] `cd graphite-vue && npm run build` exits 0
+- [ ] `cd gitbuddy-vue && npm run build` exits 0
 - [ ] `dotnet test` exits 0 (if test coverage exists for the touched controllers/services; if not, note this gap)
 
 ## Correctness checks
@@ -22,8 +22,8 @@ From repo root:
 
 ## Manual walkthrough
 
-1. Start backend: `cd Graphite.Api && dotnet run`.
-2. Start frontend: `cd graphite-vue && npm run dev`.
+1. Start backend: `cd GitBuddy.Api && dotnet run`.
+2. Start frontend: `cd gitbuddy-vue && npm run dev`.
 3. Sign in as an admin; navigate to the analytics panel.
 4. **Baseline:** with no users selected, confirm Throughput chart, Reviewer table, and Health metrics are unchanged from `master`.
 5. **Single author:** select one author from the dropdown.
