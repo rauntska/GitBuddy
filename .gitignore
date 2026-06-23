@@ -1,7 +1,7 @@
 #rider
 .idea/
 #misc
-/graphite-vue/.vscode/extensions.json
+/gitbuddy-vue/.vscode/extensions.json
 # .NET
 bin/
 obj/
@@ -10,15 +10,15 @@ obj/
 *.cache
 *.log
 *.db
-graphite.db
-graphite.db-shm
-graphite.db-wal
+gitbuddy.db
+gitbuddy.db-shm
+gitbuddy.db-wal
 
 # Vue
-graphite-vue/node_modules/
-graphite-vue/dist/
-graphite-vue/.DS_Store
-graphite-vue/.vite/
+gitbuddy-vue/node_modules/
+gitbuddy-vue/dist/
+gitbuddy-vue/.DS_Store
+gitbuddy-vue/.vite/
 
 # Environment
 .env

@@ -1,4 +1,4 @@
-# Graphite - GitHub PR Dashboard
+# GitBuddy - GitHub PR Dashboard
 
 A modern, dark-themed dashboard for tracking GitHub pull requests across an organization. Built with .NET 9.0 Web API and Vue 3.
 
@@ -16,8 +16,8 @@ A modern, dark-themed dashboard for tracking GitHub pull requests across an orga
 ## Architecture
 
 ### Backend (.NET 9.0)
-- **Graphite.Api**: Web API with controllers for PRs and settings
-- **Graphite.Domain**: Domain models and DbContext with EF Core
+- **GitBuddy.Api**: Web API with controllers for PRs and settings
+- **GitBuddy.Domain**: Domain models and DbContext with EF Core
 - **GitHubService**: Octokit integration for GitHub API calls
 - **CacheService**: SQLite caching with PR status determination
 - **PRRefreshService**: Background service for auto-refresh
@@ -46,9 +46,9 @@ Comments (PR comment counts)
 
 ### Backend Setup
 
-1. Navigate to Graphite.Api:
+1. Navigate to GitBuddy.Api:
 ```bash
-cd Graphite.Api
+cd GitBuddy.Api
 ```
 
 2. Build and run the API:
@@ -60,9 +60,9 @@ The API will start on `http://localhost:5000`
 
 ### Frontend Setup
 
-1. Navigate to graphite-vue:
+1. Navigate to gitbuddy-vue:
 ```bash
-cd graphite-vue
+cd gitbuddy-vue
 ```
 
 2. Install dependencies:
@@ -118,13 +118,13 @@ The frontend will start on `http://localhost:5173`
 
 ### Backend
 ```bash
-cd Graphite.Api
+cd GitBuddy.Api
 dotnet build -c Release
 ```
 
 ### Frontend
 ```bash
-cd graphite-vue
+cd gitbuddy-vue
 npm run build
 ```
 
@@ -147,11 +147,11 @@ Run the API locally with nginx+frontend in Docker:
 
 ```bash
 # Terminal 1 - Run API on host
-cd Graphite.Api
+cd GitBuddy.Api
 dotnet run
 
 # Terminal 2 - Build frontend and start nginx via Docker
-cd graphite-vue
+cd gitbuddy-vue
 npm run build
 cd ..
 docker-compose -f docker-compose.local.yml up
@@ -166,18 +166,18 @@ Access the app at `http://localhost`
 In separate terminals:
 ```bash
 # Terminal 1 - Backend
-cd Graphite.Api
+cd GitBuddy.Api
 dotnet run
 
 # Terminal 2 - Frontend
-cd graphite-vue
+cd gitbuddy-vue
 npm run dev
 ```
 
 The Vite dev server proxies `/api` requests to the backend automatically.
 
 ### Database
-The SQLite database (`graphite.db`) is created automatically on first run. Migrations are located in `Graphite.Api/Migrations/`.
+The SQLite database (`gitbuddy.db`) is created automatically on first run. Migrations are located in `GitBuddy.Api/Migrations/`.
 
 ## Tech Stack
 

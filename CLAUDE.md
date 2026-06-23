@@ -4,14 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Graphite is a GitHub PR Dashboard built with .NET 9.0 Web API backend and Vue 3 frontend. It aggregates pull requests across repositories in an organization with real-time updates via SignalR.
+GitBuddy is a GitHub PR Dashboard built with .NET 9.0 Web API backend and Vue 3 frontend. It aggregates pull requests across repositories in an organization with real-time updates via SignalR.
 
 ## Build and Run Commands
 
 ### Backend (.NET API)
 ```bash
 # Navigate to API project
-cd Graphite.Api
+cd GitBuddy.Api
 
 # Run in development
 dotnet run
@@ -26,12 +26,12 @@ dotnet ef database update
 dotnet ef migrations add <MigrationName>
 ```
 
-The API runs on `http://localhost:5247` (development) and uses SQLite database (`graphite.db`).
+The API runs on `http://localhost:5247` (development) and uses SQLite database (`gitbuddy.db`).
 
 ### Frontend (Vue 3)
 ```bash
 # Navigate to frontend
-cd graphite-vue
+cd gitbuddy-vue
 
 # Install dependencies
 npm install
@@ -52,7 +52,7 @@ The frontend runs on `http://localhost:5173` (development).
 
 ### Backend Structure
 
-- **Graphite.Api/** - Web API project
+- **GitBuddy.Api/** - Web API project
   - `Controllers/` - API endpoints (PullRequests, Auth, Webhooks, Settings, UserSettings, UserPreferences, Comments, CommentDrafts, CommentTemplates, Repositories, Images, Admin; plus `BaseController` shared base)
   - `Services/` - Business logic (GitHubService, GitHubGraphQLService, CacheService, JwtService, PullRequestStatusService, PullRequestValidationService, SignalRNotificationService, UserService, WebhookService, AllowlistService, RepositoryRuleService, InvitationService, etc.)
   - `BackgroundServices/` - Hosted services (`PRRefreshService` for auto-refresh, `RepositoryRuleSyncWorker` for rule sync)
@@ -61,7 +61,7 @@ The frontend runs on `http://localhost:5173` (development).
   - `DTOs/` - Data transfer objects
   - `Program.cs` - Application entry point with DI configuration
 
-- **Graphite.Domain/** - Domain models and data layer
+- **GitBuddy.Domain/** - Domain models and data layer
   - `Models/` - Entity classes (PullRequest, Review, ReviewThread, Comment, User, CheckRun, FileDiff, etc.)
   - `Data/` - EF Core DbContext (AppDbContext)
   - `Migrations/` - EF Core migrations

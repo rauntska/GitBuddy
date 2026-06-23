@@ -17,7 +17,7 @@ The system silently falls back to polling via `PRRefreshService` when webhooks s
 
 A service that manages GitHub webhook lifecycle:
 
-- **Auto-registration**: When a repository is added to Graphite, automatically register a webhook pointing to `/api/webhooks/github` with the correct events (`pull_request`, `pull_request_review`, `pull_request_review_comment`, `pull_request_review_thread`, `check_run`, `push`, `issue_comment`)
+- **Auto-registration**: When a repository is added to GitBuddy, automatically register a webhook pointing to `/api/webhooks/github` with the correct events (`pull_request`, `pull_request_review`, `pull_request_review_comment`, `pull_request_review_thread`, `check_run`, `push`, `issue_comment`)
 - **Health checks**: Periodic background job (e.g. hourly) that calls GitHub's `GET /repos/{owner}/{repo}/hooks` API to verify webhooks exist and are active on all tracked repos
 - **Auto-repair**: If a webhook is missing or misconfigured, re-register it automatically (with logging)
 - **Settings page**: Show webhook status per repository (registered/not-registered, last delivery timestamp, active/inactive)

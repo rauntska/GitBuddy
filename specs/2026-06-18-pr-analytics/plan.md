@@ -2,7 +2,7 @@
 
 ## 1. Backend — AnalyticsService
 
-Create `Graphite.Api/Services/IAnalyticsService.cs`:
+Create `GitBuddy.Api/Services/IAnalyticsService.cs`:
 
 ```csharp
 public interface IAnalyticsService
@@ -13,7 +13,7 @@ public interface IAnalyticsService
 }
 ```
 
-Create `Graphite.Api/Services/AnalyticsService.cs`:
+Create `GitBuddy.Api/Services/AnalyticsService.cs`:
 - Constructor injects `AppDbContext`.
 - Constants: `StaleThresholdDays = 14`, `MaxStalePRs = 50`.
 - Helper `DateTime NormalizeToUtc(DateTime)` — if `Kind == Unspecified`, treat as UTC.
@@ -41,11 +41,11 @@ Create `Graphite.Api/Services/AnalyticsService.cs`:
 
 ## 2. Backend — DTOs
 
-Define response DTOs as POCOs in `Graphite.Api/DTOs/Analytics/` (or inline in the service file — follow the dominant convention in `DTOs/`). Names: `ThroughputAnalytics`, `DailyCount`, `ReviewerAnalytics`, `ReviewerStat`, `HealthAnalytics`, `StalePR`.
+Define response DTOs as POCOs in `GitBuddy.Api/DTOs/Analytics/` (or inline in the service file — follow the dominant convention in `DTOs/`). Names: `ThroughputAnalytics`, `DailyCount`, `ReviewerAnalytics`, `ReviewerStat`, `HealthAnalytics`, `StalePR`.
 
 ## 3. Backend — AdminController routes
 
-Edit `Graphite.Api/Controllers/AdminController.cs`:
+Edit `GitBuddy.Api/Controllers/AdminController.cs`:
 - Add `IAnalyticsService analyticsService` to the primary constructor params.
 - Add three routes:
 
@@ -64,7 +64,7 @@ public async Task<IActionResult> GetThroughput([FromQuery] DateTime? from, [From
 
 ## 4. Backend — DI registration
 
-Edit `Graphite.Api/Program.cs` near the other `AddScoped` lines (around line 60-80):
+Edit `GitBuddy.Api/Program.cs` near the other `AddScoped` lines (around line 60-80):
 
 ```csharp
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
@@ -77,7 +77,7 @@ builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 ## 6. Frontend — install dependencies
 
 ```bash
-cd graphite-vue
+cd gitbuddy-vue
 npm install chart.js vue-chartjs
 ```
 
@@ -85,11 +85,11 @@ Both go into `dependencies` in `package.json`.
 
 ## 7. Frontend — types
 
-Create `graphite-vue/src/types/analytics.ts` exporting TypeScript interfaces matching each response DTO: `ThroughputAnalytics`, `DailyCount`, `ReviewerAnalytics`, `ReviewerStat`, `HealthAnalytics`, `StalePR`. Also export `AnalyticsPreset = '7d' | '30d' | '90d' | 'all'`.
+Create `gitbuddy-vue/src/types/analytics.ts` exporting TypeScript interfaces matching each response DTO: `ThroughputAnalytics`, `DailyCount`, `ReviewerAnalytics`, `ReviewerStat`, `HealthAnalytics`, `StalePR`. Also export `AnalyticsPreset = '7d' | '30d' | '90d' | 'all'`.
 
 ## 8. Frontend — API client
 
-Edit `graphite-vue/src/services/api.ts` — add three methods following existing axios conventions:
+Edit `gitbuddy-vue/src/services/api.ts` — add three methods following existing axios conventions:
 
 ```ts
 export const analyticsApi = {
@@ -104,7 +104,7 @@ export const analyticsApi = {
 
 ## 9. Frontend — composable
 
-Create `graphite-vue/src/composables/useAnalytics.ts`:
+Create `gitbuddy-vue/src/composables/useAnalytics.ts`:
 - State: `preset`, `from`, `to`, `throughput`, `reviewers`, `health`, `loading`, `error`.
 - `setPreset(p)`: computes `from`/`to` from preset (e.g., 7d → `to = today`, `from = today - 7 days`).
 - `setCustomRange(from, to)`: sets preset to `custom` and applies.
@@ -114,7 +114,7 @@ Create `graphite-vue/src/composables/useAnalytics.ts`:
 
 ## 10. Frontend — components
 
-Create `graphite-vue/src/components/analytics/`:
+Create `gitbuddy-vue/src/components/analytics/`:
 
 - `DateRangeSelector.vue` — props: `preset`, `from`, `to`; emits `update:preset`, `update:from`, `update:to`, `apply`. Layout: four preset buttons + two date inputs + Apply button.
 - `ThroughputSection.vue` — props: `data: ThroughputAnalytics | null`. Renders KPI cards (total opened, total merged, median TTM, median TTFR) and a `<Line>` chart (vue-chartjs) of `openedDaily` vs `mergedDaily`.
@@ -124,7 +124,7 @@ Create `graphite-vue/src/components/analytics/`:
 
 ## 11. Frontend — wire into AdminPanel
 
-Edit `graphite-vue/src/views/AdminPanel.vue`:
+Edit `gitbuddy-vue/src/views/AdminPanel.vue`:
 - Add to the `tabs` array: `{ id: 'analytics', label: 'Analytics' }`.
 - Add lazy import: `const AnalyticsTab = defineAsyncComponent(() => import('@/components/analytics/AnalyticsTab.vue'))`.
 - Add `<div v-else-if="activeTab === 'analytics'"><AnalyticsTab /></div>` to the panel body.

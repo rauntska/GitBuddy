@@ -2,7 +2,7 @@ name: git-buddy
 services:
   nginx:
     image: nginx:alpine
-    container_name: graphite-nginx
+    container_name: gitbuddy-nginx
     restart: unless-stopped
     ports:
       - "80:80"
@@ -17,8 +17,8 @@ services:
   api:
     build:
       context: ../..
-      dockerfile: Graphite.Api/Dockerfile
-    container_name: graphite-api
+      dockerfile: GitBuddy.Api/Dockerfile
+    container_name: gitbuddy-api
     restart: unless-stopped
     expose:
       - "80"
@@ -47,7 +47,7 @@ services:
 
   postgres:
     image: postgres:18.3
-    container_name: graphite-postgres
+    container_name: gitbuddy-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: GitBuddy
@@ -75,8 +75,8 @@ services:
   frontend:
     build:
       context: ../..
-      dockerfile: graphite-vue/Dockerfile
-    container_name: graphite-frontend
+      dockerfile: gitbuddy-vue/Dockerfile
+    container_name: gitbuddy-frontend
     restart: unless-stopped
     expose:
       - "80"

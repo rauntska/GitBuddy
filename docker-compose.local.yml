@@ -2,7 +2,7 @@ name: git-buddy-local
 services:
   nginx:
     image: nginx:alpine
-    container_name: graphite-local-nginx
+    container_name: gitbuddy-local-nginx
     ports:
       - "80:80"
     volumes:
@@ -12,7 +12,7 @@ services:
 
 #  api:
 #    image: ghcr.io/rauntska/git-buddy-api:latest
-#    container_name: graphite-local-api
+#    container_name: gitbuddy-local-api
 #    expose:
 #      - "80"
 #    environment:
@@ -40,7 +40,7 @@ services:
 
   postgres:
     image: postgres:18.3
-    container_name: graphite-local-postgres
+    container_name: gitbuddy-local-postgres
     environment:
       POSTGRES_DB: GitBuddy
       POSTGRES_USER: gitbuddy

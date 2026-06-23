@@ -3,7 +3,7 @@
 ## Automated
 
 - `dotnet build -c Release` from repo root — passes with no warnings or errors.
-- `cd graphite-vue && npm run build` — passes with no TypeScript or Vue compile errors.
+- `cd gitbuddy-vue && npm run build` — passes with no TypeScript or Vue compile errors.
 - No EF migration needed (no schema changes). Skip `dotnet ef database update`.
 
 ## Correctness
@@ -18,8 +18,8 @@
 
 ## Manual walkthrough
 
-1. Start backend: `cd Graphite.Api && dotnet run`.
-2. Start frontend: `cd graphite-vue && npm run dev`.
+1. Start backend: `cd GitBuddy.Api && dotnet run`.
+2. Start frontend: `cd gitbuddy-vue && npm run dev`.
 3. Sign in as an admin user.
 4. Navigate to `/admin` → click the **Analytics** tab.
 5. Confirm the three sections render with last-30-day defaults:

@@ -12,7 +12,7 @@ Two related pain points:
 
 ### Quality Gates (GitHub as master)
 
-GitHub is the source of truth for merge requirements. Graphite reads and surfaces those rules — it does not define its own.
+GitHub is the source of truth for merge requirements. GitBuddy reads and surfaces those rules — it does not define its own.
 
 **Fetch GitHub's branch protection rules** via the GitHub API (`GET /repos/{owner}/{repo}/branches/{branch}/protection`) and cache them:
 - Required status checks (CI)
@@ -25,7 +25,7 @@ GitHub is the source of truth for merge requirements. Graphite reads and surface
 - Gate summary on `PRDetail` showing each GitHub requirement and whether it passes
 - Cross-reference existing `CheckRun` data with required checks to show pass/fail per check
 
-**No local policy model needed.** GitHub owns the rules; Graphite just reads and displays them. This avoids drift between GitHub and Graphite configs.
+**No local policy model needed.** GitHub owns the rules; GitBuddy just reads and displays them. This avoids drift between GitHub and GitBuddy configs.
 
 ### Bulk Operations
 

@@ -29,7 +29,7 @@ Read these to ground the spec in existing patterns:
 - `CLAUDE.md` — project architecture, build commands, conventions
 - `docs/specs/<topic>/design.md` — if a related design spec already exists for this feature
 - The closest existing code in the layer you'll touch:
-  - **Backend**: nearest controller in `Graphite.Api/Controllers/`, its service in `Graphite.Api/Services/`, the domain model in `Graphite.Domain/Models/`, and the EF configuration in `Graphite.Domain/Data/AppDbContext.cs`
+  - **Backend**: nearest controller in `GitBuddy.Api/Controllers/`, its service in `GitBuddy.Api/Services/`, the domain model in `GitBuddy.Domain/Models/`, and the EF configuration in `GitBuddy.Domain/Data/AppDbContext.cs`
   - **Frontend**: nearest component in `src/components/`, its composable in `src/composables/`, the type in `src/types/`, and the API call in `src/services/`
 
 Reading this first makes interview questions sharper and grounds the spec in existing patterns.
@@ -58,11 +58,11 @@ Name: `specs/YYYY-MM-DD-<feature-name>/` at the repo root, using today's date.
 #### `plan.md`
 Numbered task groups appropriate to the feature. Typical full-stack order:
 
-1. **Domain** — new/modified entities in `Graphite.Domain/Models/`, `AppDbContext` registration
+1. **Domain** — new/modified entities in `GitBuddy.Domain/Models/`, `AppDbContext` registration
 2. **Migration** — `dotnet ef migrations add <Name>`
-3. **Service** — business logic in `Graphite.Api/Services/` (follow existing patterns like `GitHubService`, `PullRequestStatusService`)
-4. **Controller** — endpoint in `Graphite.Api/Controllers/` with `[Authorize]`
-5. **Real-time** — SignalR hub events in `Graphite.Api/Hubs/PRHub.cs` + `SignalRNotificationService` calls (if the feature broadcasts updates)
+3. **Service** — business logic in `GitBuddy.Api/Services/` (follow existing patterns like `GitHubService`, `PullRequestStatusService`)
+4. **Controller** — endpoint in `GitBuddy.Api/Controllers/` with `[Authorize]`
+5. **Real-time** — SignalR hub events in `GitBuddy.Api/Hubs/PRHub.cs` + `SignalRNotificationService` calls (if the feature broadcasts updates)
 6. **Frontend types** — `src/types/`
 7. **Frontend API client** — `src/services/api.ts`
 8. **Frontend composable / store** — `src/composables/` or `src/stores/`
@@ -72,7 +72,7 @@ Numbered task groups appropriate to the feature. Typical full-stack order:
 Each group has numbered sub-tasks and should be independently implementable.
 
 #### `validation.md`
-- **Automated**: `dotnet build -c Release` passes from repo root; `cd graphite-vue && npm run build` passes; `dotnet test` if tests exist for the touched area
+- **Automated**: `dotnet build -c Release` passes from repo root; `cd gitbuddy-vue && npm run build` passes; `dotnet test` if tests exist for the touched area
 - **Correctness checks**: new endpoints have `[Authorize]`; queries are scoped to the authenticated user (existing pattern); EF migrations apply cleanly via `dotnet ef database update`; SignalR events fire on the relevant state change
 - **Manual walkthrough**: list the exact click-path / API call to exercise the feature, plus edge cases (empty state, error state, concurrent updates)
 - **Definition of done**

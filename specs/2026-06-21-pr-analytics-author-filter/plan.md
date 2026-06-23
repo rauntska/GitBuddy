@@ -4,7 +4,7 @@ Implementation order is full-stack top-to-bottom. Each task group is independent
 
 ## 1. Backend DTOs
 
-File: [Graphite.Api/DTOs/Analytics/AnalyticsDtos.cs](../../../Graphite.Api/DTOs/Analytics/AnalyticsDtos.cs)
+File: [GitBuddy.Api/DTOs/Analytics/AnalyticsDtos.cs](../../../GitBuddy.Api/DTOs/Analytics/AnalyticsDtos.cs)
 
 1. Extend `ReviewerAnalytics` record with a second field:
    ```csharp
@@ -19,7 +19,7 @@ File: [Graphite.Api/DTOs/Analytics/AnalyticsDtos.cs](../../../Graphite.Api/DTOs/
 
 ## 2. Backend service — `AnalyticsService`
 
-File: [Graphite.Api/Services/AnalyticsService.cs](../../../Graphite.Api/Services/AnalyticsService.cs)
+File: [GitBuddy.Api/Services/AnalyticsService.cs](../../../GitBuddy.Api/Services/AnalyticsService.cs)
 
 Also update `IAnalyticsService` interface in the same folder.
 
@@ -85,7 +85,7 @@ Also update `IAnalyticsService` interface in the same folder.
 
 ## 3. Backend controller
 
-File: [Graphite.Api/Controllers/AdminController.cs](../../../Graphite.Api/Controllers/AdminController.cs) (~lines 201–232)
+File: [GitBuddy.Api/Controllers/AdminController.cs](../../../GitBuddy.Api/Controllers/AdminController.cs) (~lines 201–232)
 
 1. Add `[FromQuery] string[]? authors` to each of the three analytics actions.
 2. Forward `authors` as the third positional argument to the matching service call.
@@ -104,7 +104,7 @@ public async Task<IActionResult> GetAnalyticsThroughput(
 
 ## 4. Frontend API client
 
-File: [graphite-vue/src/services/api.ts](../../../graphite-vue/src/services/api.ts)
+File: [gitbuddy-vue/src/services/api.ts](../../../gitbuddy-vue/src/services/api.ts)
 
 1. Update each of the three analytics methods to accept `authors?: string[]` and forward via axios `params`:
    ```ts
@@ -118,7 +118,7 @@ File: [graphite-vue/src/services/api.ts](../../../graphite-vue/src/services/api.
 
 ## 5. Frontend types
 
-File: [graphite-vue/src/types/index.ts](../../../graphite-vue/src/types/index.ts)
+File: [gitbuddy-vue/src/types/index.ts](../../../gitbuddy-vue/src/types/index.ts)
 
 1. Add `AuthorOption`:
    ```ts
@@ -137,7 +137,7 @@ File: [graphite-vue/src/types/index.ts](../../../graphite-vue/src/types/index.ts
 
 ## 6. Frontend composable
 
-File: [graphite-vue/src/composables/useAnalytics.ts](../../../graphite-vue/src/composables/useAnalytics.ts)
+File: [gitbuddy-vue/src/composables/useAnalytics.ts](../../../gitbuddy-vue/src/composables/useAnalytics.ts)
 
 1. Add module-level state alongside `preset`:
    ```ts
@@ -162,7 +162,7 @@ File: [graphite-vue/src/composables/useAnalytics.ts](../../../graphite-vue/src/c
 
 ## 7. New component `UserSelector.vue`
 
-File: `graphite-vue/src/components/analytics/UserSelector.vue` (new)
+File: `gitbuddy-vue/src/components/analytics/UserSelector.vue` (new)
 
 Props:
 ```ts
@@ -190,7 +190,7 @@ Keep it under ~200 lines. No new dependencies.
 
 ## 8. Wire into `AnalyticsTab.vue`
 
-File: [graphite-vue/src/components/analytics/AnalyticsTab.vue](../../../graphite-vue/src/components/analytics/AnalyticsTab.vue)
+File: [gitbuddy-vue/src/components/analytics/AnalyticsTab.vue](../../../gitbuddy-vue/src/components/analytics/AnalyticsTab.vue)
 
 1. Import `UserSelector`.
 2. Pull `selectedAuthors`, `availableAuthors`, `setSelectedAuthors` out of `useAnalytics()`.

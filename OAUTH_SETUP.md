@@ -2,19 +2,19 @@
 
 ## Overview
 
-This document provides instructions for setting up GitHub OAuth authentication for Graphite.
+This document provides instructions for setting up GitHub OAuth authentication for GitBuddy.
 
 ## Prerequisites
 
 - A GitHub account
-- Administrator access to the Graphite application
+- Administrator access to the GitBuddy application
 
 ## Step 1: Create GitHub OAuth App
 
 1. Go to GitHub > Settings > Developer settings > OAuth Apps
 2. Click "New OAuth App"
 3. Fill in the form:
-   - **Application name**: Graphite
+   - **Application name**: GitBuddy
    - **Homepage URL**: `http://localhost:5173`
    - **Application description**: (optional) GitHub PR Dashboard
    - **Authorization callback URL**: `http://localhost:5247/api/auth/github/callback`
@@ -24,7 +24,7 @@ This document provides instructions for setting up GitHub OAuth authentication f
 
 ## Step 2: Configure Backend
 
-1. Open `Graphite.Api/appsettings.Development.json`
+1. Open `GitBuddy.Api/appsettings.Development.json`
 2. Update the GitHub configuration:
    ```json
    {
@@ -47,7 +47,7 @@ This document provides instructions for setting up GitHub OAuth authentication f
 The migration has already been created. Run it to update the database schema:
 
 ```bash
-cd Graphite.Api
+cd GitBuddy.Api
 dotnet ef database update
 ```
 
@@ -63,7 +63,7 @@ This will add the following columns to the Users table:
 ### Backend
 
 ```bash
-cd Graphite.Api
+cd GitBuddy.Api
 dotnet run
 ```
 
@@ -72,7 +72,7 @@ The API will be available at `http://localhost:5247`
 ### Frontend
 
 ```bash
-cd graphite-vue
+cd gitbuddy-vue
 npm install  # If not already installed
 npm run dev
 ```
@@ -85,7 +85,7 @@ The frontend will be available at `http://localhost:5173`
 2. You should see an "Authentication Required" message with a "Login with GitHub" button
 3. Click "Login with GitHub" button
 4. You'll be redirected to GitHub to authorize the app
-5. After authorization, you'll be redirected back to Graphite
+5. After authorization, you'll be redirected back to GitBuddy
 6. You should now see the pull request dashboard with your GitHub avatar and username in the header
 7. The JWT token is automatically stored in localStorage and sent with API requests
 8. If your token expires (7 days), you'll be automatically logged out and prompted to login again
@@ -126,8 +126,8 @@ Default JWT settings (in `appsettings.json`):
 {
   "Jwt": {
     "Key": "your-super-secret-key-at-least-32-characters-long-change-this-in-production",
-    "Issuer": "Graphite",
-    "Audience": "GraphiteUsers",
+    "Issuer": "GitBuddy",
+    "Audience": "GitBuddyUsers",
     "ExpirationMinutes": 10080
   }
 }
@@ -161,7 +161,7 @@ Token expiration is set to 7 days (10080 minutes). Adjust as needed.
 
 ### Database migration fails
 
-- Make sure you're in the `Graphite.Api` directory
+- Make sure you're in the `GitBuddy.Api` directory
 - Ensure SQLite database file isn't locked by another process
 - Try running `dotnet ef migrations remove` and `dotnet ef migrations add AddOAuthFieldsToUser` again
 
@@ -183,8 +183,8 @@ Token expiration is set to 7 days (10080 minutes). Adjust as needed.
 ## File Changes Summary
 
 ### Backend (C#)
-- `Graphite.Api.csproj` - Added JWT and OAuth packages
-- `Graphite.Domain/Models/User.cs` - Added OAuth fields
+- `GitBuddy.Api.csproj` - Added JWT and OAuth packages
+- `GitBuddy.Domain/Models/User.cs` - Added OAuth fields
 - `DTOs/AuthDtos.cs` - NEW - Authentication DTOs
 - `Services/JwtService.cs` - NEW - JWT token handling
 - `Services/UserService.cs` - GitHub user handling

@@ -4,7 +4,7 @@
 
 ### Included
 
-Add a multi-select user filter to the PR Analytics panel ([AnalyticsPanel.vue](../../../graphite-vue/src/components/analytics/AnalyticsPanel.vue) → [AnalyticsTab.vue](../../../graphite-vue/src/components/analytics/AnalyticsTab.vue)). When one or more authors are selected, every section of the panel (Throughput, Reviewers, Health) scopes to PRs authored by those users.
+Add a multi-select user filter to the PR Analytics panel ([AnalyticsPanel.vue](../../../gitbuddy-vue/src/components/analytics/AnalyticsPanel.vue) → [AnalyticsTab.vue](../../../gitbuddy-vue/src/components/analytics/AnalyticsTab.vue)). When one or more authors are selected, every section of the panel (Throughput, Reviewers, Health) scopes to PRs authored by those users.
 
 **Filter semantics:** A PR counts toward the filtered view when its **author** is in the selected set. Reviewers/commenters are not part of the match condition.
 
@@ -41,7 +41,7 @@ All three admin analytics endpoints gain an optional `authors` query parameter. 
 
 ### Frontend surface
 
-- New component `UserSelector.vue` in `graphite-vue/src/components/analytics/` — multi-select with avatar chips, searchable dropdown.
+- New component `UserSelector.vue` in `gitbuddy-vue/src/components/analytics/` — multi-select with avatar chips, searchable dropdown.
 - Rendered in `AnalyticsTab.vue` between `DateRangeSelector` and the chart sections.
 - State lives in the existing `useAnalytics` composable alongside `preset`/`customFrom`/`customTo`.
 
@@ -65,11 +65,11 @@ All three admin analytics endpoints gain an optional `authors` query parameter. 
 
 ### Conventions to mirror
 
-- Backend: `AnalyticsService` patterns at [AnalyticsService.cs](../../../Graphite.Api/Services/AnalyticsService.cs) — `AsNoTracking()`, `NormalizeWindow`, ordinal-ignore-case string compares in reviewer grouping.
-- Controller: `[FromQuery] DateTime? from, [FromQuery] DateTime? to` style at [AdminController.cs:201-232](../../../Graphite.Api/Controllers/AdminController.cs).
-- Composable: module-level refs + `watch()` auto-refresh, matching [useAnalytics.ts](../../../graphite-vue/src/composables/useAnalytics.ts).
-- Component styling: border-slate-800 / text-slate-300 dense buttons, matching [DateRangeSelector.vue](../../../graphite-vue/src/components/analytics/DateRangeSelector.vue).
-- Dropdown UX: borrow keyboard-nav / search ideas from [SearchableDropdown.vue](../../../graphite-vue/src/components/SearchableDropdown.vue) but write fresh — `SearchableDropdown` is single-select.
+- Backend: `AnalyticsService` patterns at [AnalyticsService.cs](../../../GitBuddy.Api/Services/AnalyticsService.cs) — `AsNoTracking()`, `NormalizeWindow`, ordinal-ignore-case string compares in reviewer grouping.
+- Controller: `[FromQuery] DateTime? from, [FromQuery] DateTime? to` style at [AdminController.cs:201-232](../../../GitBuddy.Api/Controllers/AdminController.cs).
+- Composable: module-level refs + `watch()` auto-refresh, matching [useAnalytics.ts](../../../gitbuddy-vue/src/composables/useAnalytics.ts).
+- Component styling: border-slate-800 / text-slate-300 dense buttons, matching [DateRangeSelector.vue](../../../gitbuddy-vue/src/components/analytics/DateRangeSelector.vue).
+- Dropdown UX: borrow keyboard-nav / search ideas from [SearchableDropdown.vue](../../../gitbuddy-vue/src/components/SearchableDropdown.vue) but write fresh — `SearchableDropdown` is single-select.
 
 ### Open questions
 
