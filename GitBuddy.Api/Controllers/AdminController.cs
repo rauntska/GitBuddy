@@ -1,4 +1,3 @@
-using GitBuddy.Api.DTOs.Analytics;
 using GitBuddy.Api.Services;
 using GitBuddy.Domain.Models;
 using Microsoft.AspNetCore.Authorization;

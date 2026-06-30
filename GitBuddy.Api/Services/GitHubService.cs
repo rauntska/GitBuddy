@@ -1,6 +1,5 @@
 using GitBuddy.Domain.Models;
 using System.Globalization;
-using Mono.TextTemplating;
 using Octokit;
 using Octokit.GraphQL;
 using Octokit.GraphQL.Core;
@@ -204,7 +203,7 @@ public class GitHubService(
         {
             logger.LogError(ex, "Error fetching file diffs for PR {Organization}/{Repository}#{PullRequestNumber}",
                 organization, repository, pullRequestNumber);
-            return new List<GitHubFileDiffData>();
+            return [];
         }
     }
 
