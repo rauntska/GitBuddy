@@ -1,4 +1,6 @@
 using GitBuddy.Api.DTOs;
+using GitBuddy.Api.Features.Repositories.GetBranchesWithoutPRs;
+using GitBuddy.Api.Features.Repositories.TriggerBranchesWithoutPRRefresh;
 using GitBuddy.Api.Services;
 using GitBuddy.Domain.Data;
 using MediatR;
@@ -15,6 +17,7 @@ public class RepositoriesController(
     IGitHubService gitHubService,
     IPullRequestValidationService validationService,
     ICacheService cacheService,
+    ISender mediator,
     AppDbContext context)
     : BaseController(context)
 {
@@ -134,19 +137,14 @@ public class RepositoriesController(
     [HttpGet("branches-without-prs")]
     public async Task<IActionResult> GetBranchesWithoutPRs()
     {
-        var rows = await context.BranchesWithoutPR
-            .OrderByDescending(b => b.LastActivityAt ?? DateTime.MinValue)
-            .Select(b => new BranchWithoutPRDto(
-                b.Owner, b.Repo, b.RepoFullName, b.BranchName, b.DefaultBranch, b.LastActivityAt))
-            .ToListAsync();
-
-        return Ok(rows);
+        var result = await mediator.Send(new GetBranchesWithoutPRsQuery());
+        return Ok(result);
     }
 
     [HttpPost("branches-without-prs/refresh")]
-    public IActionResult TriggerBranchesWithoutPRRefresh([FromServices] IBranchWithoutPRRefreshTrigger trigger)
+    public async Task<IActionResult> TriggerBranchesWithoutPRRefresh()
     {
-        trigger.Trigger();
+        await mediator.Send(new TriggerBranchesWithoutPRRefreshCommand());
         return Accepted();
     }
 }
