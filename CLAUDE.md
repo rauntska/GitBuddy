@@ -26,7 +26,7 @@ dotnet ef database update
 dotnet ef migrations add <MigrationName>
 ```
 
-The API runs on `http://localhost:5247` (development) and uses SQLite database (`gitbuddy.db`).
+The API runs on `http://localhost:5247` (development) and uses PostgreSQL (Npgsql). The connection string is configured in `appsettings*.json` under `ConnectionStrings:DefaultConnection` (default `Host=localhost;Database=GitBuddy;Username=gitbuddy;Password=gitbuddy`).
 
 ### Frontend (Vue 3)
 ```bash
@@ -108,9 +108,9 @@ PRs are categorized based on reviews:
 - User's OAuth token stored in `User.AccessToken` for authenticated GitHub requests
 
 ## Database
-- SQLite with EF Core Migrations
-- Auto-applied migrations on startup via `dbContext.Database.Migrate()`
-- Key entities: PullRequest, Review, ReviewThread, Comment, User, CheckRun, FileDiff, UserFileViewedState
+- PostgreSQL via Npgsql provider, configured in `Program.cs` and `appsettings*.json`
+- EF Core Migrations — auto-applied on startup via `await dbContext.Database.MigrateAsync()`
+- Key entities: PullRequest, Review, ReviewThread, Comment, User, CheckRun, FileDiff, UserFileViewedState, BranchWithoutPR
 
 ## Configuration
 - `appsettings.json` - Production config

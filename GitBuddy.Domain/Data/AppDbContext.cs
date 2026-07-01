@@ -25,6 +25,7 @@ public class AppDbContext : DbContext
     public DbSet<PendingReview> PendingReviews { get; set; }
     public DbSet<PendingComment> PendingComments { get; set; }
     public DbSet<RepositoryRule> RepositoryRules { get; set; }
+    public DbSet<BranchWithoutPR> BranchesWithoutPR { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -263,6 +264,13 @@ public class AppDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => new { e.Repository, e.BranchPattern }).IsUnique();
             entity.HasIndex(e => e.LastSyncedAt);
+        });
+
+        modelBuilder.Entity<BranchWithoutPR>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.RepoFullName, e.BranchName }).IsUnique();
+            entity.HasIndex(e => e.LastRefreshedAt);
         });
     }
 }

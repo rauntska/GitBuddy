@@ -108,4 +108,30 @@ public class SignalRNotificationService(
             logger.LogError(ex, "Error broadcasting CheckRunsUpdated for PR #{PrId}", prId);
         }
     }
+
+    public async Task BroadcastPendingBranchResolvedAsync(string repoFullName, string branchName)
+    {
+        try
+        {
+            await hubContext.Clients.All.SendAsync("PendingBranchResolved", new { repoFullName, branchName });
+            logger.LogInformation("Broadcast PendingBranchResolved: {RepoFullName}/{Branch}", repoFullName, branchName);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error broadcasting PendingBranchResolved for {RepoFullName}/{Branch}", repoFullName, branchName);
+        }
+    }
+
+    public async Task BroadcastPendingBranchAddedAsync(BranchWithoutPRDto branch)
+    {
+        try
+        {
+            await hubContext.Clients.All.SendAsync("PendingBranchAdded", branch);
+            logger.LogInformation("Broadcast PendingBranchAdded: {Repo}/{Branch}", branch.Repo, branch.BranchName);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error broadcasting PendingBranchAdded for {Repo}/{Branch}", branch.Repo, branch.BranchName);
+        }
+    }
 }

@@ -1,6 +1,6 @@
 import { ref, type Ref } from 'vue';
 import * as signalR from '@microsoft/signalr';
-import type { Review, Comment } from '../types';
+import type { Review, Comment, BranchWithoutPR } from '../types';
 
 export type ConnectionState = 'connected' | 'reconnecting' | 'disconnected';
 
@@ -78,9 +78,21 @@ export interface CheckRunsNotification {
   }>;
 }
 
+export interface PendingBranchResolvedNotification {
+  repoFullName: string;
+  branchName: string;
+}
+
 let connection: signalR.HubConnection | null = null;
 let connectionCount = 0;
 const connectionState: Ref<ConnectionState> = ref('disconnected');
+
+// These two are module-level so any composable can register handlers for them,
+// regardless of which useSignalR() invocation ran setupEventHandlers. The other
+// event handlers are scoped to the usePullRequests composable that owns the
+// connection lifecycle.
+const onPendingBranchResolved: Ref<((notification: PendingBranchResolvedNotification) => void) | null> = ref(null);
+const onPendingBranchAdded: Ref<((branch: BranchWithoutPR) => void) | null> = ref(null);
 
 export function useSignalR() {
   const error: Ref<string | null> = ref(null);
@@ -208,6 +220,18 @@ export function useSignalR() {
         onCheckRunsUpdated.value(notification);
       }
     });
+
+    connection.on('PendingBranchResolved', (notification: PendingBranchResolvedNotification) => {
+      if (onPendingBranchResolved.value) {
+        onPendingBranchResolved.value(notification);
+      }
+    });
+
+    connection.on('PendingBranchAdded', (branch: BranchWithoutPR) => {
+      if (onPendingBranchAdded.value) {
+        onPendingBranchAdded.value(branch);
+      }
+    });
   };
 
   const setupConnectionLifecycleHandlers = () => {
@@ -280,6 +304,8 @@ export function useSignalR() {
     onReviewAdded,
     onCommentChanged,
     onThreadChanged,
-    onCheckRunsUpdated
+    onCheckRunsUpdated,
+    onPendingBranchResolved,
+    onPendingBranchAdded
   };
 }
