@@ -94,7 +94,8 @@ namespace GitBuddy.Domain.Migrations
 
                     b.HasIndex("LastRefreshedAt");
 
-                    b.HasIndex("Repo", "BranchName");
+                    b.HasIndex("RepoFullName", "BranchName")
+                        .IsUnique();
 
                     b.ToTable("BranchesWithoutPR");
                 });

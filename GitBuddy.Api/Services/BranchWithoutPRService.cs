@@ -191,17 +191,17 @@ public class BranchWithoutPRService(
     {
         using var tx = await context.Database.BeginTransactionAsync(ct);
         await context.BranchesWithoutPR
-            .Where(b => b.Repo == row.Repo && b.BranchName == row.BranchName)
+            .Where(b => b.RepoFullName == row.RepoFullName && b.BranchName == row.BranchName)
             .ExecuteDeleteAsync(ct);
         await context.BranchesWithoutPR.AddAsync(row, ct);
         await context.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
     }
 
-    public async Task RemoveBranchAsync(string repo, string branch, CancellationToken ct = default)
+    public async Task RemoveBranchAsync(string repoFullName, string branch, CancellationToken ct = default)
     {
         await context.BranchesWithoutPR
-            .Where(b => b.Repo == repo && b.BranchName == branch)
+            .Where(b => b.RepoFullName == repoFullName && b.BranchName == branch)
             .ExecuteDeleteAsync(ct);
         await context.SaveChangesAsync(ct);
     }

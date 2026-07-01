@@ -269,7 +269,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<BranchWithoutPR>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.HasIndex(e => new { e.Repo, e.BranchName });
+            entity.HasIndex(e => new { e.RepoFullName, e.BranchName }).IsUnique();
             entity.HasIndex(e => e.LastRefreshedAt);
         });
     }
