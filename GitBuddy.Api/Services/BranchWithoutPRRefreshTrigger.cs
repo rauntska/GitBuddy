@@ -11,16 +11,18 @@ public interface IBranchWithoutPRRefreshTrigger
 
 public class BranchWithoutPRRefreshTrigger : IBranchWithoutPRRefreshTrigger
 {
+    // Bounded to 1 with DropWrite: if a trigger is already pending, additional
+    // Trigger() calls are silently dropped. This gives idempotent manual refresh
+    // without touching ChannelReader.Count (which throws on unbounded channels
+    // and would race with the worker's drain loop).
     private readonly Channel<object> _channel =
-        Channel.CreateUnbounded<object>(new UnboundedChannelOptions { SingleReader = true });
+        Channel.CreateBounded<object>(new BoundedChannelOptions(1)
+        {
+            FullMode = BoundedChannelFullMode.DropWrite,
+            SingleReader = true
+        });
 
     public ChannelReader<object> Reader => _channel.Reader;
 
-    public void Trigger()
-    {
-        if (_channel.Reader.Count == 0)
-        {
-            _channel.Writer.TryWrite(new object());
-        }
-    }
+    public void Trigger() => _channel.Writer.TryWrite(new object());
 }
