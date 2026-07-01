@@ -31,6 +31,12 @@
        </button>
     </div>
 
+    <PRColumnHeaders
+      v-if="showHeaders && isExpanded && pullRequests.length > 0"
+      :compact="compact"
+      :density="density"
+    />
+
     <div
       class="collapse-wrapper"
       :class="{ collapsed: !isExpanded }"
@@ -67,6 +73,7 @@
 import { computed } from 'vue';
 import type { PullRequest } from '../types';
 import PRRow from './PRRow.vue';
+import PRColumnHeaders from './PRColumnHeaders.vue';
 
 const props = defineProps<{
   title: string;
@@ -75,6 +82,7 @@ const props = defineProps<{
   expanded?: boolean;
   compact?: boolean;
   density?: 'compact' | 'comfortable' | 'expanded';
+  showHeaders?: boolean;
 }>();
 
  defineEmits<{

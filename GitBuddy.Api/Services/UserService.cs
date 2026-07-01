@@ -40,7 +40,8 @@ public class UserService(AppDbContext context) : IUserService
                 FileTreeWidth = 256,
                 CommentsPanelWidth = 320,
                 FileTreeVisible = true,
-                ListViewMode = "comfortable"
+                ListViewMode = "comfortable",
+                ShowColumnHeaders = true
             };
             context.UserPreferences.Add(preferences);
             await context.SaveChangesAsync();
@@ -52,6 +53,7 @@ public class UserService(AppDbContext context) : IUserService
             preferences.CommentsPanelWidth,
             preferences.FileTreeVisible,
             preferences.ListViewMode ?? "comfortable",
+            preferences.ShowColumnHeaders,
             preferences.PinnedPrIds,
             preferences.DashboardGroupOrder,
             preferences.HiddenDashboardGroups,
@@ -82,6 +84,9 @@ public class UserService(AppDbContext context) : IUserService
         if (request.FileTreeVisible.HasValue)
             preferences.FileTreeVisible = request.FileTreeVisible.Value;
 
+        if (request.ShowColumnHeaders.HasValue)
+            preferences.ShowColumnHeaders = request.ShowColumnHeaders.Value;
+
         if (request.ListViewMode != null)
             preferences.ListViewMode = request.ListViewMode;
 
@@ -106,6 +111,7 @@ public class UserService(AppDbContext context) : IUserService
             preferences.CommentsPanelWidth,
             preferences.FileTreeVisible,
             preferences.ListViewMode ?? "comfortable",
+            preferences.ShowColumnHeaders,
             preferences.PinnedPrIds,
             preferences.DashboardGroupOrder,
             preferences.HiddenDashboardGroups,
