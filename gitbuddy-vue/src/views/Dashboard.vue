@@ -121,6 +121,22 @@
                 ]"
               >E</button>
             </div>
+
+            <!-- Column Headers Toggle -->
+            <button
+              @click="setShowColumnHeaders(!showColumnHeaders)"
+              :title="showColumnHeaders ? 'Hide column headers' : 'Show column headers'"
+              :class="[
+                'flex items-center justify-center rounded border p-1.5 transition-colors',
+                showColumnHeaders
+                  ? 'border-slate-700 bg-slate-700 text-slate-100'
+                  : 'border-slate-800 bg-slate-900/60 text-slate-500 hover:text-slate-300'
+              ]"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16M4 6v12M9 6v12M14 6v12M20 6v12" />
+              </svg>
+            </button>
           </div>
         </div>
 
@@ -254,6 +270,7 @@
             :expanded="expandedGroups[status] ?? true"
             :compact="isCompactMode"
             :density="listViewMode"
+            :show-headers="showColumnHeaders"
             @toggle="toggleGroup(status)"
             @contextmenu="onPRContextMenu"
           />
@@ -305,6 +322,7 @@
           :expanded="expandedGroups.Merged ?? true"
           :compact="isCompactMode"
           :density="listViewMode"
+          :show-headers="showColumnHeaders"
           @toggle="toggleGroup('Merged')"
           @contextmenu="onPRContextMenu"
         />
@@ -351,7 +369,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
   import type { MenuItem } from '../components/ContextMenu.vue';
 
   const authStore = useAuthStore();
-  const { preferences, loadPreferences, setListViewMode, togglePinnedPr, isPrPinned, setDashboardGroupOrder, setHiddenDashboardGroups, resetDashboardLayout } = useUserPreferences();
+  const { preferences, loadPreferences, setListViewMode, setShowColumnHeaders, togglePinnedPr, isPrPinned, setDashboardGroupOrder, setHiddenDashboardGroups, resetDashboardLayout } = useUserPreferences();
   const { hasPersonalAccessToken, fetchUserSettings } = useUserSettings();
   const { initFavicon, updateBadge } = useFaviconBadge();
   const {
@@ -383,6 +401,7 @@ const patWarningDismissed = ref(false);
 
 const listViewMode = computed(() => preferences.value.listViewMode ?? 'comfortable');
 const isCompactMode = computed(() => listViewMode.value === 'compact');
+const showColumnHeaders = computed(() => preferences.value.showColumnHeaders ?? true);
 
 // Dashboard layout
 const editLayoutMode = ref(false);

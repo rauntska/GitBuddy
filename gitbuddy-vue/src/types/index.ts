@@ -352,6 +352,7 @@ export interface UserPreferences {
   commentsPanelWidth: number;
   fileTreeVisible: boolean;
   listViewMode: 'compact' | 'comfortable' | 'expanded';
+  showColumnHeaders?: boolean;
   pinnedPrIds?: number[];
   dashboardGroupOrder?: string[];
   hiddenDashboardGroups?: string[];

@@ -9,6 +9,7 @@ const preferences = ref<UserPreferences>({
   commentsPanelWidth: 320,
   fileTreeVisible: true,
   listViewMode: 'comfortable',
+  showColumnHeaders: true,
   pinnedPrIds: [],
   dashboardGroupOrder: [],
   hiddenDashboardGroups: [],
@@ -102,6 +103,10 @@ export function useUserPreferences() {
     await updatePreference('listViewMode', mode);
   };
 
+  const setShowColumnHeaders = async (show: boolean) => {
+    await updatePreference('showColumnHeaders', show);
+  };
+
   const togglePinnedPr = async (prId: number) => {
     const current = preferences.value.pinnedPrIds ?? [];
     const updated = current.includes(prId) ? current.filter(id => id !== prId) : [...current, prId];
@@ -182,6 +187,7 @@ export function useUserPreferences() {
     setCommentsPanelWidth,
     setFileTreeVisible,
     setListViewMode,
+    setShowColumnHeaders,
     togglePinnedPr,
     isPrPinned,
     setDashboardGroupOrder,
