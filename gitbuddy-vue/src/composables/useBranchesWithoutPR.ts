@@ -26,8 +26,10 @@ export function useBranchesWithoutPR() {
     refreshing.value = true;
     try {
       await apiService.refreshBranchesWithoutPR();
+      error.value = null;
     } catch (err) {
       console.error('Failed to trigger branches-without-prs refresh', err);
+      error.value = 'Failed to trigger branches-without-prs refresh';
     } finally {
       // The worker cycle takes a moment; keep the spinner briefly so the user sees feedback,
       // then let the next poll or SignalR event update the list.

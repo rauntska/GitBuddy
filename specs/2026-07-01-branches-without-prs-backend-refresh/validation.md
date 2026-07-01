@@ -5,7 +5,7 @@
 - From repo root: `dotnet build -c Release` — must succeed with no errors.
 - From `gitbuddy-vue/`: `npm run build` — must succeed with no errors.
 - From `GitBuddy.Api/`: `dotnet ef migrations script --idempotent` — must render SQL that creates the `BranchWithoutPRs` table, its two indexes, and adds `BranchRefreshIntervalMinutes` to `GitHubConfigs` with a default of 30.
-- `dotnet ef database update` — applies cleanly on a fresh `gitbuddy.db`.
+- `dotnet ef database update --project GitBuddy.Domain --startup-project GitBuddy.Api` — applies cleanly against the configured PostgreSQL database (default `GitBuddy` per `ConnectionStrings:DefaultConnection`).
 - `dotnet test` — if tests exist for any touched service (none today, but if added during implementation they must pass).
 
 ## Correctness checks
