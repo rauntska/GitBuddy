@@ -109,16 +109,16 @@ public class SignalRNotificationService(
         }
     }
 
-    public async Task BroadcastPendingBranchResolvedAsync(string repository, string branchName)
+    public async Task BroadcastPendingBranchResolvedAsync(string repoFullName, string branchName)
     {
         try
         {
-            await hubContext.Clients.All.SendAsync("PendingBranchResolved", new { repository, branchName });
-            logger.LogInformation("Broadcast PendingBranchResolved: {Repository}/{Branch}", repository, branchName);
+            await hubContext.Clients.All.SendAsync("PendingBranchResolved", new { repoFullName, branchName });
+            logger.LogInformation("Broadcast PendingBranchResolved: {RepoFullName}/{Branch}", repoFullName, branchName);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error broadcasting PendingBranchResolved for {Repository}/{Branch}", repository, branchName);
+            logger.LogError(ex, "Error broadcasting PendingBranchResolved for {RepoFullName}/{Branch}", repoFullName, branchName);
         }
     }
 

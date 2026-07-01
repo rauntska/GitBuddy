@@ -79,7 +79,7 @@ export interface CheckRunsNotification {
 }
 
 export interface PendingBranchResolvedNotification {
-  repository: string;
+  repoFullName: string;
   branchName: string;
 }
 

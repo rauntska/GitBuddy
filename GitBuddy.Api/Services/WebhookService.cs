@@ -72,7 +72,7 @@ public class WebhookService(
                 {
                     await CreateNewPrAsync(pullRequestEvent, config);
                     await branchWithoutPRService.RemoveBranchAsync(repo.FullName, prData.Head.Ref);
-                    await notificationService.BroadcastPendingBranchResolvedAsync(repo.Name, prData.Head.Ref);
+                    await notificationService.BroadcastPendingBranchResolvedAsync(repo.FullName, prData.Head.Ref);
                 }
                 else
                 {
@@ -403,7 +403,7 @@ public class WebhookService(
         if (pushEvent.Deleted == true)
         {
             await branchWithoutPRService.RemoveBranchAsync(repoFullName, branch);
-            await notificationService.BroadcastPendingBranchResolvedAsync(repoName, branch);
+            await notificationService.BroadcastPendingBranchResolvedAsync(repoFullName, branch);
             return;
         }
 

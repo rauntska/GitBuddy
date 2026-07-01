@@ -388,7 +388,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
 
   const branchSignalR = useSignalR();
   branchSignalR.onPendingBranchResolved.value = (notification) => {
-    applyPendingBranchResolved(notification.repository, notification.branchName);
+    applyPendingBranchResolved(notification.repoFullName, notification.branchName);
   };
   branchSignalR.onPendingBranchAdded.value = (branch) => {
     applyPendingBranchAdded(branch);

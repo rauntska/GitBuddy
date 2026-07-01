@@ -37,15 +37,15 @@ export function useBranchesWithoutPR() {
     }
   };
 
-  const applyBranchResolved = (repository: string, branchName: string) => {
+  const applyBranchResolved = (repoFullName: string, branchName: string) => {
     branches.value = branches.value.filter(
-      b => !(b.repo === repository && b.branchName === branchName)
+      b => !(b.repoFullName === repoFullName && b.branchName === branchName)
     );
   };
 
   const applyBranchAdded = (branch: BranchWithoutPR) => {
     const idx = branches.value.findIndex(
-      b => b.repo === branch.repo && b.branchName === branch.branchName
+      b => b.repoFullName === branch.repoFullName && b.branchName === branch.branchName
     );
     if (idx >= 0) {
       const next = [...branches.value];
