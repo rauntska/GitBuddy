@@ -15,7 +15,6 @@ public class RepositoriesController(
     IGitHubService gitHubService,
     IPullRequestValidationService validationService,
     ICacheService cacheService,
-    IBranchWithoutPRService branchWithoutPRService,
     AppDbContext context)
     : BaseController(context)
 {
@@ -133,29 +132,21 @@ public class RepositoriesController(
     }
 
     [HttpGet("branches-without-prs")]
-    public async Task<IActionResult> GetBranchesWithoutPRs([FromQuery] int recentDays = 7)
+    public async Task<IActionResult> GetBranchesWithoutPRs()
     {
-        var (_, accessToken) = await validationService.GetRequiredUserWithTokenAsync(User);
-
-        if (string.IsNullOrEmpty(accessToken))
-        {
-            return BadRequest(new { message = "GitHub access token not found" });
-        }
-
-        var config = await cacheService.GetConfigAsync();
-
-        var openPRBranches = await context.PullRequests
-            .Where(pr => pr.Status != "Closed" && pr.Status != "Merged")
-            .Select(pr => new { pr.Repository, pr.SourceBranch })
+        var rows = await context.BranchesWithoutPR
+            .OrderByDescending(b => b.LastActivityAt ?? DateTime.MinValue)
+            .Select(b => new BranchWithoutPRDto(
+                b.Owner, b.Repo, b.RepoFullName, b.BranchName, b.DefaultBranch, b.LastActivityAt))
             .ToListAsync();
 
-        var openPRSet = openPRBranches
-            .Select(x => (x.Repository, x.SourceBranch))
-            .ToHashSet();
+        return Ok(rows);
+    }
 
-        var result = await branchWithoutPRService.GetBranchesWithoutPRsAsync(
-            config?.Organization, accessToken, openPRSet, recentDays);
-
-        return Ok(result);
+    [HttpPost("branches-without-prs/refresh")]
+    public IActionResult TriggerBranchesWithoutPRRefresh([FromServices] IBranchWithoutPRRefreshTrigger trigger)
+    {
+        trigger.Trigger();
+        return Accepted();
     }
 }

@@ -309,8 +309,9 @@
         :grouped-branches="groupedBranchesWithoutPR"
         :total-branches="totalBranchesWithoutPR"
         :loading="branchesWithoutPRLoading"
+        :refreshing="branchesWithoutPRRefreshing"
         :error="branchesWithoutPRError"
-        @refresh="fetchBranchesWithoutPR"
+        @refresh="manualRefreshBranchesWithoutPR"
       />
 
       <!-- Merged / Closed PRs -->
@@ -358,6 +359,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
   import { useUserSettings } from '../composables/useUserSettings';
   import { useFaviconBadge } from '../composables/useFaviconBadge';
   import { useBranchesWithoutPR } from '../composables/useBranchesWithoutPR';
+  import { useSignalR } from '../composables/useSignalR';
   import { apiService } from '../services/api';
   import { useAuthStore } from '../stores/auth';
   import StatsSummary from '../components/StatsSummary.vue';
@@ -376,9 +378,21 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
     branches: branchesWithoutPR,
     groupedByRepo: groupedBranchesWithoutPR,
     loading: branchesWithoutPRLoading,
+    refreshing: branchesWithoutPRRefreshing,
     error: branchesWithoutPRError,
     fetchBranches: fetchBranchesWithoutPR,
+    manualRefresh: manualRefreshBranchesWithoutPR,
+    applyBranchResolved: applyPendingBranchResolved,
+    applyBranchAdded: applyPendingBranchAdded,
   } = useBranchesWithoutPR();
+
+  const branchSignalR = useSignalR();
+  branchSignalR.onPendingBranchResolved.value = (notification) => {
+    applyPendingBranchResolved(notification.repository, notification.branchName);
+  };
+  branchSignalR.onPendingBranchAdded.value = (branch) => {
+    applyPendingBranchAdded(branch);
+  };
 
    const {
      pullRequests,

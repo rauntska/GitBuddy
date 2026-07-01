@@ -455,11 +455,13 @@ export const apiService = {
     return response.data;
   },
 
-  getBranchesWithoutPR: async (recentDays: number = 7): Promise<BranchWithoutPR[]> => {
-    const response = await api.get<BranchWithoutPR[]>('/repositories/branches-without-prs', {
-      params: { recentDays }
-    });
+  getBranchesWithoutPR: async (): Promise<BranchWithoutPR[]> => {
+    const response = await api.get<BranchWithoutPR[]>('/repositories/branches-without-prs');
     return response.data;
+  },
+
+  refreshBranchesWithoutPR: async (): Promise<void> => {
+    await api.post('/repositories/branches-without-prs/refresh');
   },
 
   uploadImage: async (prId: number, file: File): Promise<string> => {

@@ -5,6 +5,7 @@ using GitBuddy.Domain.Models;
 using Microsoft.EntityFrameworkCore;
 using Octokit.Webhooks.Events;
 using Octokit.Webhooks.Models;
+using System.Globalization;
 
 namespace GitBuddy.Api.Services;
 
@@ -14,6 +15,7 @@ public class WebhookService(
     IPullRequestStatusService statusService,
     ILanguageDetectionService languageDetectionService,
     INotificationService notificationService,
+    IBranchWithoutPRService branchWithoutPRService,
     ILogger<WebhookService> logger,
     IServiceScopeFactory serviceScopeFactory)
     : IWebhookService
@@ -69,6 +71,8 @@ public class WebhookService(
                 if (existingPR == null)
                 {
                     await CreateNewPrAsync(pullRequestEvent, config);
+                    await branchWithoutPRService.RemoveBranchAsync(repo.Name, prData.Head.Ref);
+                    await notificationService.BroadcastPendingBranchResolvedAsync(repo.Name, prData.Head.Ref);
                 }
                 else
                 {
@@ -351,9 +355,17 @@ public class WebhookService(
         try
         {
             var repo = pushEvent.Repository;
-            var branch = pushEvent.Ref.Replace("refs/heads/", "");
+            var refName = pushEvent.Ref ?? string.Empty;
+            var isBranch = refName.StartsWith("refs/heads/");
+            var branch = isBranch ? refName["refs/heads/".Length..] : refName.Replace("refs/heads/", "");
 
-            logger.LogInformation("Push event: {Repository} - Branch: {Branch}", repo.FullName, branch);
+            logger.LogInformation("Push event: {Repository} - Ref: {Ref} (Created: {Created}, Deleted: {Deleted})",
+                repo.FullName, refName, pushEvent.Created, pushEvent.Deleted);
+
+            if (isBranch)
+            {
+                await HandleBranchPushAsync(repo, branch, pushEvent);
+            }
 
             var affectedPRs = await context.PullRequests.Where(pr =>
                     pr.Repository == repo.Name &&
@@ -378,6 +390,62 @@ public class WebhookService(
         {
             logger.LogError(ex, "Error processing push event");
             throw;
+        }
+    }
+
+    private async Task HandleBranchPushAsync(Repository repo, string branch, PushEvent pushEvent)
+    {
+        var repoName = repo.Name;
+        var repoFullName = repo.FullName;
+        var owner = repo.Owner?.Login ?? repoFullName.Split('/')[0];
+        var defaultBranch = repo.DefaultBranch ?? "main";
+
+        if (pushEvent.Deleted == true)
+        {
+            await branchWithoutPRService.RemoveBranchAsync(repoName, branch);
+            await notificationService.BroadcastPendingBranchResolvedAsync(repoName, branch);
+            return;
+        }
+
+        if (pushEvent.Created == true)
+        {
+            if (branch == defaultBranch || branchWithoutPRService.IsIgnoredBranch(branch))
+            {
+                return;
+            }
+
+            // Skip if a PR already exists for this branch (the open-PR webhook will
+            // also delete the row, but pushes can race ahead of PR events).
+            var hasOpenPR = await context.PullRequests.AnyAsync(pr =>
+                pr.Repository == repoName && pr.SourceBranch == branch && pr.Status != "Closed" && pr.Status != "Merged");
+
+            if (hasOpenPR)
+            {
+                return;
+            }
+
+            DateTime? lastActivityAt = null;
+            if (pushEvent.HeadCommit?.Timestamp is string { Length: > 0 } ts
+                && DateTimeOffset.TryParse(ts, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var parsed))
+            {
+                lastActivityAt = parsed.UtcDateTime;
+            }
+
+            var row = new BranchWithoutPR
+            {
+                Owner = owner,
+                Repo = repoName,
+                RepoFullName = repoFullName,
+                BranchName = branch,
+                DefaultBranch = defaultBranch,
+                LastActivityAt = lastActivityAt,
+                LastRefreshedAt = DateTime.UtcNow
+            };
+
+            await branchWithoutPRService.AddBranchAsync(row);
+
+            var dto = new BranchWithoutPRDto(owner, repoName, repoFullName, branch, defaultBranch, lastActivityAt);
+            await notificationService.BroadcastPendingBranchAddedAsync(dto);
         }
     }
 

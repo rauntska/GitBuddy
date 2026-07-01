@@ -4,6 +4,7 @@ import type { BranchWithoutPR } from '../types';
 
 const branches = ref<BranchWithoutPR[]>([]);
 const loading = ref(false);
+const refreshing = ref(false);
 const error = ref<string | null>(null);
 
 export function useBranchesWithoutPR() {
@@ -17,6 +18,39 @@ export function useBranchesWithoutPR() {
       console.error(err);
     } finally {
       loading.value = false;
+    }
+  };
+
+  const manualRefresh = async () => {
+    if (refreshing.value) return;
+    refreshing.value = true;
+    try {
+      await apiService.refreshBranchesWithoutPR();
+    } catch (err) {
+      console.error('Failed to trigger branches-without-prs refresh', err);
+    } finally {
+      // The worker cycle takes a moment; keep the spinner briefly so the user sees feedback,
+      // then let the next poll or SignalR event update the list.
+      setTimeout(() => { refreshing.value = false; }, 1500);
+    }
+  };
+
+  const applyBranchResolved = (repository: string, branchName: string) => {
+    branches.value = branches.value.filter(
+      b => !(b.repo === repository && b.branchName === branchName)
+    );
+  };
+
+  const applyBranchAdded = (branch: BranchWithoutPR) => {
+    const idx = branches.value.findIndex(
+      b => b.repo === branch.repo && b.branchName === branch.branchName
+    );
+    if (idx >= 0) {
+      const next = [...branches.value];
+      next[idx] = branch;
+      branches.value = next;
+    } else {
+      branches.value = [branch, ...branches.value];
     }
   };
 
@@ -37,7 +71,11 @@ export function useBranchesWithoutPR() {
     branches,
     groupedByRepo,
     loading,
+    refreshing,
     error,
     fetchBranches,
+    manualRefresh,
+    applyBranchResolved,
+    applyBranchAdded,
   };
 }

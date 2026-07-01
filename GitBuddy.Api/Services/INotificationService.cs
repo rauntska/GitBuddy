@@ -11,4 +11,6 @@ public interface INotificationService
     Task BroadcastCommentChangedAsync(int prId, string action, CommentDto comment);
     Task BroadcastThreadChangedAsync(int prId, int threadId, bool isResolved);
     Task BroadcastCheckRunsUpdatedAsync(int prId, string checksStatus, List<CheckRunDto> checkRuns);
+    Task BroadcastPendingBranchResolvedAsync(string repository, string branchName);
+    Task BroadcastPendingBranchAddedAsync(BranchWithoutPRDto branch);
 }

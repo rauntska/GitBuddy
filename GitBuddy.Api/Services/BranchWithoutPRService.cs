@@ -1,4 +1,7 @@
 using GitBuddy.Api.DTOs;
+using GitBuddy.Domain.Data;
+using GitBuddy.Domain.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace GitBuddy.Api.Services;
 
@@ -9,12 +12,24 @@ public interface IBranchWithoutPRService
         string accessToken,
         HashSet<(string Repo, string SourceBranch)> openPRBranches,
         int recentDays);
+
+    Task RefreshAndPersistAsync(GitHubConfig config, CancellationToken ct = default);
+
+    Task AddBranchAsync(BranchWithoutPR row, CancellationToken ct = default);
+
+    Task RemoveBranchAsync(string repo, string branch, CancellationToken ct = default);
+
+    bool IsIgnoredBranch(string branchName);
 }
 
 public class BranchWithoutPRService(
     IGitHubService gitHubService,
+    IGitHubTokenService tokenService,
+    AppDbContext context,
     ILogger<BranchWithoutPRService> logger) : IBranchWithoutPRService
 {
+    private const int RecentDaysCutoff = 7;
+
     private readonly SemaphoreSlim _branchFetchLimiter = new(5);
     private readonly SemaphoreSlim _commitLookupLimiter = new(10);
 
@@ -31,6 +46,8 @@ public class BranchWithoutPRService(
         "qa",
         "test",
     };
+
+    bool IBranchWithoutPRService.IsIgnoredBranch(string branchName) => IsIgnoredBranch(branchName);
 
     private static bool IsIgnoredBranch(string branchName)
     {
@@ -133,5 +150,59 @@ public class BranchWithoutPRService(
         {
             _commitLookupLimiter.Release();
         }
+    }
+
+    public async Task RefreshAndPersistAsync(GitHubConfig config, CancellationToken ct = default)
+    {
+        var accessToken = await tokenService.GetAccessTokenAsync(config);
+
+        var openPRBranches = await context.PullRequests
+            .Where(pr => pr.Status != "Closed" && pr.Status != "Merged")
+            .Select(pr => new { pr.Repository, pr.SourceBranch })
+            .ToListAsync(ct);
+        var openPRSet = openPRBranches
+            .Select(x => (x.Repository, x.SourceBranch))
+            .ToHashSet();
+
+        var dtos = await GetBranchesWithoutPRsAsync(config.Organization, accessToken, openPRSet, RecentDaysCutoff);
+
+        var now = DateTime.UtcNow;
+        var rows = dtos.Select(d => new BranchWithoutPR
+        {
+            Owner = d.Owner,
+            Repo = d.Repo,
+            RepoFullName = d.RepoFullName,
+            BranchName = d.BranchName,
+            DefaultBranch = d.DefaultBranch,
+            LastActivityAt = d.LastActivityAt,
+            LastRefreshedAt = now
+        }).ToList();
+
+        using var tx = await context.Database.BeginTransactionAsync(ct);
+        await context.BranchesWithoutPR.ExecuteDeleteAsync(ct);
+        await context.BranchesWithoutPR.AddRangeAsync(rows, ct);
+        await context.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
+
+        logger.LogInformation("Refreshed {Count} branches-without-PR rows", rows.Count);
+    }
+
+    public async Task AddBranchAsync(BranchWithoutPR row, CancellationToken ct = default)
+    {
+        using var tx = await context.Database.BeginTransactionAsync(ct);
+        await context.BranchesWithoutPR
+            .Where(b => b.Repo == row.Repo && b.BranchName == row.BranchName)
+            .ExecuteDeleteAsync(ct);
+        await context.BranchesWithoutPR.AddAsync(row, ct);
+        await context.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
+    }
+
+    public async Task RemoveBranchAsync(string repo, string branch, CancellationToken ct = default)
+    {
+        await context.BranchesWithoutPR
+            .Where(b => b.Repo == repo && b.BranchName == branch)
+            .ExecuteDeleteAsync(ct);
+        await context.SaveChangesAsync(ct);
     }
 }
