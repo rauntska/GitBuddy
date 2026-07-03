@@ -119,14 +119,12 @@ PRs are categorized based on reviews:
 
 ## Documentation
 
-Durable project documentation lives in `docs/`, organized into three maturity stages:
-- `docs/ideas/<topic>/idea.md` — early-stage concepts, brain dumps, unstructured notes
-- `docs/specs/<topic>/design.md` — refined designs, architecture decisions, technical details
-- `docs/plans/<topic>/plan.md` — implementation plans with step-by-step tasks
+Durable project documentation lives in `docs/` with two maturity stages plus an evergreen section:
+- `docs/ideas/<topic>/idea.md` — early-stage concepts, brain dumps, open questions
+- `docs/specs/<topic>/design.md` — refined durable designs (typically promoted post-implementation)
+- `docs/reference/<name>.md` — evergreen material outside the feature lifecycle (visual style, architecture overviews)
 
-Each topic gets its own folder; a topic flows from `ideas/` → `specs/` → `plans/` as it matures. Shipped ideas are tagged in place with a top-of-file `> **Status: Implemented**` marker. See `docs/README.md` for full convention details.
-
-Execution specs produced by the `/feature-spec` skill live in `specs/YYYY-MM-DD-<feature>/` at the **repo root** (not under `docs/`) and contain `requirements.md`, `plan.md`, `validation.md`. Those are ephemeral — tied to a feature branch and consumed during implementation.
+A topic flows from `ideas/` → `specs/`. Shipped artifacts are tagged in place with a top-of-file `> **Status: Implemented**` marker. Execution specs from the `/feature-spec` skill live in `specs/YYYY-MM-DD-<feature>/` at the **repo root** (not under `docs/`) and contain `requirements.md`, `plan.md`, `validation.md` — ephemeral, tied to a feature branch, consumed during implementation. See `docs/README.md` for the full lifecycle and conventions.
 
 ## CORS Policy
 The backend allows frontend at `http://localhost:5173` and `http://localhost:3000`. Update `AllowVueDev` policy in `Program.cs` for different origins.
