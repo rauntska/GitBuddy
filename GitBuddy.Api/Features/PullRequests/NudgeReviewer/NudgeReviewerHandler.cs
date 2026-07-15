@@ -1,6 +1,7 @@
 using GitBuddy.Api.Services;
 using GitBuddy.Domain.Data;
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace GitBuddy.Api.Features.PullRequests.NudgeReviewer;
 
@@ -9,7 +10,8 @@ public class NudgeReviewerHandler(
     IGitHubService gitHubService,
     ITeamsNotificationService teamsNotificationService,
     INotificationService notificationService,
-    IPullRequestValidationService validationService) : IRequestHandler<NudgeReviewerCommand, NudgeReviewerResult>
+    IPullRequestValidationService validationService,
+    ILogger<NudgeReviewerHandler> logger) : IRequestHandler<NudgeReviewerCommand, NudgeReviewerResult>
 {
     private const int MinNudgeIntervalMinutes = 60;
 
@@ -69,6 +71,7 @@ public class NudgeReviewerHandler(
         }
         catch (Exception ex)
         {
+            logger.LogError(ex, "Failed to nudge reviewers for PR #{PrId}", request.PullRequestId);
             return new NudgeReviewerResult(false, "Failed to nudge reviewers", [], DateTime.UtcNow, ex.Message);
         }
     }

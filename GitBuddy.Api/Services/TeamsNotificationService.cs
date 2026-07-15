@@ -30,6 +30,12 @@ public class TeamsNotificationService(
             return;
         }
 
+        if (!TeamsWebhookValidator.IsValidWebhookUrl(config.TeamsWebhookUrl))
+        {
+            logger.LogWarning("Teams nudge skipped for PR #{PrId}: configured webhook URL is not a valid HTTPS URL on an approved Microsoft Teams host.", pr.Id);
+            return;
+        }
+
         var payload = BuildAdaptiveCardPayload(pr, reviewers, nudgedBy, GetGitBuddyPrUrl(pr));
         var json = JsonSerializer.Serialize(payload, JsonOptions);
 

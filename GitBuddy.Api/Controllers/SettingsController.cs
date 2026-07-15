@@ -64,6 +64,15 @@ public class SettingsController(ICacheService cacheService) : ControllerBase
             }
         }
 
+        // A webhook URL is only meaningful when Teams is enabled. When enabled,
+        // enforce the host allow-list before persisting.
+        if (request.TeamsEnabled)
+        {
+            var webhookError = TeamsWebhookValidator.Validate(request.TeamsWebhookUrl);
+            if (webhookError is not null)
+                return BadRequest(new { message = webhookError });
+        }
+
         await cacheService.SaveConfigAsync(
             request.Organization,
             null,
