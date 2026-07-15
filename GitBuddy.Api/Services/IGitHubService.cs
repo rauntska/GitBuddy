@@ -38,8 +38,8 @@ public interface IGitHubService
     Task<bool> UpdateIssueCommentAsync(string organization, string repository, long commentId, string body, string userAccessToken);
     Task<bool> DeleteIssueCommentAsync(string organization, string repository, long commentId, string userAccessToken);
     Task<GitHubRequestedReviewersData> GetRequestedReviewersAsync(string organization, string repository, long pullRequestNumber, GitHubConfig config);
-    Task RequestReviewersAsync(string organization, string repository, long pullRequestNumber, List<string> reviewers, string userAccessToken);
-    Task RemoveReviewersAsync(string organization, string repository, long pullRequestNumber, string username, string userAccessToken);
+    Task RequestReviewersAsync(string organization, string repository, long pullRequestNumber, List<string> reviewers, List<string> teamReviewers, string userAccessToken);
+    Task RemoveReviewersAsync(string organization, string repository, long pullRequestNumber, string username, string type, string userAccessToken);
     Task<GitHubCollaboratorsAndTeamsData> GetRepositoryCollaboratorsAndTeamsAsync(string organization, string repository, GitHubConfig config);
     Task<List<GitHubRepositoryData>> GetAccessibleRepositoriesAsync(string userAccessToken);
     Task<List<GitHubRepositoryData>> GetOrganizationRepositoriesAsync(string organization, string accessToken);

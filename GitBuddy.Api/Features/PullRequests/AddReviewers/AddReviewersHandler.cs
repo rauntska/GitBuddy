@@ -7,18 +7,28 @@ namespace GitBuddy.Api.Features.PullRequests.AddReviewers;
 public class AddReviewersHandler(
     AppDbContext context,
     IGitHubService gitHubService,
-    IPullRequestValidationService validationService) 
+    IPullRequestValidationService validationService)
     : IRequestHandler<AddReviewersCommand, AddReviewersResult>
 {
     public async Task<AddReviewersResult> Handle(AddReviewersCommand request, CancellationToken cancellationToken)
     {
         var (user, accessToken) = await validationService.GetRequiredUserWithTokenAsync(request.User);
-        
+
         var pr = await context.PullRequests.FindAsync([request.PullRequestId], cancellationToken);
         if (pr == null)
             return new AddReviewersResult(false, "Pull request not found", null);
 
         var config = await validationService.GetRequiredConfigAsync();
+
+        var userReviewers = request.Reviewers
+            .Where(r => r.Type == "User")
+            .Select(r => r.Name)
+            .ToList();
+
+        var teamReviewers = request.Reviewers
+            .Where(r => r.Type == "Team")
+            .Select(r => r.Name)
+            .ToList();
 
         try
         {
@@ -26,7 +36,8 @@ public class AddReviewersHandler(
                 config.Organization,
                 pr.Repository,
                 pr.GitHubId,
-                request.Reviewers,
+                userReviewers,
+                teamReviewers,
                 accessToken!
             );
 

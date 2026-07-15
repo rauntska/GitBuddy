@@ -408,6 +408,7 @@ export interface ReviewerStatus {
   reviewedAt?: string;
   isRequested: boolean;
   requestedAt?: string;
+  type?: 'User' | 'Team';
 }
 
 export interface ReviewEvent {

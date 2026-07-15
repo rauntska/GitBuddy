@@ -230,15 +230,22 @@ public record ReviewerStatusDto(
     string? ReviewState,
     DateTime? ReviewedAt,
     bool IsRequested,
-    DateTime? RequestedAt
+    DateTime? RequestedAt,
+    string Type
+);
+
+public record ReviewerEntry(
+    string Name,
+    string Type
 );
 
 public record AddReviewersRequest(
-    List<string> Reviewers
+    List<ReviewerEntry> Reviewers
 );
 
 public record RemoveReviewerRequest(
-    string Username
+    string Username,
+    string Type
 );
 
 public record ReviewEventDto(

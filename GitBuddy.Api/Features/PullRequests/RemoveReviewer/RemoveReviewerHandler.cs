@@ -27,6 +27,7 @@ public class RemoveReviewerHandler(
                 pr.Repository,
                 pr.GitHubId,
                 request.Username,
+                request.Type,
                 accessToken!
             );
 

@@ -867,7 +867,7 @@ public class GitHubService(
             )).ToList();
 
             var teams = requestedReviewers.Teams.Select(t => new GitHubRequestedReviewerData(
-                t.Name,
+                t.Slug,
                 null,
                 "Team"
             )).ToList();
@@ -881,32 +881,34 @@ public class GitHubService(
         }
     }
 
-    public async Task RequestReviewersAsync(string organization, string repository, long pullRequestNumber, List<string> reviewers, string userAccessToken)
+    public async Task RequestReviewersAsync(string organization, string repository, long pullRequestNumber, List<string> reviewers, List<string> teamReviewers, string userAccessToken)
     {
         var restClient = new GitHubClient(new Octokit.ProductHeaderValue("GitBuddy-PR-Dashboard"))
         {
             Credentials = new Credentials(userAccessToken)
         };
 
-        var request = new Octokit.PullRequestReviewRequest(reviewers, new List<string>());
+        var request = new Octokit.PullRequestReviewRequest(reviewers, teamReviewers);
         await restClient.PullRequest.ReviewRequest.Create(organization, repository, (int)pullRequestNumber, request);
 
-        logger.LogInformation("Successfully requested review from {Reviewers} for PR {Organization}/{Repository}#{PullRequestNumber}", 
-            string.Join(", ", reviewers), organization, repository, pullRequestNumber);
+        logger.LogInformation("Successfully requested review from {Reviewers} (teams: {TeamReviewers}) for PR {Organization}/{Repository}#{PullRequestNumber}",
+            string.Join(", ", reviewers), string.Join(", ", teamReviewers), organization, repository, pullRequestNumber);
     }
 
-    public async Task RemoveReviewersAsync(string organization, string repository, long pullRequestNumber, string username, string userAccessToken)
+    public async Task RemoveReviewersAsync(string organization, string repository, long pullRequestNumber, string username, string type, string userAccessToken)
     {
         var restClient = new GitHubClient(new Octokit.ProductHeaderValue("GitBuddy-PR-Dashboard"))
         {
             Credentials = new Credentials(userAccessToken)
         };
 
-        var request = new Octokit.PullRequestReviewRequest(new List<string> { username }, new List<string>());
+        var request = type == "Team"
+            ? new Octokit.PullRequestReviewRequest(new List<string>(), new List<string> { username })
+            : new Octokit.PullRequestReviewRequest(new List<string> { username }, new List<string>());
         await restClient.PullRequest.ReviewRequest.Delete(organization, repository, (int)pullRequestNumber, request);
 
-        logger.LogInformation("Successfully removed reviewer {Username} from PR {Organization}/{Repository}#{PullRequestNumber}", 
-            username, organization, repository, pullRequestNumber);
+        logger.LogInformation("Successfully removed reviewer {Username} ({Type}) from PR {Organization}/{Repository}#{PullRequestNumber}",
+            username, type, organization, repository, pullRequestNumber);
     }
 
     public async Task<GitHubCollaboratorsAndTeamsData> GetRepositoryCollaboratorsAndTeamsAsync(string organization, string repository, GitHubConfig config)

@@ -408,13 +408,15 @@ export const apiService = {
     return response.data;
   },
 
-  addReviewers: async (prId: number, reviewers: string[]): Promise<{ message: string }> => {
+  addReviewers: async (prId: number, reviewers: { name: string; type: 'User' | 'Team' }[]): Promise<{ message: string }> => {
     const response = await api.post<{ message: string }>(`/pullrequests/${prId}/reviewers`, { reviewers });
     return response.data;
   },
 
-  removeReviewer: async (prId: number, username: string): Promise<{ message: string }> => {
-    const response = await api.delete<{ message: string }>(`/pullrequests/${prId}/reviewers/${username}`);
+  removeReviewer: async (prId: number, username: string, type: 'User' | 'Team' = 'User'): Promise<{ message: string }> => {
+    const response = await api.delete<{ message: string }>(`/pullrequests/${prId}/reviewers/${username}`, {
+      params: { type },
+    });
     return response.data;
   },
 

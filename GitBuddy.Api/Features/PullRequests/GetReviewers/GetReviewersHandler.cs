@@ -40,7 +40,21 @@ public class GetReviewersHandler(
                 null,
                 null,
                 true,
-                null
+                null,
+                "User"
+            );
+        }
+
+        foreach (var team in requestedReviewers.Teams)
+        {
+            reviewersDict[team.Username] = new ReviewerStatusDto(
+                team.Username,
+                team.Avatar,
+                null,
+                null,
+                true,
+                null,
+                "Team"
             );
         }
 
@@ -63,7 +77,8 @@ public class GetReviewersHandler(
                     review.State,
                     review.SubmittedAt,
                     false,
-                    null
+                    null,
+                    "User"
                 );
             }
         }
