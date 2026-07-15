@@ -162,3 +162,45 @@ export function getReviewerDots(reviews: { state: string }[]): string {
   };
   return reviews.map(r => map[r.state] || '○').join('');
 }
+
+/**
+ * Priority scale: 0=Low, 1=Normal, 2=High, 3=Urgent.
+ * `null`/`undefined` are treated as Normal (derived default).
+ */
+export const PRIORITY_LOW = 0;
+export const PRIORITY_NORMAL = 1;
+export const PRIORITY_HIGH = 2;
+export const PRIORITY_URGENT = 3;
+
+export function getPriorityLabel(priority: number | null | undefined): string {
+  switch (priority) {
+    case PRIORITY_LOW: return 'Low';
+    case PRIORITY_HIGH: return 'High';
+    case PRIORITY_URGENT: return 'Urgent';
+    default: return 'Normal';
+  }
+}
+
+/**
+ * Short glyph shown in the dense row (one char for alignment).
+ */
+export function getPriorityGlyph(priority: number | null | undefined): string {
+  switch (priority) {
+    case PRIORITY_LOW: return '▽';
+    case PRIORITY_HIGH: return '▲';
+    case PRIORITY_URGENT: return '⏫';
+    default: return '';
+  }
+}
+
+/**
+ * Tailwind text color for a priority level.
+ */
+export function getPriorityColor(priority: number | null | undefined): string {
+  switch (priority) {
+    case PRIORITY_LOW: return 'text-slate-500';
+    case PRIORITY_HIGH: return 'text-amber-400';
+    case PRIORITY_URGENT: return 'text-red-400';
+    default: return 'text-slate-400';
+  }
+}

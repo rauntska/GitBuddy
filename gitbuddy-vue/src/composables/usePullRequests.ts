@@ -1,7 +1,7 @@
 import { ref } from 'vue';
 import { apiService } from '../services/api';
 import type { GroupedPRs, PRStats, PullRequest } from '../types';
-import { useSignalR, type PRListUpdate, type PRClosedNotification, type ReviewNotification, type ThreadNotification, type CommentNotification, type CheckRunsNotification } from './useSignalR';
+import { useSignalR, type PRListUpdate, type PRClosedNotification, type ReviewNotification, type ThreadNotification, type CommentNotification, type CheckRunsNotification, type PRPriorityNotification, type ReviewerNudgedNotification } from './useSignalR';
 import { useBrowserNotifications } from './useBrowserNotifications';
 
 export function usePullRequests() {
@@ -278,6 +278,23 @@ export function usePullRequests() {
         if (pr) { checkPR = pr; break; }
       }
       browserNotifications.notifyCheckRunsUpdated(notification, checkPR ?? null);
+    };
+
+    signalR.onPRPriorityChanged.value = (notification: PRPriorityNotification) => {
+      for (const status in pullRequests.value) {
+        const prList = pullRequests.value[status];
+        if (!prList) continue;
+        const pr = prList.find(p => p.id === notification.pullRequestId);
+        if (pr) {
+          pr.priority = notification.priority;
+          pr.priorityOverridden = notification.overridden;
+          break;
+        }
+      }
+    };
+
+    signalR.onReviewerNudged.value = (_notification: ReviewerNudgedNotification) => {
+      // No local mutation needed; UI feedback (toast/flash) is handled by the caller.
     };
   };
 

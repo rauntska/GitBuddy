@@ -134,4 +134,34 @@ public class SignalRNotificationService(
             logger.LogError(ex, "Error broadcasting PendingBranchAdded for {Repo}/{Branch}", branch.Repo, branch.BranchName);
         }
     }
+
+    public async Task BroadcastPRPriorityChangedAsync(int prId, int priority, bool overridden)
+    {
+        try
+        {
+            var dto = new PRPriorityNotificationDto(prId, priority, overridden);
+            await hubContext.Clients.All.SendAsync("PRPriorityChanged", dto);
+            await hubContext.Clients.Group(PRHub.GetPRGroupName(prId)).SendAsync("PRPriorityChangedDetail", dto);
+            logger.LogInformation("Broadcast PRPriorityChanged: PR #{PrId} -> {Priority} (Overridden: {Overridden})", prId, priority, overridden);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error broadcasting PRPriorityChanged for PR #{PrId}", prId);
+        }
+    }
+
+    public async Task BroadcastReviewerNudgedAsync(int prId, List<string> reviewers, string nudgedBy)
+    {
+        try
+        {
+            var dto = new ReviewerNudgedNotificationDto(prId, reviewers, nudgedBy, DateTime.UtcNow);
+            await hubContext.Clients.All.SendAsync("ReviewerNudged", dto);
+            await hubContext.Clients.Group(PRHub.GetPRGroupName(prId)).SendAsync("ReviewerNudgedDetail", dto);
+            logger.LogInformation("Broadcast ReviewerNudged: PR #{PrId} by {NudgedBy} -> {Reviewers}", prId, nudgedBy, string.Join(", ", reviewers));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error broadcasting ReviewerNudged for PR #{PrId}", prId);
+        }
+    }
 }

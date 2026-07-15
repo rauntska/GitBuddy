@@ -11,6 +11,8 @@ export function useSettings() {
     installationId: '',
     useGitHubApp: true,
     deleteOldPRs: false,
+    teamsWebhookUrl: '',
+    teamsEnabled: false,
   });
   const loading = ref(false);
   const error = ref<string | null>(null);
@@ -42,6 +44,8 @@ export function useSettings() {
         installationId: dataToSave.installationId ?? '',
         useGitHubApp: dataToSave.useGitHubApp ?? true,
         deleteOldPRs: dataToSave.deleteOldPRs ?? false,
+        teamsWebhookUrl: dataToSave.teamsWebhookUrl ?? '',
+        teamsEnabled: dataToSave.teamsEnabled ?? false,
       });
       if (settingsToSave) {
         settings.value = { ...settings.value, ...settingsToSave };

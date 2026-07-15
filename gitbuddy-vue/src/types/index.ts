@@ -154,6 +154,8 @@ export interface PullRequest {
   currentApprovingReviews?: number;
   hasUnresolvedThreads?: boolean;
   mergeBlockReason?: string;
+  priority?: number;
+  priorityOverridden?: boolean;
 }
 
 export interface PRStats {
@@ -180,6 +182,8 @@ export interface Settings {
   installationId: string;
   useGitHubApp: boolean;
   deleteOldPRs: boolean;
+  teamsWebhookUrl?: string;
+  teamsEnabled?: boolean;
 }
 
 export interface UserSettings {
@@ -356,6 +360,7 @@ export interface UserPreferences {
   pinnedPrIds?: number[];
   dashboardGroupOrder?: string[];
   hiddenDashboardGroups?: string[];
+  prioritySort?: boolean;
   viewedFilesByPr?: Record<number, string[]>;
   notificationPreferences?: NotificationPreferences;
 }

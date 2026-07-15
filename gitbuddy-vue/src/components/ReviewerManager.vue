@@ -2,16 +2,30 @@
   <div class="space-y-3">
     <div class="flex items-center justify-between">
       <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wider">Reviewers</h3>
-      <button
-        v-if="!showAddInput"
-        @click="openAddReviewer"
-        class="text-xs text-slate-300 hover:text-slate-100 flex items-center gap-1 border border-slate-800 hover:bg-slate-800 rounded px-2 py-0.5 transition-colors"
-      >
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-        </svg>
-        Add
-      </button>
+      <div class="flex items-center gap-2">
+        <button
+          v-if="!showAddInput && pendingReviewerNames.length > 0"
+          @click="nudgeAllPending"
+          :disabled="nudgingAll"
+          class="text-xs text-slate-300 hover:text-amber-300 flex items-center gap-1 border border-slate-800 hover:bg-slate-800 rounded px-2 py-0.5 transition-colors"
+          title="Re-request review from all reviewers"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+          </svg>
+          Nudge all
+        </button>
+        <button
+          v-if="!showAddInput"
+          @click="openAddReviewer"
+          class="text-xs text-slate-300 hover:text-slate-100 flex items-center gap-1 border border-slate-800 hover:bg-slate-800 rounded px-2 py-0.5 transition-colors"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          Add
+        </button>
+      </div>
     </div>
 
     <div v-if="showAddInput" class="space-y-2">
@@ -73,6 +87,19 @@
         </div>
         <div class="flex items-center gap-2">
           <button
+            @click="nudgeReviewer(reviewer.username)"
+            :disabled="nudgingReviewer === reviewer.username || nudgingAll"
+            class="p-1 text-slate-500 hover:text-amber-400 disabled:opacity-50 transition-colors"
+            :title="`Nudge ${reviewer.username} (re-request review)`"
+          >
+            <svg v-if="nudgingReviewer === reviewer.username" class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+          </button>
+          <button
             v-if="reviewer.isRequested"
             @click="removeReviewer(reviewer.username)"
             :disabled="removingReviewer === reviewer.username"
@@ -106,12 +133,15 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import { apiService } from '../services/api';
+import { useToast } from '../composables/useToast';
 import SearchableDropdown from './SearchableDropdown.vue';
 import type { ReviewerStatus, PotentialReviewer } from '../types';
 
 const props = defineProps<{
   pullRequestId: number;
 }>();
+
+const toast = useToast();
 
 const emit = defineEmits<{
   error: [message: string];
@@ -123,8 +153,18 @@ const loading = ref(true);
 const loadingPotentialReviewers = ref(false);
 const showAddInput = ref(false);
 const removingReviewer = ref<string | null>(null);
+const nudgingReviewer = ref<string | null>(null);
+const nudgingAll = ref(false);
 
-const existingReviewerNames = computed(() => 
+const existingReviewerNames = computed(() =>
+  reviewers.value.map(r => r.username)
+);
+
+// All reviewers are valid nudge targets: GitHub re-request review works for any
+// collaborator regardless of whether they already submitted a review (clearing
+// the "requested" flag). This covers the common case of nudging a reviewer who
+// previously requested changes after the author has addressed them.
+const pendingReviewerNames = computed(() =>
   reviewers.value.map(r => r.username)
 );
 
@@ -216,6 +256,48 @@ const removeReviewer = async (username: string) => {
     emit('error', error.response?.data?.message || 'Failed to remove reviewer');
   } finally {
     removingReviewer.value = null;
+  }
+};
+
+const nudgeReviewer = async (username: string) => {
+  try {
+    nudgingReviewer.value = username;
+    await apiService.nudgeReviewers(props.pullRequestId, [username]);
+    toast.success(`${username} nudged`);
+  } catch (err: unknown) {
+    const error = err as { response?: { data?: { message?: string } } };
+    const message = error.response?.data?.message || 'Failed to nudge reviewer';
+    const isRateLimited = /nudged recently|wait/i.test(message);
+    if (isRateLimited) {
+      toast.info(message, 6000);
+    } else {
+      toast.error(message);
+      emit('error', message);
+    }
+  } finally {
+    nudgingReviewer.value = null;
+  }
+};
+
+const nudgeAllPending = async () => {
+  const targets = pendingReviewerNames.value;
+  if (targets.length === 0) return;
+  try {
+    nudgingAll.value = true;
+    await apiService.nudgeReviewers(props.pullRequestId, targets);
+    toast.success(`Nudged ${targets.length} reviewer${targets.length === 1 ? '' : 's'}`);
+  } catch (err: unknown) {
+    const error = err as { response?: { data?: { message?: string } } };
+    const message = error.response?.data?.message || 'Failed to nudge reviewers';
+    const isRateLimited = /nudged recently|wait/i.test(message);
+    if (isRateLimited) {
+      toast.info(message, 6000);
+    } else {
+      toast.error(message);
+      emit('error', message);
+    }
+  } finally {
+    nudgingAll.value = false;
   }
 };
 

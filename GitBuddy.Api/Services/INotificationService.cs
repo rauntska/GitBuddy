@@ -13,4 +13,6 @@ public interface INotificationService
     Task BroadcastCheckRunsUpdatedAsync(int prId, string checksStatus, List<CheckRunDto> checkRuns);
     Task BroadcastPendingBranchResolvedAsync(string repoFullName, string branchName);
     Task BroadcastPendingBranchAddedAsync(BranchWithoutPRDto branch);
+    Task BroadcastPRPriorityChangedAsync(int prId, int priority, bool overridden);
+    Task BroadcastReviewerNudgedAsync(int prId, List<string> reviewers, string nudgedBy);
 }

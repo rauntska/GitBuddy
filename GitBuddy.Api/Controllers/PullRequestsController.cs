@@ -28,6 +28,8 @@ using GitBuddy.Api.Features.PullRequests.AddReviewers;
 using GitBuddy.Api.Features.PullRequests.RemoveReviewer;
 using GitBuddy.Api.Features.PullRequests.GetReviewTimeline;
 using GitBuddy.Api.Features.PullRequests.GetPotentialReviewers;
+using GitBuddy.Api.Features.PullRequests.SetPriority;
+using GitBuddy.Api.Features.PullRequests.NudgeReviewer;
 using GitBuddy.Api.Services;
 using GitBuddy.Domain.Data;
 using MediatR;
@@ -502,4 +504,36 @@ public class PullRequestsController(
         var result = await mediator.Send(new GetPotentialReviewersQuery(id));
         return Ok(result);
     }
+
+    [HttpPatch("{id}/priority")]
+    [Authorize]
+    public async Task<IActionResult> SetPriority(int id, [FromBody] SetPriorityRequest request)
+    {
+        var result = await mediator.Send(new SetPriorityCommand(id, request.Priority, User));
+
+        if (!result.Success)
+            return BadRequest(new { message = result.Message });
+
+        return Ok(new { message = result.Message, priority = result.Priority, overridden = result.Overridden });
+    }
+
+    [HttpPost("{id}/nudge")]
+    [Authorize]
+    public async Task<IActionResult> NudgeReviewers(int id, [FromBody] NudgeReviewersRequest request)
+    {
+        var result = await mediator.Send(new NudgeReviewerCommand(id, request.Reviewers, request.AlsoComment, User));
+
+        if (!result.Success)
+        {
+            if (result.Error != null)
+                return StatusCode(500, new { message = result.Message, error = result.Error });
+            return BadRequest(new { message = result.Message });
+        }
+
+        return Ok(new { message = result.Message, reviewers = result.Reviewers, nudgedAt = result.NudgedAt });
+    }
 }
+
+public record SetPriorityRequest(int? Priority);
+
+public record NudgeReviewersRequest(List<string> Reviewers, bool AlsoComment = false);

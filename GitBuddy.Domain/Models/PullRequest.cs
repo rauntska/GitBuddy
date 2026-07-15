@@ -34,6 +34,11 @@ public class PullRequest
     public bool IsMergeReady { get; set; }
     public string? MergeBlockReason { get; set; }
 
+    // Prioritization + nudge state
+    // Null => priority is derived by PriorityService; a set value is a manual override.
+    public int? Priority { get; set; }
+    public DateTime? LastNudgedAt { get; set; }
+
     public List<Review> Reviews { get; set; } = new();
     public List<ReviewThread> ReviewThreads { get; set; } = new();
     public List<Comment> Comments { get; set; } = new();

@@ -108,6 +108,42 @@ MIIEpAIBAAKCAQEA...
         </label>
       </div>
 
+      <div class="border-t border-slate-800 pt-4 space-y-3">
+        <div>
+          <h4 class="text-xs uppercase tracking-wider text-slate-500 mb-1">Microsoft Teams</h4>
+          <p class="text-[11px] text-slate-500">
+            Post reviewer nudges to an org-wide Teams channel via an incoming webhook / Workflow URL.
+          </p>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <input
+            type="checkbox"
+            v-model="localSettings.teamsEnabled"
+            id="teamsEnabled"
+            class="w-3.5 h-3.5 rounded border-slate-700 bg-slate-900/60 accent-slate-400"
+          />
+          <label for="teamsEnabled" class="text-slate-200 text-sm cursor-pointer">
+            Enable Teams notifications for nudges
+          </label>
+        </div>
+
+        <div>
+          <label class="block text-xs uppercase tracking-wider text-slate-500 mb-1.5">
+            Teams Webhook URL
+          </label>
+          <input
+            v-model="localSettings.teamsWebhookUrl"
+            type="password"
+            placeholder="https://*.webhook.office.com/webhookb2/..."
+            class="w-full px-3 py-2 bg-slate-900/60 border border-slate-700 rounded text-slate-200 placeholder-slate-500 focus:outline-none focus:border-slate-600 transition-colors font-mono text-sm"
+          />
+          <p class="mt-1.5 text-[11px] text-slate-500">
+            Create one in Teams via a channel's "Connectors" or a Power Automate / Workflows "Post to a channel" trigger.
+          </p>
+        </div>
+      </div>
+
       <div
         v-if="localSettings.lastRefresh"
         class="flex items-center gap-2 border-l-2 border-slate-700 pl-3 py-1"
@@ -167,6 +203,8 @@ const localSettings = ref({
   privateKey: '',
   installationId: '',
   deleteOldPRs: false,
+  teamsWebhookUrl: '',
+  teamsEnabled: false,
 });
 
 const formatDate = (dateString: string): string => {
@@ -183,6 +221,8 @@ const handleSave = async () => {
     installationId: localSettings.value.installationId,
     useGitHubApp: true,
     deleteOldPRs: localSettings.value.deleteOldPRs,
+    teamsWebhookUrl: localSettings.value.teamsWebhookUrl,
+    teamsEnabled: localSettings.value.teamsEnabled,
   });
 
   if (success) {
@@ -201,6 +241,8 @@ onMounted(async () => {
       privateKey: settings.value.privateKey || '',
       installationId: settings.value.installationId || '',
       deleteOldPRs: settings.value.deleteOldPRs || false,
+      teamsWebhookUrl: settings.value.teamsWebhookUrl || '',
+      teamsEnabled: settings.value.teamsEnabled || false,
     };
   }
 });

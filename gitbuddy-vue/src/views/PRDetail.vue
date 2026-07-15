@@ -347,6 +347,41 @@
 
             <!-- Right: Info & Stats -->
             <div class="lg:w-96 flex-shrink-0 space-y-4">
+                <!-- Priority -->
+                <div class="p-4 border border-slate-800 rounded">
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="text-sm font-semibold text-slate-300 uppercase tracking-wider">Priority</div>
+                    <span
+                      v-if="prDetail.priorityOverridden"
+                      class="text-[10px] uppercase tracking-wider text-amber-400/80"
+                      title="Manually overridden (auto-derivation disabled)"
+                    >override</span>
+                    <span
+                      v-else
+                      class="text-[10px] uppercase tracking-wider text-slate-500"
+                      title="Priority auto-derived from PR signals"
+                    >auto</span>
+                  </div>
+                  <div class="flex items-center gap-2 mt-2">
+                    <span
+                      class="text-xs font-mono"
+                      :class="getPriorityColor(prDetail.priority ?? 1)"
+                    >{{ getPriorityGlyph(prDetail.priority ?? 1) }}</span>
+                    <select
+                      :value="prDetail.priorityOverridden ? prDetail.priority : 'auto'"
+                      :disabled="settingPriority"
+                      @change="handlePriorityChange(($event.target as HTMLSelectElement).value)"
+                      class="flex-1 bg-slate-900/60 border border-slate-700 rounded px-2 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-slate-600 transition-colors disabled:opacity-50"
+                    >
+                      <option value="auto">Auto (derived)</option>
+                      <option :value="PRIORITY_LOW">Low</option>
+                      <option :value="PRIORITY_NORMAL">Normal</option>
+                      <option :value="PRIORITY_HIGH">High</option>
+                      <option :value="PRIORITY_URGENT">Urgent</option>
+                    </select>
+                  </div>
+                </div>
+
                 <!-- Reviewer Manager -->
                 <div class="p-4 border border-slate-800 rounded">
                   <ReviewerManager
@@ -736,7 +771,7 @@
  import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue';
  import { usePRDetail } from '../composables/usePRDetail';
  import { useUserPreferences } from '../composables/useUserPreferences';
- import { useSignalR, type CommentNotification, type ThreadNotification, type CheckRunsNotification } from '../composables/useSignalR';
+ import { useSignalR, type CommentNotification, type ThreadNotification, type CheckRunsNotification, type PRPriorityNotification } from '../composables/useSignalR';
   import { apiService } from '../services/api';
   import FileDiffViewer from '../components/FileDiffViewer.vue';
   import FileTree from '../components/FileTree.vue';
@@ -751,6 +786,14 @@
   import type { Comment, CheckRun } from '../types';
   import { useAuthStore } from '../stores/auth';
   import { useToast } from '../composables/useToast';
+  import {
+    getPriorityColor,
+    getPriorityGlyph,
+    PRIORITY_LOW,
+    PRIORITY_NORMAL,
+    PRIORITY_HIGH,
+    PRIORITY_URGENT,
+  } from '../utils/prHelpers';
 
  const authStore = useAuthStore();
  const signalR = useSignalR();
@@ -809,6 +852,7 @@ const selectedMergeMethod = ref<'merge' | 'squash' | 'rebase'>('squash');
 const mergeError = ref<string | null>(null);
 const fileRefs = ref<Map<string, any>>(new Map());
 const refreshingViewStates = ref(false);
+const settingPriority = ref(false);
 
 const isEditingTitle = ref(false);
 const editTitleValue = ref('');
@@ -882,7 +926,7 @@ const setupSignalRHandlers = () => {
 
   signalR.onCheckRunsUpdated.value = (notification: CheckRunsNotification) => {
     if (notification.pullRequestId !== props.id || !prDetail.value) return;
-    
+
     prDetail.value.checksStatus = notification.checksStatus as any;
     if (notification.checkRuns) {
       prDetail.value.checkRuns = notification.checkRuns.map(cr => ({
@@ -896,6 +940,12 @@ const setupSignalRHandlers = () => {
         completedAt: cr.completedAt
       }));
     }
+  };
+
+  signalR.onPRPriorityChanged.value = (notification: PRPriorityNotification) => {
+    if (notification.pullRequestId !== props.id || !prDetail.value) return;
+    prDetail.value.priority = notification.priority;
+    prDetail.value.priorityOverridden = notification.overridden;
   };
 };
 
@@ -1042,6 +1092,23 @@ const handleClickOutside = (e: MouseEvent) => {
 
   const handleReviewerError = (message: string) => {
     console.error('Reviewer error:', message);
+  };
+
+  const handlePriorityChange = async (value: string) => {
+    if (!prDetail.value) return;
+    const priority = value === 'auto' ? null : Number(value);
+    settingPriority.value = true;
+    try {
+      const result = await apiService.setPRPriority(props.id, priority);
+      prDetail.value.priority = result.priority;
+      prDetail.value.priorityOverridden = result.overridden;
+      toast.success(value === 'auto' ? 'Priority set to auto (derived)' : `Priority set to ${value === '0' ? 'Low' : value === '1' ? 'Normal' : value === '2' ? 'High' : 'Urgent'}`);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      toast.error(error.response?.data?.message || 'Failed to set priority');
+    } finally {
+      settingPriority.value = false;
+    }
   };
 
   const handleTimelineError = (message: string) => {

@@ -48,7 +48,9 @@ public record PullRequestDto(
     int? RequiredApprovingReviews = null,
     int CurrentApprovingReviews = 0,
     bool HasUnresolvedThreads = false,
-    string? MergeBlockReason = null
+    string? MergeBlockReason = null,
+    int Priority = 1,
+    bool PriorityOverridden = false
 );
 
 public record CommentDto(
@@ -134,7 +136,9 @@ public record PRDetailDto(
     int CurrentApprovingReviews = 0,
     bool HasUnresolvedThreads = false,
     bool IsMergeReady = false,
-    string? MergeBlockReason = null
+    string? MergeBlockReason = null,
+    int Priority = 1,
+    bool PriorityOverridden = false
 );
 
 public record AddCommentRequest(

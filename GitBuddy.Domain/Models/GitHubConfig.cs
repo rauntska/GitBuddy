@@ -13,4 +13,8 @@ public class GitHubConfig
     public string InstallationId { get; set; } = string.Empty;
     public bool UseGitHubApp { get; set; } = false;
     public bool DeleteOldPRs { get; set; } = false;
+
+    // Org-wide Microsoft Teams incoming-webhook (Workflow) URL for reviewer nudges.
+    public string TeamsWebhookUrl { get; set; } = string.Empty;
+    public bool TeamsEnabled { get; set; } = false;
 }
