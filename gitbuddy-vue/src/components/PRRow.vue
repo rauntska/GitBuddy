@@ -90,13 +90,15 @@
       <!-- Metadata Section -->
       <div class="flex items-center flex-shrink-0 flex-wrap justify-end gap-1 sm:gap-2 md:gap-3 font-mono">
       <!-- Priority Badge -->
-      <div v-if="showPriority" :class="compact ? 'w-[24px]' : 'w-[32px]'" class="flex justify-center items-center gap-0.5">
-        <span
-          class="text-xs font-semibold"
-          :class="getPriorityColor(pr.priority)"
-          :title="`${getPriorityLabel(pr.priority)}${pr.priorityOverridden ? ' (manual override)' : ''}`"
-        >{{ getPriorityGlyph(pr.priority) }}</span>
-        <span v-if="pr.priorityOverridden" class="text-[8px] leading-none" :class="getPriorityColor(pr.priority)">•</span>
+      <div :class="compact ? 'w-[24px]' : 'w-[32px]'" class="flex justify-center items-center gap-0.5">
+        <template v-if="showPriority">
+          <span
+            class="text-xs font-semibold"
+            :class="getPriorityColor(pr.priority)"
+            :title="`${getPriorityLabel(pr.priority)}${pr.priorityOverridden ? ' (manual override)' : ''}`"
+          >{{ getPriorityGlyph(pr.priority) }}</span>
+          <span v-if="pr.priorityOverridden" class="text-[8px] leading-none" :class="getPriorityColor(pr.priority)">•</span>
+        </template>
       </div>
 
       <!-- PR Size Badge -->

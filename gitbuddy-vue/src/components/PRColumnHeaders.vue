@@ -23,6 +23,12 @@
 
     <!-- Metadata section — mirrors PRRow's metadata wrapper (gap-1 sm:gap-2 md:gap-3) -->
     <div class="flex items-center flex-shrink-0 justify-end gap-1 sm:gap-2 md:gap-3">
+      <!-- Priority -->
+      <div
+        :class="['flex justify-center', compact ? 'w-[24px]' : 'w-[32px]']"
+        title="Priority — Low / Normal / High / Urgent"
+      >Prio</div>
+
       <!-- Size -->
       <div
         :class="['flex justify-center', compact ? 'w-[36px]' : 'w-[44px]']"
