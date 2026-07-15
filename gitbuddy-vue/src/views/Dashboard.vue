@@ -137,6 +137,22 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16M4 6v12M9 6v12M14 6v12M20 6v12" />
               </svg>
             </button>
+
+            <!-- Priority Sort Toggle -->
+            <button
+              @click="setPrioritySort(!(preferences.prioritySort ?? true))"
+              :title="(preferences.prioritySort ?? true) ? 'Sorting by priority (click to disable)' : 'Sort by priority (click to enable)'"
+              :class="[
+                'flex items-center justify-center rounded border p-1.5 transition-colors',
+                (preferences.prioritySort ?? true)
+                  ? 'border-amber-700/60 bg-amber-800/30 text-amber-300'
+                  : 'border-slate-800 bg-slate-900/60 text-slate-500 hover:text-slate-300'
+              ]"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9M3 12h5m4 8l4-4m0 0l4 4m-4-4v-6" />
+              </svg>
+            </button>
           </div>
         </div>
 
@@ -265,7 +281,7 @@
           </div>
           <PRGroup
             :title="groupTitle(status)"
-            :pull-requests="pullRequests[status] || []"
+            :pull-requests="sortedGroup(status)"
             :status="status"
             :expanded="expandedGroups[status] ?? true"
             :compact="isCompactMode"
@@ -360,6 +376,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
   import { useFaviconBadge } from '../composables/useFaviconBadge';
   import { useBranchesWithoutPR } from '../composables/useBranchesWithoutPR';
   import { useSignalR } from '../composables/useSignalR';
+  import { useToast } from '../composables/useToast';
   import { apiService } from '../services/api';
   import { useAuthStore } from '../stores/auth';
   import StatsSummary from '../components/StatsSummary.vue';
@@ -371,8 +388,9 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
   import type { MenuItem } from '../components/ContextMenu.vue';
 
   const authStore = useAuthStore();
-  const { preferences, loadPreferences, setListViewMode, setShowColumnHeaders, togglePinnedPr, isPrPinned, setDashboardGroupOrder, setHiddenDashboardGroups, resetDashboardLayout } = useUserPreferences();
+  const { preferences, loadPreferences, setListViewMode, setShowColumnHeaders, togglePinnedPr, isPrPinned, setDashboardGroupOrder, setHiddenDashboardGroups, resetDashboardLayout, setPrioritySort } = useUserPreferences();
   const { hasPersonalAccessToken, fetchUserSettings } = useUserSettings();
+  const toast = useToast();
   const { initFavicon, updateBadge } = useFaviconBadge();
   const {
     branches: branchesWithoutPR,
@@ -464,9 +482,21 @@ const contextMenuItems = computed<MenuItem[]>(() => {
   if (!contextMenuPr.value) return [];
   const pr = contextMenuPr.value;
   const pinned = isPrPinned(pr.id);
+  const overridden = pr.priorityOverridden === true;
+  const currentLevel = pr.priority ?? 1;
+  const dot = (active: boolean) => active
+    ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4" />'
+    : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14" opacity="0" />';
   return [
     { label: 'Open PR Detail', action: 'open', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />', iconClass: 'text-blue-400' },
     { label: pinned ? 'Unpin from Dashboard' : 'Pin to Dashboard', action: 'pin', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />', iconClass: pinned ? 'text-amber-400' : 'text-slate-400' },
+    { divider: true, label: '' },
+    { label: 'Set Priority: Urgent', action: 'priority3', icon: dot(currentLevel === 3), iconClass: currentLevel === 3 ? 'text-red-400' : 'text-slate-500' },
+    { label: 'Set Priority: High', action: 'priority2', icon: dot(currentLevel === 2), iconClass: currentLevel === 2 ? 'text-amber-400' : 'text-slate-500' },
+    { label: 'Set Priority: Normal', action: 'priority1', icon: dot(currentLevel === 1 && !overridden), iconClass: currentLevel === 1 ? 'text-slate-300' : 'text-slate-500' },
+    { label: 'Set Priority: Low', action: 'priority0', icon: dot(currentLevel === 0), iconClass: currentLevel === 0 ? 'text-slate-300' : 'text-slate-500' },
+    { label: overridden ? 'Clear Priority Override (Auto)' : 'Clear Priority Override (Auto)', action: 'priorityAuto', iconClass: 'text-slate-400', disabled: !overridden },
+    { label: 'Nudge Reviewers', action: 'nudge', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />', iconClass: 'text-amber-400' },
     { divider: true, label: '' },
     { label: 'Copy PR Link', action: 'copyLink', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />', iconClass: 'text-slate-400' },
     { label: 'Copy Branch Name', action: 'copyBranch', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />', iconClass: 'text-slate-400' },
@@ -492,6 +522,49 @@ const onContextMenuSelect = async (action: string) => {
     case 'pin':
       await togglePinnedPr(pr.id);
       break;
+    case 'priority0':
+    case 'priority1':
+    case 'priority2':
+    case 'priority3': {
+      const level = Number(action.slice(-1));
+      try {
+        await apiService.setPRPriority(pr.id, level);
+        pr.priority = level;
+        pr.priorityOverridden = true;
+        toast.success(`Priority set to ${level === 0 ? 'Low' : level === 1 ? 'Normal' : level === 2 ? 'High' : 'Urgent'}`);
+      } catch (err: unknown) {
+        const error = err as { response?: { data?: { message?: string } } };
+        toast.error(error.response?.data?.message || 'Failed to set priority');
+      }
+      break;
+    }
+    case 'priorityAuto':
+      try {
+        await apiService.setPRPriority(pr.id, null);
+        pr.priorityOverridden = false;
+        toast.info('Priority override cleared (auto-derived)');
+      } catch (err: unknown) {
+        const error = err as { response?: { data?: { message?: string } } };
+        toast.error(error.response?.data?.message || 'Failed to clear priority override');
+      }
+      break;
+    case 'nudge': {
+      const targets = (pr.reviews as Array<{ reviewer: string }> | undefined)
+        ?.filter(r => r.reviewer && r.reviewer !== pr.author)
+        .map(r => r.reviewer) ?? [];
+      if (targets.length === 0) {
+        toast.info('No reviewers to nudge for this PR');
+        break;
+      }
+      try {
+        await apiService.nudgeReviewers(pr.id, targets);
+        toast.success(`Nudged ${targets.length} reviewer${targets.length === 1 ? '' : 's'}`);
+      } catch (err: unknown) {
+        const error = err as { response?: { data?: { message?: string } } };
+        toast.error(error.response?.data?.message || 'Failed to nudge reviewers');
+      }
+      break;
+    }
     case 'copyLink':
       await navigator.clipboard.writeText(pr.url);
       break;
@@ -504,6 +577,18 @@ const onContextMenuSelect = async (action: string) => {
       break;
   }
   contextMenuVisible.value = false;
+};
+
+// Sort a status group by priority (desc) then updatedAt (desc) when enabled.
+const sortedGroup = (status: string) => {
+  const list = pullRequests.value[status] || [];
+  if (!preferences.value.prioritySort) return list;
+  return [...list].sort((a, b) => {
+    const pa = a.priority ?? 1;
+    const pb = b.priority ?? 1;
+    if (pb !== pa) return pb - pa;
+    return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+  });
 };
 
 // Drag-and-drop for dashboard layout

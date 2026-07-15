@@ -83,6 +83,19 @@ export interface PendingBranchResolvedNotification {
   branchName: string;
 }
 
+export interface PRPriorityNotification {
+  pullRequestId: number;
+  priority: number;
+  overridden: boolean;
+}
+
+export interface ReviewerNudgedNotification {
+  pullRequestId: number;
+  reviewers: string[];
+  nudgedBy: string;
+  nudgedAt: string;
+}
+
 let connection: signalR.HubConnection | null = null;
 let connectionCount = 0;
 const connectionState: Ref<ConnectionState> = ref('disconnected');
@@ -104,6 +117,8 @@ export function useSignalR() {
   const onCommentChanged: Ref<((notification: CommentNotification) => void) | null> = ref(null);
   const onThreadChanged: Ref<((notification: ThreadNotification) => void) | null> = ref(null);
   const onCheckRunsUpdated: Ref<((notification: CheckRunsNotification) => void) | null> = ref(null);
+  const onPRPriorityChanged: Ref<((notification: PRPriorityNotification) => void) | null> = ref(null);
+  const onReviewerNudged: Ref<((notification: ReviewerNudgedNotification) => void) | null> = ref(null);
 
   const connect = async (token: string): Promise<boolean> => {
     if (connection && connectionState.value === 'connected') {
@@ -221,6 +236,30 @@ export function useSignalR() {
       }
     });
 
+    connection.on('PRPriorityChanged', (notification: PRPriorityNotification) => {
+      if (onPRPriorityChanged.value) {
+        onPRPriorityChanged.value(notification);
+      }
+    });
+
+    connection.on('PRPriorityChangedDetail', (notification: PRPriorityNotification) => {
+      if (onPRPriorityChanged.value) {
+        onPRPriorityChanged.value(notification);
+      }
+    });
+
+    connection.on('ReviewerNudged', (notification: ReviewerNudgedNotification) => {
+      if (onReviewerNudged.value) {
+        onReviewerNudged.value(notification);
+      }
+    });
+
+    connection.on('ReviewerNudgedDetail', (notification: ReviewerNudgedNotification) => {
+      if (onReviewerNudged.value) {
+        onReviewerNudged.value(notification);
+      }
+    });
+
     connection.on('PendingBranchResolved', (notification: PendingBranchResolvedNotification) => {
       if (onPendingBranchResolved.value) {
         onPendingBranchResolved.value(notification);
@@ -305,6 +344,8 @@ export function useSignalR() {
     onCommentChanged,
     onThreadChanged,
     onCheckRunsUpdated,
+    onPRPriorityChanged,
+    onReviewerNudged,
     onPendingBranchResolved,
     onPendingBranchAdded
   };

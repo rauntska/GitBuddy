@@ -418,6 +418,16 @@ export const apiService = {
     return response.data;
   },
 
+  setPRPriority: async (prId: number, priority: number | null): Promise<{ message: string; priority: number; overridden: boolean }> => {
+    const response = await api.patch<{ message: string; priority: number; overridden: boolean }>(`/pullrequests/${prId}/priority`, { priority });
+    return response.data;
+  },
+
+  nudgeReviewers: async (prId: number, reviewers: string[], alsoComment = false): Promise<{ message: string; reviewers: string[]; nudgedAt: string }> => {
+    const response = await api.post<{ message: string; reviewers: string[]; nudgedAt: string }>(`/pullrequests/${prId}/nudge`, { reviewers, alsoComment });
+    return response.data;
+  },
+
   getReviewTimeline: async (prId: number): Promise<ReviewTimeline> => {
     const response = await api.get<ReviewTimeline>(`/pullrequests/${prId}/timeline`);
     return response.data;

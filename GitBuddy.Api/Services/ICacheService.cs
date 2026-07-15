@@ -10,7 +10,7 @@ public interface ICacheService
     void InvalidateDashboardCache();
     Task<PRStats> GetPullRequestStatsAsync();
     Task<GitHubConfig?> GetConfigAsync();
-    Task SaveConfigAsync(string organization, string? token, int refreshIntervalMinutes, string? appId = "", string? privateKey = "", string? installationId = "", bool useGitHubApp = false, bool deleteOldPRs = false);
+    Task SaveConfigAsync(string organization, string? token, int refreshIntervalMinutes, string? appId = "", string? privateKey = "", string? installationId = "", bool useGitHubApp = false, bool deleteOldPRs = false, string? teamsWebhookUrl = null, bool teamsEnabled = false);
     Task UpdateLastRefreshAsync();
 }
 

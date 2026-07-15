@@ -13,6 +13,7 @@ const preferences = ref<UserPreferences>({
   pinnedPrIds: [],
   dashboardGroupOrder: [],
   hiddenDashboardGroups: [],
+  prioritySort: true,
 });
 
 const loaded = ref(false);
@@ -107,6 +108,10 @@ export function useUserPreferences() {
     await updatePreference('showColumnHeaders', show);
   };
 
+  const setPrioritySort = async (enabled: boolean) => {
+    await updatePreference('prioritySort', enabled);
+  };
+
   const togglePinnedPr = async (prId: number) => {
     const current = preferences.value.pinnedPrIds ?? [];
     const updated = current.includes(prId) ? current.filter(id => id !== prId) : [...current, prId];
@@ -188,6 +193,7 @@ export function useUserPreferences() {
     setFileTreeVisible,
     setListViewMode,
     setShowColumnHeaders,
+    setPrioritySort,
     togglePinnedPr,
     isPrPinned,
     setDashboardGroupOrder,

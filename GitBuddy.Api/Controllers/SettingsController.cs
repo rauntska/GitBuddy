@@ -26,7 +26,9 @@ public class SettingsController(ICacheService cacheService) : ControllerBase
                 privateKey = string.Empty,
                 installationId = string.Empty,
                 useGitHubApp = false,
-                deleteOldPRs = false
+                deleteOldPRs = false,
+                teamsWebhookUrl = string.Empty,
+                teamsEnabled = false
             });
         }
 
@@ -39,7 +41,9 @@ public class SettingsController(ICacheService cacheService) : ControllerBase
             privateKey = config.PrivateKey,
             installationId = config.InstallationId,
             useGitHubApp = config.UseGitHubApp,
-            deleteOldPRs = config.DeleteOldPRs
+            deleteOldPRs = config.DeleteOldPRs,
+            teamsWebhookUrl = config.TeamsWebhookUrl,
+            teamsEnabled = config.TeamsEnabled
         });
     }
 
@@ -68,7 +72,9 @@ public class SettingsController(ICacheService cacheService) : ControllerBase
             request.PrivateKey,
             request.InstallationId,
             request.UseGitHubApp,
-            request.DeleteOldPRs
+            request.DeleteOldPRs,
+            request.TeamsWebhookUrl,
+            request.TeamsEnabled
         );
 
         return Ok(new { message = "Settings saved successfully" });
@@ -82,5 +88,7 @@ public record SaveSettingsRequest(
     string? PrivateKey,
     string? InstallationId,
     bool UseGitHubApp,
-    bool DeleteOldPRs
+    bool DeleteOldPRs,
+    string? TeamsWebhookUrl = null,
+    bool TeamsEnabled = false
 );

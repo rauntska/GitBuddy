@@ -89,6 +89,16 @@
 
       <!-- Metadata Section -->
       <div class="flex items-center flex-shrink-0 flex-wrap justify-end gap-1 sm:gap-2 md:gap-3 font-mono">
+      <!-- Priority Badge -->
+      <div v-if="showPriority" :class="compact ? 'w-[24px]' : 'w-[32px]'" class="flex justify-center items-center gap-0.5">
+        <span
+          class="text-xs font-semibold"
+          :class="getPriorityColor(pr.priority)"
+          :title="`${getPriorityLabel(pr.priority)}${pr.priorityOverridden ? ' (manual override)' : ''}`"
+        >{{ getPriorityGlyph(pr.priority) }}</span>
+        <span v-if="pr.priorityOverridden" class="text-[8px] leading-none" :class="getPriorityColor(pr.priority)">•</span>
+      </div>
+
       <!-- PR Size Badge -->
       <div :class="compact ? 'w-[36px]' : 'w-[44px]'" class="flex justify-center">
         <PRSizeBadge :additions="pr.additions" :deletions="pr.deletions" :compact="compact" />
@@ -186,6 +196,10 @@ import {
   formatAge,
   getStatusBorderClass,
   getStatusTintClass,
+  getPriorityColor,
+  getPriorityGlyph,
+  getPriorityLabel,
+  PRIORITY_HIGH,
 } from '../utils/prHelpers';
 
 const props = defineProps<{
@@ -211,6 +225,8 @@ watch(() => props.pr.updatedAt, () => {
 const totalThreadsCount = computed(() => props.pr.reviewThreads?.length || 0);
 const resolvedThreadsCount = computed(() => props.pr.reviewThreads?.filter(rt => rt.isResolved).length || 0);
 const pendingThreadsCount = computed(() => props.pr.reviewThreads?.filter(rt => !rt.isResolved).length || 0);
+
+const showPriority = computed(() => (props.pr.priority ?? 1) >= PRIORITY_HIGH);
 
 const formatRelativeTime = (dateString: string): string => {
   const date = new Date(dateString);

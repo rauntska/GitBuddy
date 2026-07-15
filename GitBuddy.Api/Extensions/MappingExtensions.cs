@@ -61,7 +61,9 @@ public static class MappingExtensions
             pr.RequiredApprovingReviews,
             pr.CurrentApprovingReviews,
             pr.HasUnresolvedThreads,
-            pr.MergeBlockReason
+            pr.MergeBlockReason,
+            PriorityService.GetEffectivePriorityStatic(pr),
+            pr.Priority is not null
         );
 
     }
@@ -99,7 +101,9 @@ public static class MappingExtensions
                 rt.FirstCommentAuthor,
                 rt.FirstCommentBody,
                 rt.CommentCount
-            )).ToList()
+            )).ToList(),
+            PriorityService.GetEffectivePriorityStatic(pr),
+            pr.Priority is not null
         );
     }
 
@@ -206,7 +210,9 @@ public static class MappingExtensions
             currentApprovingReviews,
             hasUnresolvedThreads,
             isMergeReady,
-            mergeBlockReason
+            mergeBlockReason,
+            PriorityService.GetEffectivePriorityStatic(pr),
+            pr.Priority is not null
         );
     }
 

@@ -501,7 +501,7 @@ public class CacheService(
         return await context.GitHubConfigs.FirstOrDefaultAsync();
     }
 
-    public async Task SaveConfigAsync(string organization, string? token, int refreshIntervalMinutes, string? appId = "", string? privateKey = "", string? installationId = "", bool useGitHubApp = false, bool deleteOldPRs = false)
+    public async Task SaveConfigAsync(string organization, string? token, int refreshIntervalMinutes, string? appId = "", string? privateKey = "", string? installationId = "", bool useGitHubApp = false, bool deleteOldPRs = false, string? teamsWebhookUrl = null, bool teamsEnabled = false)
     {
         var config = await context.GitHubConfigs.FirstOrDefaultAsync();
 
@@ -515,7 +515,9 @@ public class CacheService(
                 PrivateKey = privateKey ?? string.Empty,
                 InstallationId = installationId ?? string.Empty,
                 UseGitHubApp = useGitHubApp,
-                DeleteOldPRs = deleteOldPRs
+                DeleteOldPRs = deleteOldPRs,
+                TeamsWebhookUrl = teamsWebhookUrl ?? string.Empty,
+                TeamsEnabled = teamsEnabled
             };
             context.GitHubConfigs.Add(config);
         }
@@ -528,6 +530,8 @@ public class CacheService(
             config.InstallationId = installationId ?? string.Empty;
             config.UseGitHubApp = useGitHubApp;
             config.DeleteOldPRs = deleteOldPRs;
+            config.TeamsWebhookUrl = teamsWebhookUrl ?? string.Empty;
+            config.TeamsEnabled = teamsEnabled;
         }
 
         await context.SaveChangesAsync();

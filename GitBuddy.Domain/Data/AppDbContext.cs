@@ -37,6 +37,7 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => new { e.GitHubId, e.Repository }).IsUnique();
             entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.UpdatedAt);
+            entity.HasIndex(e => e.Priority);
 
             entity.HasMany(e => e.Reviews)
                 .WithOne(r => r.PullRequest)

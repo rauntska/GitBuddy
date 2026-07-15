@@ -75,11 +75,13 @@ builder.Services.AddScoped<IPullRequestStatusService, PullRequestStatusService>(
 builder.Services.AddScoped<IRepositoryRuleService, RepositoryRuleService>();
 builder.Services.AddScoped<IBranchWithoutPRService, BranchWithoutPRService>();
 builder.Services.AddSingleton<IBranchWithoutPRRefreshTrigger, BranchWithoutPRRefreshTrigger>();
+builder.Services.AddScoped<ITeamsNotificationService, TeamsNotificationService>();
 
 // Utility services
 builder.Services.AddScoped<ILanguageDetectionService, LanguageDetectionService>();
 builder.Services.AddScoped<IGitHubConfigValidationService, GitHubConfigValidationService>();
 builder.Services.AddScoped<IPullRequestValidationService, PullRequestValidationService>();
+builder.Services.AddScoped<IPriorityService, PriorityService>();
 
 // MediatR
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));

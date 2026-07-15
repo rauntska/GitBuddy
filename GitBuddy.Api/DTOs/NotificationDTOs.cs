@@ -41,7 +41,9 @@ public record PRListUpdateDto(
     DateTime UpdatedAt,
     string? ChecksStatus,
     List<ReviewDto> Reviews,
-    List<ReviewThreadDto> ReviewThreads
+    List<ReviewThreadDto> ReviewThreads,
+    int Priority = 1,
+    bool PriorityOverridden = false
 );
 
 public record ReviewNotificationDto(
@@ -73,4 +75,17 @@ public record CheckRunsNotificationDto(
     int PullRequestId,
     string ChecksStatus,
     List<CheckRunDto> CheckRuns
+);
+
+public record PRPriorityNotificationDto(
+    int PullRequestId,
+    int Priority,
+    bool Overridden
+);
+
+public record ReviewerNudgedNotificationDto(
+    int PullRequestId,
+    List<string> Reviewers,
+    string NudgedBy,
+    DateTime NudgedAt
 );
