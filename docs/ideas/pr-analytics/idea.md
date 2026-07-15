@@ -1,3 +1,5 @@
+> **Status: Implemented** — see commit history for the shipped code.
+
 # PR Analytics & Metrics
 
 ## Problem

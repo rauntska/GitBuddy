@@ -26,6 +26,8 @@ dotnet ef database update
 dotnet ef migrations add <MigrationName>
 ```
 
+The connection string is configured in `appsettings*.json` under `ConnectionStrings:DefaultConnection` (default `Host=localhost;Database=GitBuddy;Username=gitbuddy;Password=gitbuddy`).
+
 ### Frontend (Vue 3)
 
 ```bash
@@ -203,10 +205,25 @@ src/
 └── router/       # Vue Router config
 ```
 
+## Documentation
+
+Durable project documentation lives in `docs/`, organized into three maturity stages:
+- `docs/ideas/<topic>/idea.md` — early-stage concepts, brain dumps, unstructured notes
+- `docs/specs/<topic>/design.md` — refined designs, architecture decisions, technical details
+- `docs/plans/<topic>/plan.md` — implementation plans with step-by-step tasks
+
+Each topic gets its own folder; a topic flows from `ideas/` → `specs/` → `plans/` as it matures. Shipped ideas are tagged in place with a top-of-file `> **Status: Implemented**` marker. See `docs/README.md` for full convention details.
+
+Execution specs produced by the `/feature-spec` skill live in `specs/YYYY-MM-DD-<feature>/` at the **repo root** (not under `docs/`) and contain `requirements.md`, `plan.md`, `validation.md`. Those are ephemeral — tied to a feature branch and consumed during implementation.
+
+## CORS Policy
+
+The backend allows frontend origins `http://localhost:5173` and `http://localhost:3000`. Update the `AllowVueDev` policy in `Program.cs` to permit different origins.
+
 ## Key Conventions
 
 - All API endpoints require `[Authorize]` except `/api/auth/*`
 - JWT tokens stored in localStorage, injected via axios interceptors
 - SignalR hub at `/hubs/pr` for real-time updates
-- SQLite database with EF Core migrations (auto-applied on startup)
+- PostgreSQL database (Npgsql) with EF Core migrations (auto-applied on startup)
 - PR status determined by `PullRequestStatusService`: Draft, AwaitingReview, Approved, ChangesRequested, Reviewed
