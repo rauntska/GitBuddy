@@ -477,10 +477,10 @@ public class PullRequestsController(
 
     [HttpDelete("{id}/reviewers/{username}")]
     [Authorize]
-    public async Task<IActionResult> RemoveReviewer(int id, string username)
+    public async Task<IActionResult> RemoveReviewer(int id, string username, [FromQuery] string? type)
     {
-        var result = await mediator.Send(new RemoveReviewerCommand(id, username, User));
-        
+        var result = await mediator.Send(new RemoveReviewerCommand(id, username, type ?? "User", User));
+
         if (!result.Success)
         {
             if (result.Error != null)

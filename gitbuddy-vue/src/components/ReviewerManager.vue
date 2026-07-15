@@ -73,7 +73,13 @@
             </svg>
           </div>
           <div>
-            <div class="text-sm text-slate-200">{{ reviewer.username }}</div>
+            <div class="flex items-center gap-1.5">
+              <span class="text-sm text-slate-200">{{ reviewer.username }}</span>
+              <span
+                v-if="reviewer.type === 'Team'"
+                class="text-[10px] px-1 py-0.5 rounded bg-purple-500/20 text-purple-400 uppercase tracking-wide"
+              >Team</span>
+            </div>
             <div v-if="reviewer.reviewState" class="text-xs px-1.5 py-0.5 rounded font-mono">
               <span :class="getStateColor(reviewer.reviewState)">{{ getStateLabel(reviewer.reviewState) }}</span>
               <span v-if="reviewer.reviewedAt" class="text-slate-500 ml-1">
@@ -101,7 +107,7 @@
           </button>
           <button
             v-if="reviewer.isRequested"
-            @click="removeReviewer(reviewer.username)"
+            @click="removeReviewer(reviewer.username, reviewer.type)"
             :disabled="removingReviewer === reviewer.username"
             class="p-1 text-slate-500 hover:text-rose-400 disabled:opacity-50"
             title="Remove reviewer"
@@ -237,7 +243,7 @@ const openAddReviewer = () => {
 
 const handleSelectReviewer = async (item: PotentialReviewer) => {
   try {
-    await apiService.addReviewers(props.pullRequestId, [item.name]);
+    await apiService.addReviewers(props.pullRequestId, [{ name: item.name, type: item.type }]);
     showAddInput.value = false;
     await fetchReviewers();
   } catch (err: unknown) {
@@ -246,10 +252,10 @@ const handleSelectReviewer = async (item: PotentialReviewer) => {
   }
 };
 
-const removeReviewer = async (username: string) => {
+const removeReviewer = async (username: string, type: 'User' | 'Team' = 'User') => {
   try {
     removingReviewer.value = username;
-    await apiService.removeReviewer(props.pullRequestId, username);
+    await apiService.removeReviewer(props.pullRequestId, username, type);
     await fetchReviewers();
   } catch (err: unknown) {
     const error = err as { response?: { data?: { message?: string } } };
