@@ -14,6 +14,10 @@ public class UserPreferences
     // List view preferences
     public string ListViewMode { get; set; } = "comfortable"; // "compact", "comfortable", or "expanded"
     public bool ShowColumnHeaders { get; set; } = true;
+    public bool ShowContext { get; set; } = true;
+
+    // Dashboard preferences
+    public bool PrioritySort { get; set; } = true;
 
     // Dashboard layout preferences (JSON-serialized)
     public string? PinnedPrIds { get; set; }

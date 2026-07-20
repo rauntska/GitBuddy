@@ -41,7 +41,9 @@ public class UserService(AppDbContext context) : IUserService
                 CommentsPanelWidth = 320,
                 FileTreeVisible = true,
                 ListViewMode = "comfortable",
-                ShowColumnHeaders = true
+                ShowColumnHeaders = true,
+                ShowContext = true,
+                PrioritySort = true
             };
             context.UserPreferences.Add(preferences);
             await context.SaveChangesAsync();
@@ -54,6 +56,8 @@ public class UserService(AppDbContext context) : IUserService
             preferences.FileTreeVisible,
             preferences.ListViewMode ?? "comfortable",
             preferences.ShowColumnHeaders,
+            preferences.ShowContext,
+            preferences.PrioritySort,
             preferences.PinnedPrIds,
             preferences.DashboardGroupOrder,
             preferences.HiddenDashboardGroups,
@@ -87,6 +91,12 @@ public class UserService(AppDbContext context) : IUserService
         if (request.ShowColumnHeaders.HasValue)
             preferences.ShowColumnHeaders = request.ShowColumnHeaders.Value;
 
+        if (request.ShowContext.HasValue)
+            preferences.ShowContext = request.ShowContext.Value;
+
+        if (request.PrioritySort.HasValue)
+            preferences.PrioritySort = request.PrioritySort.Value;
+
         if (request.ListViewMode != null)
             preferences.ListViewMode = request.ListViewMode;
 
@@ -112,6 +122,8 @@ public class UserService(AppDbContext context) : IUserService
             preferences.FileTreeVisible,
             preferences.ListViewMode ?? "comfortable",
             preferences.ShowColumnHeaders,
+            preferences.ShowContext,
+            preferences.PrioritySort,
             preferences.PinnedPrIds,
             preferences.DashboardGroupOrder,
             preferences.HiddenDashboardGroups,
