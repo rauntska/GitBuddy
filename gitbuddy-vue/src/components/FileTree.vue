@@ -19,6 +19,8 @@
             </svg>
             {{ viewedCount }} viewed
           </span>
+          <span class="text-slate-400">·</span>
+          <span class="text-slate-400">{{ remainingCount }} remaining</span>
         </div>
       </div>
       <div class="mt-2 relative">
@@ -53,10 +55,12 @@
         :key="node.path"
         :node="node"
         :selected-file="selectedFile"
-        :expanded-folders="expandedFolders"
+        :collapsed-folders="collapsedFolders"
         :files-with-comments="filesWithComments"
+        :viewed-files="viewedFiles"
         @select="$emit('selectFile', $event)"
         @toggle-folder="toggleFolder"
+        @toggle-viewed="(path, viewed) => $emit('toggleViewed', path, viewed)"
       />
     </div>
   </div>
@@ -71,14 +75,15 @@ import type { FileDiff } from '../types';
 const props = defineProps<{
   files: FileDiff[];
   selectedFile?: string;
+  viewedFiles?: Set<string>;
 }>();
 
 defineEmits<{
   selectFile: [path: string];
+  toggleViewed: [path: string, viewed: boolean];
 }>();
 
-const expandedFolders = shallowRef<Set<string>>(new Set());
-const allExpanded = ref(false);
+const collapsedFolders = shallowRef<Set<string>>(new Set());
 const searchQuery = ref('');
 
 const filesWithComments = computed(() => {
@@ -119,18 +124,23 @@ const filterTreeNodes = (nodes: TreeNode[], query: string): TreeNode[] => {
 
 const totalFiles = computed(() => props.files.length);
 
-const viewedCount = computed(() =>
-  props.files.filter(f => f.viewedState === 'VIEWED' || f.viewed === true).length
-);
+const viewedCount = computed(() => {
+  if (props.viewedFiles) {
+    return props.files.filter(f => f.path && props.viewedFiles!.has(f.path)).length;
+  }
+  return props.files.filter(f => f.viewedState === 'VIEWED' || f.viewed === true).length;
+});
+
+const remainingCount = computed(() => Math.max(0, totalFiles.value - viewedCount.value));
 
 const toggleFolder = (path: string) => {
-  const newSet = new Set(expandedFolders.value);
+  const newSet = new Set(collapsedFolders.value);
   if (newSet.has(path)) {
     newSet.delete(path);
   } else {
     newSet.add(path);
   }
-  expandedFolders.value = newSet;
+  collapsedFolders.value = newSet;
 };
 
 const collectAllFolderPaths = (nodes: TreeNode[]): string[] => {
@@ -143,20 +153,19 @@ const collectAllFolderPaths = (nodes: TreeNode[]): string[] => {
   });
 };
 
+const allExpanded = computed(() => collapsedFolders.value.size === 0);
+
 const toggleAll = () => {
-  allExpanded.value = !allExpanded.value;
-  
   if (allExpanded.value) {
-    expandedFolders.value = new Set(collectAllFolderPaths(treeNodes.value));
+    collapsedFolders.value = new Set(collectAllFolderPaths(treeNodes.value));
   } else {
-    expandedFolders.value = new Set();
+    collapsedFolders.value = new Set();
   }
 };
 
 watch(searchQuery, (query) => {
   if (query.trim()) {
-    const matchingPaths = collectAllFolderPaths(filteredNodes.value);
-    expandedFolders.value = new Set(matchingPaths);
+    collapsedFolders.value = new Set();
   }
 });
 </script>

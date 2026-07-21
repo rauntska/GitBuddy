@@ -285,7 +285,9 @@
         <FileTree
           :files="prDetail.files"
           :selected-file="selectedFile || undefined"
+          :viewed-files="viewedFileSet"
           @select-file="scrollToFile"
+          @toggle-viewed="handleToggleViewed"
         />
         <!-- Resize Handle -->
         <div
@@ -1382,6 +1384,11 @@ const isFileViewed = (filePath: string): boolean => {
   const file = prDetail.value.files.find(f => f.path === filePath);
   return file?.viewedState === 'VIEWED' || file?.viewed === true || (prDetail.value.viewedFiles?.includes(filePath) ?? false);
 };
+
+const viewedFileSet = computed(() => {
+  const files = prDetail.value?.files ?? [];
+  return new Set(files.filter(f => f.path && isFileViewed(f.path)).map(f => f.path!));
+});
 
 const handleToggleViewed = async (filePath: string, viewed: boolean) => {
   if (!prDetail.value) return;
