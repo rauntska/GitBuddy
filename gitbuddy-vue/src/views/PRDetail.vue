@@ -277,6 +277,47 @@
 
     <!-- Main Content - Full Page Layout -->
     <div v-else-if="prDetail" class="flex flex-1">
+      <!-- File Tree Toggle Rail (always visible, left edge) -->
+      <button
+        type="button"
+        @click="toggleFileTree"
+        :class="[
+          'hidden md:flex sticky top-[8.5rem] self-start z-20 flex-shrink-0 group',
+          'flex-col items-center justify-center gap-2',
+          'w-9 py-4 mt-6 -ml-2',
+          'rounded-l-lg border border-r-0',
+          'transition-all duration-150',
+          'shadow-lg shadow-black/30',
+          preferences.fileTreeVisible
+            ? 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 hover:-translate-x-0.5'
+            : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700 hover:-translate-x-0.5'
+        ]"
+        :title="preferences.fileTreeVisible ? 'Hide file tree' : 'Show file tree'"
+        :aria-label="preferences.fileTreeVisible ? 'Hide file tree' : 'Show file tree'"
+        :aria-expanded="preferences.fileTreeVisible"
+      >
+        <span class="text-[10px] font-semibold tracking-widest uppercase rotate-180 [writing-mode:vertical-rl]">
+          Files
+        </span>
+        <svg
+          class="w-4 h-4 transition-transform duration-150 group-hover:scale-110"
+          :class="preferences.fileTreeVisible ? 'text-blue-400' : 'text-slate-400'"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path
+            v-if="preferences.fileTreeVisible"
+            stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"
+          />
+          <path
+            v-else
+            stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"
+          />
+        </svg>
+      </button>
+
       <div
         v-if="preferences.fileTreeVisible"
         :style="{ width: `${fileTreeWidth}px` }"
@@ -450,16 +491,6 @@
                     Files Changed <span class="text-slate-500 font-normal font-mono tabular-nums">({{ prDetail.files.length }})</span>
                   </h2>
                   <div class="flex items-center gap-2">
-                    <button
-                      @click="toggleFileTree"
-                      class="hidden md:flex items-center gap-2 px-3 py-2 border border-slate-800 rounded-lg hover:bg-slate-800 text-slate-300 text-xs transition-all duration-150"
-                    >
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M4 6h16M4 12h16M4 18h16" />
-                      </svg>
-                      <span>{{ preferences.fileTreeVisible ? 'Hide' : 'Show' }} Tree</span>
-                    </button>
                     <div class="relative">
                       <button
                         @click="showSettingsDropdown = !showSettingsDropdown"
