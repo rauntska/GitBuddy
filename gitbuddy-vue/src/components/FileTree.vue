@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-slate-900 border-r border-slate-700 overflow-auto" role="tree" aria-label="Files changed">
+  <div class="bg-slate-900 border-r border-slate-700 overflow-auto h-full" role="tree" aria-label="Files changed">
     <div class="sticky top-0 bg-slate-900 border-b border-slate-700 px-4 py-3 z-10">
       <div class="flex items-center justify-between">
         <h3 class="text-sm font-medium text-slate-200">Files Changed</h3>
@@ -13,14 +13,38 @@
       <div class="mt-2 text-xs flex items-center justify-between">
         <span class="text-slate-400">{{ totalFiles }} {{ totalFiles === 1 ? 'file' : 'files' }}</span>
         <div class="flex items-center gap-2">
-          <span class="text-green-400 flex items-center gap-1">
+          <button
+            type="button"
+            :class="[
+              'flex items-center gap-1 rounded px-1 transition-colors',
+              viewFilter === 'viewed'
+                ? 'text-green-300 bg-green-500/10'
+                : 'text-green-400 hover:text-green-300'
+            ]"
+            :aria-pressed="viewFilter === 'viewed'"
+            title="Show only viewed files"
+            @click="toggleViewFilter('viewed')"
+          >
             <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
             </svg>
             {{ viewedCount }} viewed
-          </span>
+          </button>
           <span class="text-slate-400">·</span>
-          <span class="text-slate-400">{{ remainingCount }} remaining</span>
+          <button
+            type="button"
+            :class="[
+              'rounded px-1 transition-colors',
+              viewFilter === 'unviewed'
+                ? 'text-slate-100 bg-slate-500/20'
+                : 'text-slate-400 hover:text-slate-200'
+            ]"
+            :aria-pressed="viewFilter === 'unviewed'"
+            title="Show only unviewed files"
+            @click="toggleViewFilter('unviewed')"
+          >
+            {{ remainingCount }} remaining
+          </button>
         </div>
       </div>
       <div class="mt-2 relative">
@@ -85,22 +109,55 @@ defineEmits<{
 
 const collapsedFolders = shallowRef<Set<string>>(new Set());
 const searchQuery = ref('');
+const viewFilter = ref<'all' | 'viewed' | 'unviewed'>('all');
+
+const toggleViewFilter = (mode: 'viewed' | 'unviewed') => {
+  viewFilter.value = viewFilter.value === mode ? 'all' : mode;
+};
 
 const filesWithComments = computed(() => {
   const commented = new Set<string>();
   return commented;
 });
 
+const isFileViewed = (path: string): boolean =>
+  props.viewedFiles?.has(path) ?? false;
+
 const treeNodes = computed(() => {
   return buildFileTree(props.files.filter(f => f.path).map(f => ({ path: f.path!, status: f.status || 'modified' })));
 });
 
 const filteredNodes = computed(() => {
-  if (!searchQuery.value.trim()) {
-    return treeNodes.value;
+  let nodes = treeNodes.value;
+  if (viewFilter.value !== 'all') {
+    nodes = filterByViewed(nodes, viewFilter.value);
   }
-  return filterTreeNodes(treeNodes.value, searchQuery.value.toLowerCase());
+  if (searchQuery.value.trim()) {
+    nodes = filterTreeNodes(nodes, searchQuery.value.toLowerCase());
+  }
+  return nodes;
 });
+
+const filterByViewed = (nodes: TreeNode[], mode: 'viewed' | 'unviewed'): TreeNode[] => {
+  const result: TreeNode[] = [];
+  for (const node of nodes) {
+    if (node.type === 'file') {
+      const viewed = isFileViewed(node.path);
+      if ((mode === 'viewed') === viewed) {
+        result.push(node);
+      }
+    } else {
+      const filteredChildren = node.children ? filterByViewed(Object.values(node.children), mode) : [];
+      if (filteredChildren.length > 0) {
+        result.push({
+          ...node,
+          children: Object.fromEntries(filteredChildren.map(c => [c.name, c]))
+        });
+      }
+    }
+  }
+  return result;
+};
 
 const filterTreeNodes = (nodes: TreeNode[], query: string): TreeNode[] => {
   const result: TreeNode[] = [];
@@ -165,6 +222,12 @@ const toggleAll = () => {
 
 watch(searchQuery, (query) => {
   if (query.trim()) {
+    collapsedFolders.value = new Set();
+  }
+});
+
+watch(viewFilter, (mode) => {
+  if (mode !== 'all') {
     collapsedFolders.value = new Set();
   }
 });
