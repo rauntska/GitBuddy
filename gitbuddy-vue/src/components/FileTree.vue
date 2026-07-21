@@ -1,6 +1,6 @@
 <template>
-  <div class="bg-slate-900 border-r border-slate-700 overflow-auto h-full" role="tree" aria-label="Files changed">
-    <div class="sticky top-0 bg-slate-900 border-b border-slate-700 px-4 py-3 z-10">
+  <div class="bg-slate-900 border-r border-slate-700 h-full flex flex-col" role="tree" aria-label="Files changed">
+    <div class="flex-shrink-0 bg-slate-900 border-b border-slate-700 px-4 py-3 z-10">
       <div class="flex items-center justify-between">
         <h3 class="text-sm font-medium text-slate-200">Files Changed</h3>
         <button
@@ -70,7 +70,7 @@
       </div>
     </div>
 
-    <div class="p-2">
+    <div class="p-2 overflow-y-auto flex-1 min-h-0">
       <div v-if="filteredNodes.length === 0 && searchQuery" class="px-2 py-4 text-sm text-slate-500 text-center">
         No files match "{{ searchQuery }}"
       </div>

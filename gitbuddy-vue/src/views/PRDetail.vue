@@ -280,7 +280,7 @@
       <div
         v-if="preferences.fileTreeVisible"
         :style="{ width: `${fileTreeWidth}px` }"
-        class="hidden md:block flex-shrink-0 overflow-auto bg-slate-900/40 border-r border-slate-800 relative sticky top-20 h-[calc(100vh-5rem)]"
+        class="hidden md:block flex-shrink-0 bg-slate-900/40 border-r border-slate-800 relative sticky top-[6.75rem] h-[calc(100vh-6.75rem)]"
       >
         <FileTree
           :files="prDetail.files"
