@@ -1387,9 +1387,14 @@ const isFileViewed = (filePath: string): boolean => {
 
 const viewedFileSet = computed(() => {
   const files = prDetail.value?.files ?? [];
-  return new Set(files.filter(f => f.path && isFileViewed(f.path)).map(f => f.path!));
+  const viewedPaths = new Set(prDetail.value?.viewedFiles ?? []);
+  
+  return new Set(
+    files
+      .filter(f => f.path && (f.viewedState === 'VIEWED' || f.viewed === true || viewedPaths.has(f.path)))
+      .map(f => f.path!)
+  );
 });
-
 const handleToggleViewed = async (filePath: string, viewed: boolean) => {
   if (!prDetail.value) return;
 
