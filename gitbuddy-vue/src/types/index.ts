@@ -351,6 +351,7 @@ export interface PendingReviewComment {
 
 export interface UserPreferences {
   diffViewMode: 'split' | 'unified';
+  markdownDiffMode?: 'rendered' | 'source';
   showContext: boolean;
   fileTreeWidth: number;
   commentsPanelWidth: number;

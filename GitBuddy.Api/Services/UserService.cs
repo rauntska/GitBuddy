@@ -37,6 +37,7 @@ public class UserService(AppDbContext context) : IUserService
             {
                 UserId = userId,
                 DiffViewMode = "unified",
+                MarkdownDiffMode = "rendered",
                 FileTreeWidth = 256,
                 CommentsPanelWidth = 320,
                 FileTreeVisible = true,
@@ -51,6 +52,7 @@ public class UserService(AppDbContext context) : IUserService
 
         return new UserPreferencesDto(
             preferences.DiffViewMode,
+            preferences.MarkdownDiffMode ?? "rendered",
             preferences.FileTreeWidth,
             preferences.CommentsPanelWidth,
             preferences.FileTreeVisible,
@@ -78,6 +80,9 @@ public class UserService(AppDbContext context) : IUserService
 
         if (request.DiffViewMode != null)
             preferences.DiffViewMode = request.DiffViewMode;
+
+        if (request.MarkdownDiffMode != null)
+            preferences.MarkdownDiffMode = request.MarkdownDiffMode;
 
         if (request.FileTreeWidth.HasValue)
             preferences.FileTreeWidth = request.FileTreeWidth.Value;
@@ -117,6 +122,7 @@ public class UserService(AppDbContext context) : IUserService
 
         return new UserPreferencesDto(
             preferences.DiffViewMode,
+            preferences.MarkdownDiffMode ?? "rendered",
             preferences.FileTreeWidth,
             preferences.CommentsPanelWidth,
             preferences.FileTreeVisible,
