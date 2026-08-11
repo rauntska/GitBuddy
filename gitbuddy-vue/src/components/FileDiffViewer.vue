@@ -11,6 +11,30 @@
       @toggle-viewed="toggleViewed"
     />
 
+    <div
+      v-if="showMarkdownToggle && expanded && !loading"
+      class="flex items-center gap-1 px-3 py-1.5 bg-slate-900 border-b border-slate-800"
+    >
+      <div class="flex items-center gap-0.5 rounded-md bg-slate-800/60 p-0.5">
+        <button
+          type="button"
+          @click="effectiveMarkdownMode !== 'source' && toggleMarkdownMode()"
+          :class="effectiveMarkdownMode === 'source'
+            ? 'bg-slate-700 text-slate-100'
+            : 'text-slate-400 hover:text-slate-200'"
+          class="px-2.5 py-1 text-xs font-medium rounded transition-colors"
+        >Source</button>
+        <button
+          type="button"
+          @click="effectiveMarkdownMode !== 'rendered' && toggleMarkdownMode()"
+          :class="effectiveMarkdownMode === 'rendered'
+            ? 'bg-slate-700 text-slate-100'
+            : 'text-slate-400 hover:text-slate-200'"
+          class="px-2.5 py-1 text-xs font-medium rounded transition-colors"
+        >Rendered</button>
+      </div>
+    </div>
+
     <div v-if="expanded && !loading" class="relative bg-slate-950">
       <div v-if="hunks.length === 0" class="p-8 text-center">
         <div class="flex flex-col items-center gap-3">
@@ -21,7 +45,7 @@
         </div>
       </div>
 
-      <template v-if="hunks.length > 0">
+      <template v-if="hunks.length > 0 && effectiveMarkdownMode === 'source'">
         <DiffMinimap
           :comments="fileComments"
           :hunks="hunks"
@@ -236,6 +260,12 @@
           </table>
         </div>
       </template>
+
+      <MarkdownDiffViewer
+        v-else-if="hunks.length > 0 && effectiveMarkdownMode === 'rendered'"
+        :file="file"
+        :pr-id="prId"
+      />
     </div>
 
     <OrphanedComments
@@ -276,6 +306,7 @@ import { ref, computed, nextTick, onMounted, watch } from 'vue';
 import type { FileDiff, Comment, ReviewThread, DiffHunk, AlignedRow, AlignedLine, ExpandPosition, PendingReviewComment } from '../types';
 import { parsePatch, alignDiffLines, renderInlineDiffSegments, calculateExpandRange, getGapBetweenHunks, mergeExpandedLines } from '../utils/diffHelpers';
 import { highlightCode, detectLanguageFromPath } from '../utils/syntaxHighlight';
+import { isMarkdownFile, canReconstruct } from '../utils/markdownDiffReconstruct';
 import { useUserPreferences } from '../composables/useUserPreferences';
 import { useFileContent } from '../composables/useFileContent';
 import { useCommentActions, getPendingCommentsForLine as getPendingForLine, getPendingRepliesForThread as getPendingReplies } from '../composables/use-comment-actions';
@@ -286,6 +317,7 @@ import DiffLineRow from './diff-line-row.vue';
 import CommentThread from './comment-thread.vue';
 import CommentForm from './comment-form.vue';
 import OrphanedComments from './orphaned-comments.vue';
+import MarkdownDiffViewer from './MarkdownDiffViewer.vue';
 
 const props = defineProps<{
   file: FileDiff;
@@ -309,7 +341,7 @@ const emit = defineEmits<{
   toggleViewed: [path: string, viewed: boolean];
 }>();
 
-const { preferences } = useUserPreferences();
+const { preferences, setMarkdownDiffMode } = useUserPreferences();
 
 const expanded = ref(props.file.viewedState !== 'VIEWED' && !props.file.viewed);
 
@@ -408,6 +440,21 @@ const orphanedComments = computed(() => {
 });
 
 const viewMode = computed(() => preferences.value.diffViewMode);
+
+const showMarkdownToggle = computed(() =>
+  isMarkdownFile(props.file) && canReconstruct(props.file)
+);
+
+const markdownModePref = computed(() => preferences.value.markdownDiffMode ?? 'rendered');
+
+const effectiveMarkdownMode = computed<'source' | 'rendered'>(() =>
+  showMarkdownToggle.value && markdownModePref.value === 'rendered' ? 'rendered' : 'source'
+);
+
+const toggleMarkdownMode = () => {
+  const next = effectiveMarkdownMode.value === 'rendered' ? 'source' : 'rendered';
+  void setMarkdownDiffMode(next);
+};
 
 const getAlignedRows = (hunk: DiffHunk, hunkIndex: number): AlignedRow[] => {
   if (alignedRowsCache.value.has(hunkIndex)) {

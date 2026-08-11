@@ -2,6 +2,7 @@ namespace GitBuddy.Api.DTOs;
 
 public record UserPreferencesDto(
     string DiffViewMode,
+    string MarkdownDiffMode,
     int FileTreeWidth,
     int CommentsPanelWidth,
     bool FileTreeVisible,
@@ -17,6 +18,7 @@ public record UserPreferencesDto(
 
 public record UpdatePreferencesRequest(
     string? DiffViewMode,
+    string? MarkdownDiffMode,
     int? FileTreeWidth,
     int? CommentsPanelWidth,
     bool? FileTreeVisible,

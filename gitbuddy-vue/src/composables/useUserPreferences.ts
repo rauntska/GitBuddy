@@ -4,6 +4,7 @@ import { apiService } from '../services/api';
 
 const preferences = ref<UserPreferences>({
   diffViewMode: 'unified',
+  markdownDiffMode: 'rendered',
   showContext: true,
   fileTreeWidth: 256,
   commentsPanelWidth: 320,
@@ -82,6 +83,10 @@ export function useUserPreferences() {
 
   const setDiffViewMode = async (mode: 'split' | 'unified') => {
     await updatePreference('diffViewMode', mode);
+  };
+
+  const setMarkdownDiffMode = async (mode: 'rendered' | 'source') => {
+    await updatePreference('markdownDiffMode', mode);
   };
 
   const setShowContext = async (show: boolean) => {
@@ -187,6 +192,7 @@ export function useUserPreferences() {
     loading,
     loadPreferences,
     setDiffViewMode,
+    setMarkdownDiffMode,
     setShowContext,
     setFileTreeWidth,
     setCommentsPanelWidth,

@@ -7,6 +7,7 @@ public class UserPreferences
     
     // Diff viewer preferences
     public string DiffViewMode { get; set; } = "unified"; // "split" or "unified"
+    public string MarkdownDiffMode { get; set; } = "rendered"; // "rendered" or "source"
     public int FileTreeWidth { get; set; } = 256; // in pixels
     public int CommentsPanelWidth { get; set; } = 320; // in pixels
     public bool FileTreeVisible { get; set; } = true;
