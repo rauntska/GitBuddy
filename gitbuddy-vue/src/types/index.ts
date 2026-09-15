@@ -492,3 +492,5 @@ export interface BranchWithoutPR {
   defaultBranch: string;
   lastActivityAt?: string | null;
 }
+
+export type MergeMethod = 'merge' | 'squash' | 'rebase';
