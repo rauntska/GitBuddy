@@ -40,7 +40,9 @@ const router = createRouter({
     },
     {
       path: '/settings',
-      redirect: '/settings/github-app',
+      name: 'settings',
+      component: SettingsPage,
+      meta: { requiresAuth: true },
     },
     {
       path: '/settings/github-app',

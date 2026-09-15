@@ -21,25 +21,22 @@ Backend:
 
 Frontend:
 - `SettingsModal.vue` — the top-bar "Quick Settings" modal, which is entirely a PAT form. Delete the component and its trigger (gear button, `showSettings` ref, `handleSettingsSaved`, import) in `App.vue`.
-- `UserSettingsPanel.vue` — the `/settings` page panel, also entirely PAT. Delete the component.
 - PAT warning banner in `Dashboard.vue` (`showPATWarning`, `dismissPATWarning`, `patWarningDismissed`, the banner markup, and the `hasPersonalAccessToken`/`fetchUserSettings` import from `useUserSettings`)
 - `useUserSettings.ts` composable — delete entirely (no other consumers once the above are gone)
 - `apiService.getUserSettings` / `apiService.updateUserSettings` in `services/api.ts`
 - `UserSettings` interface in `types/index.ts`
+- The PAT section only of `UserSettingsPanel.vue` (see correction below) — form markup, `localPAT`/`showPAT`/`savingPAT`/`patMessage`/`patMessageType`/`hasExistingPAT`, `loadUserSettings`/`savePAT`/`clearPAT`, and the `apiService` import.
 
 **Not in scope — do not touch:**
 - `GitHubConfig.PersonalAccessToken` — a separate, unrelated app-level config field, genuinely used in `PullRequestsController.cs:156` and `ImagesController.cs:97`.
 - `docs/ideas/multi-org-aggregation/idea.md`'s mention of a `PersonalAccessToken` field on a future `GitHubOrgConnection` table — unrelated future idea, not this feature.
+- **`UserSettingsPanel.vue`'s Desktop Notifications section and the `/settings` route/nav entry that leads to it.** Corrected after initial implementation: this spec originally assumed `UserSettingsPanel.vue` was entirely a PAT form (based on reading only its first ~60 lines) and deleted the whole file, the `/settings` route, the `UserSettingsPanel`/"User Settings" nav entries, and de-admin-gated the sidebar Settings icon. That was wrong — the file's second half is the real, working Desktop Notifications settings UI (permission toggle, per-event toggles, quiet hours, test notification), unrelated to PAT. The fix: keep `UserSettingsPanel.vue`, `/settings`, `SettingsNav`'s "User Settings" entry, and the always-visible (non-admin-gated) sidebar Settings icon exactly as they were before this feature — only strip the PAT-specific markup/script out of the panel.
 
 ## Decisions
 
 1. **Migration drops the column outright.** The value was never actually usable as an auth token for anything, so there's no meaningful data to preserve.
 2. **No replacement messaging.** The banner's claim that a PAT is required for reviews/comments/viewed-state/merge is false today — those already work via OAuth `AccessToken`. Deleting the banner requires no replacement copy.
-3. **Navigation fallout (resolved during spec-writing, not a re-ask):** `UserSettingsPanel` was the only thing rendered at the bare `/settings` route, and that route is reachable via an always-visible sidebar gear icon (`AppSidebar.vue`) shown to *every* authenticated user, not just admins. Removing the panel without touching navigation would leave that icon pointing at a "Page not found" fallback for every non-admin user. Resolution, following the existing admin-gating pattern already used for the other icons in the same file:
-   - Gate the sidebar Settings icon behind `isAdmin` (same as the Administration/Analytics icons beside it) and repoint it at `/settings/github-app`.
-   - Remove the "User Settings" entry from `SettingsNav.vue`'s menu.
-   - Remove the `isUserSettings` branch from `SettingsPage.vue`.
-   - Redirect the bare `/settings` route to `/settings/github-app` in `router/index.ts`, mirroring the existing `/admin` → `/settings/admin` redirect already there, so old bookmarks/links don't dead-end.
+3. **Navigation fallout — superseded.** The original spec assumed removing `UserSettingsPanel.vue` entirely required de-admin-gating and repointing the sidebar Settings icon, dropping the "User Settings" nav entry, and redirecting `/settings`. Since `UserSettingsPanel.vue` is *not* being deleted (see Scope correction above) — only its PAT section — none of that navigation surgery is needed. `/settings`, `SettingsNav`, and `AppSidebar.vue` are left exactly as they were on `master`.
 
 ## Context
 

@@ -33,18 +33,16 @@
 
 7.1. Delete `gitbuddy-vue/src/views/SettingsModal.vue`.
 7.2. `gitbuddy-vue/src/App.vue` — remove the `SettingsModal` import, the `showSettings` ref, `handleSettingsSaved`, the gear button that sets `showSettings = true`, and the `<SettingsModal ... />` usage.
-7.3. Delete `gitbuddy-vue/src/components/settings/UserSettingsPanel.vue`.
-7.4. `gitbuddy-vue/src/views/SettingsPage.vue` — remove the `UserSettingsPanel` import and the `isUserSettings` computed + its template branch.
+7.3. **Correction (applied after initial implementation):** `gitbuddy-vue/src/components/settings/UserSettingsPanel.vue` is *not* PAT-only — it also contains the real, working Desktop Notifications settings UI. Do not delete the file. Instead strip only the "Personal Access Token" `<h3>` block, its `<form>`, the message banner below it, and the `<hr>` immediately after — keep the "Desktop Notifications" and "Preferences" sections untouched. In the script, remove only `localPAT`, `showPAT`, `savingPAT`, `patMessage`, `patMessageType`, `hasExistingPAT`, `loadUserSettings`, `savePAT`, `clearPAT`, and the `apiService` import; keep `useUserPreferences`/`useBrowserNotifications` wiring as-is.
+7.4. `gitbuddy-vue/src/views/SettingsPage.vue` — no change: keep the `UserSettingsPanel` import and the `isUserSettings` computed + template branch (reverted from the initial, incorrect removal).
 
 ## 8. Frontend — Dashboard PAT banner
 
 8.1. `gitbuddy-vue/src/views/Dashboard.vue` — remove the PAT warning banner markup, the `showPATWarning` computed, `patWarningDismissed` ref, `dismissPATWarning` function, and the `useUserSettings` import/usage (`hasPersonalAccessToken`, `fetchUserSettings`).
 
-## 9. Frontend — navigation fallout
+## 9. Frontend — navigation
 
-9.1. `gitbuddy-vue/src/components/layout/AppSidebar.vue` — change the Settings icon: add `v-if="isAdmin"` (matching the Administration/Analytics icons in the same file) and change its `to` from `/settings` to `/settings/github-app`.
-9.2. `gitbuddy-vue/src/components/settings/SettingsNav.vue` — remove the `{ id: 'user', label: 'User Settings', path: '/settings', ... }` menu item.
-9.3. `gitbuddy-vue/src/router/index.ts` — change the bare `/settings` route from `component: SettingsPage` to `redirect: '/settings/github-app'`, matching the existing `/admin` → `/settings/admin` redirect pattern already in the file.
+9.1. **Superseded — no change.** Since `UserSettingsPanel.vue` stays, `AppSidebar.vue`'s always-visible Settings icon (`/settings`, no admin gate), `SettingsNav.vue`'s "User Settings" entry, and `router/index.ts`'s `/settings` route (`component: SettingsPage`) are left exactly as they were on `master`.
 
 ## 10. Validation
 

@@ -23,6 +23,7 @@ import { computed, h } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAuthStore } from '../../stores/auth';
 import {
+  UserCircleIcon,
   Cog8ToothIcon,
   ShieldCheckIcon,
   ChartBarIcon
@@ -42,6 +43,12 @@ interface MenuItem {
 
 const menuItems = computed<MenuItem[]>(() => {
   const items: MenuItem[] = [
+    {
+      id: 'user',
+      label: 'User Settings',
+      path: '/settings',
+      icon: h(UserCircleIcon)
+    },
     {
       id: 'github-app',
       label: 'GitHub App',
@@ -68,5 +75,10 @@ const menuItems = computed<MenuItem[]>(() => {
   return items.filter(item => !item.adminOnly || isAdmin.value);
 });
 
-const isActive = (path: string): boolean => route.path.startsWith(path);
+const isActive = (path: string): boolean => {
+  if (path === '/settings') {
+    return route.path === '/settings';
+  }
+  return route.path.startsWith(path);
+};
 </script>
