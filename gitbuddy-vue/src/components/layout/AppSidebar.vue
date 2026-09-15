@@ -12,9 +12,10 @@
 
       <div class="flex flex-col items-center gap-2">
         <router-link
-          to="/settings"
+          v-if="isAdmin"
+          to="/settings/github-app"
           class="p-2 rounded-lg transition-colors"
-          :class="isActiveRoute('/settings') ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'"
+          :class="isActiveRoute('/settings/github-app') ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'"
           aria-label="Settings"
         >
           <Cog6ToothIcon class="w-6 h-6" />

@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { PlusIcon, ArrowPathIcon, Cog6ToothIcon } from '@heroicons/vue/24/outline';
+import { PlusIcon, ArrowPathIcon } from '@heroicons/vue/24/outline';
 import { useAuthStore } from './stores/auth';
 import { useCreatePRModal } from './composables/useCreatePRModal';
 import LoginButton from './components/LoginButton.vue';
 import UserMenu from './components/UserMenu.vue';
-import SettingsModal from './views/SettingsModal.vue';
 import MainLayout from './components/layout/MainLayout.vue';
 import CreatePRModal from './components/create-pr-modal.vue';
 import ToastContainer from './components/ToastContainer.vue';
@@ -29,7 +28,6 @@ const shouldShowDashboardControls = computed(() =>
   authStore.isAuthenticated && isDashboardRoute.value
 );
 
-const showSettings = ref(false);
 const { isOpen: showCreatePRModal, close: closeCreatePRModal, open: openCreatePRModal } = useCreatePRModal();
 
 const formatRelativeTime = (dateString: string): string => {
@@ -44,10 +42,6 @@ const formatRelativeTime = (dateString: string): string => {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
-};
-
-const handleSettingsSaved = () => {
-  showSettings.value = false;
 };
 
 const handlePRCreated = (pr: { id: number; url: string }) => {
@@ -105,14 +99,6 @@ const handlePRCreated = (pr: { id: number; url: string }) => {
               />
               Refresh
             </button>
-            <button
-              v-if="shouldShowDashboardControls"
-              @click="showSettings = true"
-              aria-label="Open settings"
-              class="p-2 rounded-lg hover:bg-slate-800 text-slate-400 transition-colors"
-            >
-              <Cog6ToothIcon class="w-5 h-5" />
-            </button>
             <LoginButton v-if="!authStore.isAuthenticated" />
             <UserMenu v-else />
           </div>
@@ -123,7 +109,6 @@ const handlePRCreated = (pr: { id: number; url: string }) => {
       <RouterView />
     </main>
 
-    <SettingsModal v-if="showSettings" role="dialog" aria-modal="true" @close="showSettings = false" @saved="handleSettingsSaved" />
     <CreatePRModal
       :is-open="showCreatePRModal"
       @close="closeCreatePRModal()"

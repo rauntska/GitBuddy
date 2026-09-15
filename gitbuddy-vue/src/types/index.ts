@@ -186,11 +186,6 @@ export interface Settings {
   teamsEnabled?: boolean;
 }
 
-export interface UserSettings {
-  personalAccessToken?: string;
-  hasPersonalAccessToken: boolean;
-}
-
 export interface Comment {
   id: number;
   gitHubId: string;
