@@ -15,7 +15,6 @@ public class User
     public string? AvatarUrl { get; set; }
     public DateTime? LastLoginAt { get; set; }
     public string? AccessToken { get; set; }
-    public string? PersonalAccessToken { get; set; }
 
     public int? InvitationId { get; set; }
     public Invitation? Invitation { get; set; }

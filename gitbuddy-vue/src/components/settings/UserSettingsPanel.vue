@@ -1,79 +1,6 @@
 <template>
   <div class="space-y-3">
     <div>
-      <h3 class="text-sm font-semibold uppercase tracking-wider text-slate-300 mb-2">Personal Access Token</h3>
-      <p class="text-sm text-slate-200/60 mb-4">
-        Your Personal Access Token is used for user-specific operations like submitting reviews,
-        marking files as viewed, and posting comments.
-      </p>
-      <form @submit.prevent="savePAT" class="space-y-4 border-t border-slate-800 pt-4">
-        <div>
-          <label class="block text-xs uppercase tracking-wider text-slate-500 mb-1.5">
-            Personal Access Token
-          </label>
-          <div class="flex gap-2">
-            <input
-              v-model="localPAT"
-              :type="showPAT ? 'text' : 'password'"
-              :placeholder="hasExistingPAT ? '••••••••••••••••••••' : 'ghp_xxxxxxxxxxxx'"
-              class="flex-1 px-3 py-2 bg-slate-900/60 border border-slate-700 rounded text-slate-200 placeholder-slate-500 focus:outline-none focus:border-slate-600 transition-colors font-mono text-sm"
-            />
-            <button
-              type="button"
-              @click="showPAT = !showPAT"
-              class="px-2.5 py-2 rounded border border-slate-800 text-slate-300 hover:bg-slate-800 transition-colors"
-            >
-              <EyeIcon v-if="!showPAT" class="w-4 h-4" />
-              <EyeSlashIcon v-else class="w-4 h-4" />
-            </button>
-          </div>
-          <p class="mt-1.5 text-[11px] text-slate-500">
-            Token requires 'repo' and 'read:org' scopes.
-            <a
-              href="https://github.com/settings/tokens/new"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="text-slate-300 hover:text-white underline underline-offset-2"
-            >
-              Create new token
-            </a>
-          </p>
-        </div>
-        <div class="flex gap-3">
-          <button
-            type="submit"
-            :disabled="savingPAT"
-            class="px-3 py-1.5 rounded bg-slate-200 hover:bg-white text-slate-900 text-sm transition-colors disabled:opacity-50"
-          >
-            {{ savingPAT ? 'Saving...' : 'Save Token' }}
-          </button>
-          <button
-            v-if="hasExistingPAT"
-            type="button"
-            @click="clearPAT"
-            class="px-3 py-1.5 rounded border border-red-900/40 bg-red-950/20 hover:bg-red-950/40 hover:border-red-900/60 text-red-400 text-sm transition-colors"
-          >
-            Clear Token
-          </button>
-        </div>
-      </form>
-      <div
-        v-if="patMessage"
-        :class="[
-          'mt-3 inline-flex items-center gap-2 px-3 py-2 rounded border text-sm',
-          patMessageType === 'success'
-            ? 'border-slate-700 bg-slate-900 text-slate-200'
-            : 'border-red-900/40 bg-red-950/20 text-red-400'
-        ]"
-      >
-        <span class="font-mono" :class="patMessageType === 'success' ? 'text-emerald-400' : 'text-red-400'">{{ patMessageType === 'success' ? '✓' : '✕' }}</span>
-        {{ patMessage }}
-      </div>
-    </div>
-
-    <hr class="border-slate-800" />
-
-    <div>
       <h3 class="text-sm font-semibold uppercase tracking-wider text-slate-300 mb-2">Desktop Notifications</h3>
       <p class="text-sm text-slate-200/60 mb-4">
         Receive browser notifications for PR activity when the tab is in the background.
@@ -201,23 +128,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { EyeIcon, EyeSlashIcon } from '@heroicons/vue/24/outline';
-import { apiService } from '../../services/api';
+import { computed, onMounted } from 'vue';
 import { useUserPreferences } from '../../composables/useUserPreferences';
 import { useBrowserNotifications } from '../../composables/useBrowserNotifications';
 import type { NotificationPreferences } from '../../types';
 
 const { preferences, loadPreferences, updatePreferences } = useUserPreferences();
 const browserNotifications = useBrowserNotifications();
-
-const localPAT = ref('');
-const showPAT = ref(false);
-const savingPAT = ref(false);
-const patMessage = ref('');
-const patMessageType = ref<'success' | 'error'>('success');
-const hasExistingPAT = ref(false);
-
 
 const notificationPermission = computed(() => browserNotifications.permissionStatus.value);
 
@@ -272,53 +189,7 @@ function testNotification() {
   browserNotifications.sendTestNotification();
 }
 
-const loadUserSettings = async () => {
-  try {
-    const settings = await apiService.getUserSettings();
-    hasExistingPAT.value = settings.hasPersonalAccessToken;
-  } catch (error) {
-    console.error('Failed to load user settings:', error);
-  }
-};
-
-const savePAT = async () => {
-  savingPAT.value = true;
-  patMessage.value = '';
-
-  try {
-    await apiService.updateUserSettings({ personalAccessToken: localPAT.value || null });
-    hasExistingPAT.value = !!localPAT.value;
-    localPAT.value = '';
-    patMessage.value = 'Personal access token saved successfully';
-    patMessageType.value = 'success';
-  } catch (error) {
-    patMessage.value = 'Failed to save personal access token';
-    patMessageType.value = 'error';
-  } finally {
-    savingPAT.value = false;
-  }
-};
-
-const clearPAT = async () => {
-  savingPAT.value = true;
-  patMessage.value = '';
-
-  try {
-    await apiService.updateUserSettings({ personalAccessToken: null });
-    hasExistingPAT.value = false;
-    localPAT.value = '';
-    patMessage.value = 'Personal access token cleared';
-    patMessageType.value = 'success';
-  } catch (error) {
-    patMessage.value = 'Failed to clear personal access token';
-    patMessageType.value = 'error';
-  } finally {
-    savingPAT.value = false;
-  }
-};
-
 onMounted(async () => {
-  loadUserSettings();
   await loadPreferences();
   browserNotifications.loadPreferences(preferences.value.notificationPreferences);
 });
