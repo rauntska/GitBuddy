@@ -20,6 +20,15 @@
       </div>
     </div>
 
+    <div v-else-if="loadInconsistency" class="p-8 text-center">
+      <div class="flex flex-col items-center gap-3 max-w-lg mx-auto">
+        <span class="font-mono text-amber-400 text-lg leading-none">⚠</span>
+        <p class="text-slate-300 text-sm">Can't compare this file</p>
+        <p class="text-slate-500 text-xs">{{ loadInconsistency }}</p>
+        <p class="text-slate-500 text-xs">Use the Source view to see the exact change.</p>
+      </div>
+    </div>
+
     <div v-else-if="renderedSections.length === 0" class="p-8 text-center">
       <p class="text-slate-400 text-sm">No content to render</p>
     </div>
@@ -133,7 +142,29 @@ const contentRef = ref<HTMLElement | null>(null);
 const expanded = ref<Set<string>>(new Set());
 const suppressedOpen = ref<Set<string>>(new Set());
 
+/**
+ * A revision that failed to load looks exactly like a revision that is legitimately empty, and
+ * the difference matters enormously: rendering an unreachable "new" side as "every block was
+ * removed" states something false with total confidence. Cross-check both sides against what
+ * the patch says the file's status is, and refuse to diff when they disagree.
+ */
+const loadInconsistency = computed<string | null>(() => {
+  if (loading.value || fetchError.value) return null;
+  if (!oldText.value && !newText.value) return null;
+
+  const status = (props.file.status ?? '').toLowerCase();
+
+  if (!newText.value.trim() && status !== 'deleted') {
+    return 'The updated version of this file could not be loaded, so the comparison would be wrong. This usually means the PR branch is unavailable — a fork, or a branch deleted after merge.';
+  }
+  if (!oldText.value.trim() && (status === 'modified' || status === 'renamed')) {
+    return 'The previous version of this file could not be loaded, so the comparison would be wrong.';
+  }
+  return null;
+});
+
 const analysis = computed(() => {
+  if (loadInconsistency.value) return null;
   if (!newText.value && !oldText.value) return null;
 
   const oldDoc = parseBlocks(oldText.value);
@@ -150,9 +181,12 @@ const analysis = computed(() => {
   return { pairs, quality: pairingQuality(pairs), mapDepth: newDoc.mapDepth || oldDoc.mapDepth };
 });
 
-const lowPairingQuality = computed(
-  () => (analysis.value?.quality ?? 1) < PAIRING_WARN_THRESHOLD
-);
+// Only meaningful when there were two sides to match. A newly added or wholly deleted file
+// pairs nothing by definition, and warning about it would be noise on every new file.
+const lowPairingQuality = computed(() => {
+  if (!oldText.value.trim() || !newText.value.trim()) return false;
+  return (analysis.value?.quality ?? 1) < PAIRING_WARN_THRESHOLD;
+});
 
 const renderedSections = computed<RenderedSection[]>(() => {
   if (!analysis.value) return [];
