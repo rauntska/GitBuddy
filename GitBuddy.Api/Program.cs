@@ -82,6 +82,7 @@ builder.Services.AddScoped<ILanguageDetectionService, LanguageDetectionService>(
 builder.Services.AddScoped<IGitHubConfigValidationService, GitHubConfigValidationService>();
 builder.Services.AddScoped<IPullRequestValidationService, PullRequestValidationService>();
 builder.Services.AddScoped<IPriorityService, PriorityService>();
+builder.Services.AddScoped<IChangelogService, ChangelogService>();
 
 // MediatR
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
@@ -141,6 +142,9 @@ using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await dbContext.Database.MigrateAsync();
+
+    var changelogService = scope.ServiceProvider.GetRequiredService<IChangelogService>();
+    await changelogService.SyncFromFileAsync();
 }
 
 app.UseResponseCompression();

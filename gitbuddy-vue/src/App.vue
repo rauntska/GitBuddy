@@ -10,16 +10,20 @@ import MainLayout from './components/layout/MainLayout.vue';
 import CreatePRModal from './components/create-pr-modal.vue';
 import ToastContainer from './components/ToastContainer.vue';
 import NotificationPermissionBanner from './components/NotificationPermissionBanner.vue';
+import ChangelogModal from './components/ChangelogModal.vue';
 import { usePullRequests } from './composables/usePullRequests';
+import { useChangelog } from './composables/useChangelog';
 
 const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
 const { loading, lastRefresh, refreshPullRequests, fetchPullRequests } = usePullRequests();
+const { unseenEntries, loadChangelog } = useChangelog();
 
 onMounted(() => {
   if (authStore.isAuthenticated) {
     authStore.refreshUserData();
+    loadChangelog();
   }
 });
 
@@ -99,6 +103,17 @@ const handlePRCreated = (pr: { id: number; url: string }) => {
               />
               Refresh
             </button>
+            <router-link
+              v-if="authStore.isAuthenticated"
+              to="/whats-new"
+              class="relative px-3 py-2 rounded-lg text-slate-300 hover:text-slate-100 hover:bg-slate-800/60 text-sm transition-colors"
+            >
+              What's new
+              <span
+                v-if="unseenEntries.length > 0"
+                class="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-blue-400"
+              />
+            </router-link>
             <LoginButton v-if="!authStore.isAuthenticated" />
             <UserMenu v-else />
           </div>
@@ -114,6 +129,7 @@ const handlePRCreated = (pr: { id: number; url: string }) => {
       @close="closeCreatePRModal()"
       @created="handlePRCreated"
     />
+    <ChangelogModal />
   </MainLayout>
   <ToastContainer />
 </template>

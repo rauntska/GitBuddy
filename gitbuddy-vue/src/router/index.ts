@@ -5,6 +5,7 @@ import PRDetail from '../views/PRDetail.vue';
 import AuthCallback from '../views/AuthCallback.vue';
 import AccessDenied from '../views/AccessDenied.vue';
 import SettingsPage from '../views/SettingsPage.vue';
+import ChangelogPage from '../views/ChangelogPage.vue';
 
 const router = createRouter({
   history: createWebHistory(),
@@ -65,6 +66,12 @@ const router = createRouter({
     {
       path: '/admin',
       redirect: '/settings/admin',
+    },
+    {
+      path: '/whats-new',
+      name: 'whats-new',
+      component: ChangelogPage,
+      meta: { requiresAuth: true },
     },
   ],
 });
