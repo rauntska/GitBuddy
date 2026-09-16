@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import type { UserPreferences } from '../types';
+import type { MarkdownDiffMode, UserPreferences } from '../types';
 import { apiService } from '../services/api';
 
 const preferences = ref<UserPreferences>({
@@ -85,7 +85,7 @@ export function useUserPreferences() {
     await updatePreference('diffViewMode', mode);
   };
 
-  const setMarkdownDiffMode = async (mode: 'rendered' | 'source') => {
+  const setMarkdownDiffMode = async (mode: MarkdownDiffMode) => {
     await updatePreference('markdownDiffMode', mode);
   };
 

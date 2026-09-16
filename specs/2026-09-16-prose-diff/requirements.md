@@ -68,6 +68,9 @@ Prose mode calls it once per file with all four range parameters set to the full
 `FULL_FILE_END_LINE` constant already used by `MarkdownDiffViewer.vue`. The shipped rendered
 view requests only the new side; prose requests both. Same endpoint, same call count.
 
+The client path is `/pullrequests/{id}/files/content` (no hyphen) — `PullRequestsController`
+routes as `api/[controller]`, and `apiClient` supplies the `/api` prefix.
+
 `PATCH /api/userpreferences` (`[Authorize]`) accepts `markdownDiffMode: "prose"` **with no
 server change**: `UserPreferences.MarkdownDiffMode` is a `text` column with
 `defaultValue: "rendered"` and no CHECK constraint, `UserPreferencesDto` and

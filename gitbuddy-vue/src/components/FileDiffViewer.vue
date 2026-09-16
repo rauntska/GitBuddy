@@ -15,23 +15,18 @@
       v-if="showMarkdownToggle && expanded && !loading"
       class="flex items-center gap-1 px-3 py-1.5 bg-slate-900 border-b border-slate-800"
     >
-      <div class="flex items-center gap-0.5 rounded-md bg-slate-800/60 p-0.5">
+      <div class="flex items-center gap-0.5 rounded-md bg-slate-800/60 p-0.5" role="group" aria-label="Markdown diff mode">
         <button
+          v-for="mode in markdownModes"
+          :key="mode"
           type="button"
-          @click="effectiveMarkdownMode !== 'source' && toggleMarkdownMode()"
-          :class="effectiveMarkdownMode === 'source'
+          @click="effectiveMarkdownMode !== mode && setMarkdownMode(mode)"
+          :aria-pressed="effectiveMarkdownMode === mode"
+          :class="effectiveMarkdownMode === mode
             ? 'bg-slate-700 text-slate-100'
             : 'text-slate-400 hover:text-slate-200'"
-          class="px-2.5 py-1 text-xs font-medium rounded transition-colors"
-        >Source</button>
-        <button
-          type="button"
-          @click="effectiveMarkdownMode !== 'rendered' && toggleMarkdownMode()"
-          :class="effectiveMarkdownMode === 'rendered'
-            ? 'bg-slate-700 text-slate-100'
-            : 'text-slate-400 hover:text-slate-200'"
-          class="px-2.5 py-1 text-xs font-medium rounded transition-colors"
-        >Rendered</button>
+          class="px-2.5 py-1 text-xs font-medium rounded transition-colors capitalize"
+        >{{ mode }}</button>
       </div>
     </div>
 
@@ -266,6 +261,12 @@
         :file="file"
         :pr-id="prId"
       />
+
+      <ProseDiffViewer
+        v-else-if="hunks.length > 0 && effectiveMarkdownMode === 'prose'"
+        :file="file"
+        :pr-id="prId"
+      />
     </div>
 
     <OrphanedComments
@@ -303,7 +304,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, watch } from 'vue';
-import type { FileDiff, Comment, ReviewThread, DiffHunk, AlignedRow, AlignedLine, ExpandPosition, PendingReviewComment } from '../types';
+import type { FileDiff, Comment, ReviewThread, DiffHunk, AlignedRow, AlignedLine, ExpandPosition, PendingReviewComment, MarkdownDiffMode } from '../types';
 import { parsePatch, alignDiffLines, renderInlineDiffSegments, calculateExpandRange, getGapBetweenHunks, mergeExpandedLines } from '../utils/diffHelpers';
 import { highlightCode, detectLanguageFromPath } from '../utils/syntaxHighlight';
 import { isMarkdownFile, canReconstruct } from '../utils/markdownDiffReconstruct';
@@ -318,6 +319,7 @@ import CommentThread from './comment-thread.vue';
 import CommentForm from './comment-form.vue';
 import OrphanedComments from './orphaned-comments.vue';
 import MarkdownDiffViewer from './MarkdownDiffViewer.vue';
+import ProseDiffViewer from './prose-diff-viewer.vue';
 
 const props = defineProps<{
   file: FileDiff;
@@ -445,15 +447,19 @@ const showMarkdownToggle = computed(() =>
   isMarkdownFile(props.file) && canReconstruct(props.file)
 );
 
+const markdownModes: MarkdownDiffMode[] = ['source', 'rendered', 'prose'];
+
 const markdownModePref = computed(() => preferences.value.markdownDiffMode ?? 'rendered');
 
-const effectiveMarkdownMode = computed<'source' | 'rendered'>(() =>
-  showMarkdownToggle.value && markdownModePref.value === 'rendered' ? 'rendered' : 'source'
+// Anything unrecognised (or a non-markdown file) falls back to the raw diff.
+const effectiveMarkdownMode = computed<MarkdownDiffMode>(() =>
+  showMarkdownToggle.value && markdownModes.includes(markdownModePref.value)
+    ? markdownModePref.value
+    : 'source'
 );
 
-const toggleMarkdownMode = () => {
-  const next = effectiveMarkdownMode.value === 'rendered' ? 'source' : 'rendered';
-  void setMarkdownDiffMode(next);
+const setMarkdownMode = (mode: MarkdownDiffMode) => {
+  void setMarkdownDiffMode(mode);
 };
 
 const getAlignedRows = (hunk: DiffHunk, hunkIndex: number): AlignedRow[] => {

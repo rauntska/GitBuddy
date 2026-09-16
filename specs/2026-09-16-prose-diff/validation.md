@@ -57,6 +57,10 @@ branch work, or craft one.
 | Case | Expected |
 |---|---|
 | Paragraph only re-wrapped, text identical | Reported as formatting-only and suppressed; appears in the disclosure list, not in the document |
+| `three` → `five` mid-sentence | Marked as whole words, not `del("thre") ins("fiv")` — word-boundary snapping (plan 5.2a) |
+| Deleting a whole word (`"a big dog"` → `"a dog"`) | Only `big ` is struck; `dog` must NOT be absorbed into the deletion |
+| Document title (`# Title`) above `##` sections | Does not render an `unchanged — 0 blocks` section, and is absent from the section map (plan 7.5a) |
+| List item that only gains/loses a trailing blank line | Suppressed, reason reads "trailing whitespace removed" — not "re-wrapped" |
 | `show` on the suppression disclosure | Lists each suppressed change with line numbers and a reason |
 | Section removed entirely | Appears in the section map as `removed` and renders struck through in place |
 | Section added entirely | Appears as `new`; all blocks render as added |

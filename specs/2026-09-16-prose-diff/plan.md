@@ -106,8 +106,21 @@ New file: `src/utils/proseDiff/renderBlock.ts`
 
 5.2 For a `content`-changed pair where both sides are `wordDiffable`, run the **existing**
 `computeInlineDiff(oldText, newText)` from `src/utils/diffHelpers.ts` over the blocks' `raw`
-text, then render the new-side segments with `renderInlineDiffSegments`, wrapping inserts in
-`<ins>` and deletes in `<del>`. Do not reimplement either helper.
+text. Do not reimplement the differ.
+
+> **Implemented differently:** the plan said to render with `renderInlineDiffSegments`. That
+> helper escapes HTML and emits `<span>`s — correct for code lines, but it would leave markdown
+> syntax visible as literal text. Instead the changed runs are wrapped in private-use sentinels
+> (``–``), passed through `marked`, and swapped for `<ins>`/`<del>` afterwards —
+> the same trick `renderMarkdownDiff.ts` uses for its block markers. `computeInlineDiff` is
+> still the differ; only the rendering step differs.
+
+5.2a **Word-boundary snapping** (not in the original plan, added after seeing real output).
+diff-match-patch is character-based, so `three → five` renders as
+`del("thre") ins("fiv") equal("e …")`. `snapToWordBoundaries` widens each run of changes out to
+whole words by pulling the partial word off the neighbouring equal segments. It must not fire
+when the run already starts or ends on whitespace, or deleting `"big "` from `"a big dog"`
+would swallow `"dog"`. Both cases are covered in validation.
 
 5.3 Run the resulting text through `marked.parse` so markdown inside the block still renders.
 Guard against the word diff splitting markup across a segment boundary: if the rendered output
@@ -159,6 +172,11 @@ view (`scrollIntoView({ behavior: 'smooth', block: 'center' })`, matching
 7.5 Sections whose every pair is `unchanged` render collapsed to a single
 `unchanged — N blocks` line, expanding on click. Per-section state is local component state,
 not persisted — matching the `viewMode` precedent in `ReviewTimeline.vue`.
+
+7.5a **Drop empty sections** (not in the original plan, added after seeing real output). A
+document title (`# Title` above `##` sections) owns no blocks of its own once content is
+bucketed at `mapDepth`, and rendered as `unchanged — 0 blocks`. Sections with no body pairs and
+an `unchanged` status are filtered out of both the document and the section map.
 
 7.6 Per-section suppression disclosure: `≡ N formatting-only changes hidden in this section`
 with a `show` / `hide` toggle revealing the `describeSuppressed` lines. Omit the row entirely
