@@ -25,8 +25,15 @@
           :class="effectiveMarkdownMode === mode
             ? 'bg-slate-700 text-slate-100'
             : 'text-slate-400 hover:text-slate-200'"
-          class="px-2.5 py-1 text-xs font-medium rounded transition-colors capitalize"
-        >{{ mode }}</button>
+          class="px-2.5 py-1 text-xs font-medium rounded transition-colors capitalize inline-flex items-center gap-1.5"
+        >
+          {{ mode }}
+          <span
+            v-if="mode === 'prose'"
+            class="font-mono text-[9px] leading-none tracking-wider uppercase rounded px-1 py-0.5
+                   text-amber-400 bg-amber-400/10 border border-amber-400/40"
+          >new</span>
+        </button>
       </div>
     </div>
 

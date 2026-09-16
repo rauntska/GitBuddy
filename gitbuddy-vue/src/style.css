@@ -9,6 +9,32 @@
   }
 }
 
+/*
+ * Diff highlight tokens, shared by the code diff, the rendered markdown view and the prose
+ * view so added/removed content reads the same everywhere.
+ *
+ * These deliberately use the bright GitHub-dark diff hues rather than the slate-950-adjacent
+ * emerald-950/rose-950 tints used elsewhere: a near-black tint at low alpha over a near-black
+ * page is invisible. Diff fills are the one place the dense/pro "no large fills" rule gives
+ * way — they have to be legible at a glance.
+ */
+:root {
+  --diff-add-fill: rgb(63 185 80 / 0.18);
+  --diff-add-fill-strong: rgb(63 185 80 / 0.38);
+  --diff-add-edge: rgb(63 185 80 / 0.85);
+  --diff-add-text: #7ee787;
+
+  --diff-del-fill: rgb(248 81 73 / 0.16);
+  --diff-del-fill-strong: rgb(248 81 73 / 0.38);
+  --diff-del-edge: rgb(248 81 73 / 0.8);
+  --diff-del-text: #ffa198;
+
+  /* Amber, for content that changed in a way the green/red add/remove pair can't express —
+     a table or code block that can only be marked at block level. */
+  --diff-changed-fill: rgb(251 191 36 / 0.12);
+  --diff-changed-edge: rgb(251 191 36 / 0.55);
+}
+
 html,
 body {
   background-color: #0f172a;

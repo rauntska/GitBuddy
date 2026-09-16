@@ -33,13 +33,17 @@ export function renderPairedBlock(pair: ClassifiedPair): string {
     return wrap('prose-block', parse(pair.new.raw));
   }
 
-  // Changed, and meaningfully so.
+  // Changed, and meaningfully so. A block we cannot word-diff (table, code, html) gets a
+  // block-level treatment instead — otherwise it would change completely silently, which is
+  // exactly what happens to a table gaining a row.
   if (!pair.old || !pair.new.wordDiffable || !pair.old.wordDiffable) {
-    return wrap('prose-block prose-changed', parse(pair.new.raw));
+    return wrap('prose-block prose-changed-opaque', parse(pair.new.raw));
   }
 
   const wordDiffHtml = renderWordDiff(pair.old.raw, pair.new.raw);
-  return wrap('prose-block prose-changed', wordDiffHtml ?? parse(pair.new.raw));
+  return wordDiffHtml === null
+    ? wrap('prose-block prose-changed-opaque', parse(pair.new.raw))
+    : wrap('prose-block prose-changed', wordDiffHtml);
 }
 
 /**

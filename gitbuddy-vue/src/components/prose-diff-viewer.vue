@@ -362,36 +362,52 @@ watch(
 <style>
 .prose-diff-content .prose-block { margin: 0; }
 
+/* Colours come from the shared diff tokens in src/style.css — see the note there on why
+   these use bright hues rather than the near-black emerald-950/rose-950 tints. */
 .prose-diff-content .prose-added {
-  background: rgba(2, 44, 34, 0.18);
-  border-left: 1px solid rgb(6, 95, 70);
-  padding: 2px 0 2px 10px;
+  background: var(--diff-add-fill);
+  box-shadow: inset 3px 0 0 0 var(--diff-add-edge);
+  border-radius: 0 0.25rem 0.25rem 0;
+  padding: 2px 8px 2px 12px;
   margin: 6px 0;
 }
 
 .prose-diff-content .prose-removed {
-  background: rgba(44, 2, 2, 0.14);
-  border-left: 1px solid rgb(127, 29, 29);
-  padding: 2px 0 2px 10px;
+  background: var(--diff-del-fill);
+  box-shadow: inset 3px 0 0 0 var(--diff-del-edge);
+  border-radius: 0 0.25rem 0.25rem 0;
+  padding: 2px 8px 2px 12px;
   margin: 6px 0;
-  color: rgb(71, 85, 105);
+  /* Muted enough to read as "gone", bright enough to still be readable. */
+  color: rgb(148 163 184);
   text-decoration: line-through;
-  text-decoration-color: rgba(71, 85, 105, 0.6);
+  text-decoration-color: var(--diff-del-edge);
+}
+
+/* Blocks that can't be word-diffed (tables, code, raw html). Without this they would change
+   with no visual signal at all — the common case being a table that gained a row. */
+.prose-diff-content .prose-changed-opaque {
+  background: var(--diff-changed-fill);
+  box-shadow: inset 3px 0 0 0 var(--diff-changed-edge);
+  border-radius: 0 0.25rem 0.25rem 0;
+  padding: 2px 8px 2px 12px;
+  margin: 6px 0;
 }
 
 .prose-diff-content ins.prose-ins {
-  background: rgba(2, 44, 34, 0.35);
-  color: rgb(52, 211, 153);
+  background: var(--diff-add-fill-strong);
+  color: var(--diff-add-text);
   text-decoration: none;
-  border-bottom: 1px solid rgba(52, 211, 153, 0.4);
-  padding: 0 1px;
+  border-radius: 2px;
+  padding: 0 2px;
 }
 
 .prose-diff-content del.prose-del {
-  background: rgba(44, 2, 2, 0.35);
-  color: rgb(248, 113, 113);
+  background: var(--diff-del-fill-strong);
+  color: var(--diff-del-text);
   text-decoration: line-through;
-  text-decoration-color: rgba(248, 113, 113, 0.6);
-  padding: 0 1px;
+  text-decoration-color: rgb(248 81 73 / 0.7);
+  border-radius: 2px;
+  padding: 0 2px;
 }
 </style>
