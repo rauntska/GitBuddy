@@ -1,6 +1,6 @@
 <template>
-  <div v-if="sections.length > 0" class="border-b border-slate-800 pb-2 mb-4">
-    <div class="flex items-center gap-2 mb-1.5">
+  <div v-if="sections.length > 0" class="border-b border-slate-800 pb-1.5 mb-2.5">
+    <div class="flex items-center gap-2 mb-1">
       <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-300">Sections</h2>
       <span class="font-mono text-xs text-slate-500 tabular-nums">{{ summaryLine }}</span>
     </div>

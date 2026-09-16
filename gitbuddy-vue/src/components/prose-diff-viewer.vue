@@ -34,10 +34,10 @@
       <p class="text-slate-600 text-xs mt-1">Use the Source view to see the exact change.</p>
     </div>
 
-    <div v-else ref="contentRef" class="px-4 py-4">
+    <div v-else ref="contentRef" class="px-3 py-2.5">
       <div
         v-if="lowPairingQuality"
-        class="mb-4 px-3 py-2 border border-slate-800 border-l-2 border-l-amber-600 text-xs text-slate-400"
+        class="mb-2.5 px-3 py-1.5 border border-slate-800 border-l-2 border-l-amber-600 text-xs text-slate-400"
       >
         This document restructured heavily, so matching blocks between revisions was unreliable.
         The Source view shows the exact change.
@@ -49,10 +49,10 @@
         v-for="section in renderedSections"
         :key="section.domId"
         :id="section.domId"
-        class="mb-5 pl-3 border-l-2"
+        class="mb-2.5 pl-2.5 border-l-2"
         :class="borderFor(section.status)"
       >
-        <h3 v-if="section.title" class="text-slate-100 mb-1">
+        <h3 v-if="section.title" class="text-sm text-slate-100 mb-0.5">
           <span class="font-mono text-slate-600 mr-1.5">{{ '#'.repeat(section.depth) }}</span>
           <span :class="section.status === 'removed' ? 'line-through text-slate-600' : ''">{{ section.title }}</span>
           <span class="font-mono text-[10px] ml-2" :class="tagClassFor(section.status)">{{ tagFor(section) }}</span>
@@ -71,7 +71,7 @@
         <template v-else>
           <div
             v-if="section.suppressed.length > 0"
-            class="my-2 px-3 py-1.5 border border-slate-800 rounded text-xs text-slate-500"
+            class="my-1.5 px-2.5 py-1 border border-slate-800 rounded text-xs text-slate-500"
           >
             <div class="flex items-center gap-2">
               <span class="font-mono text-slate-600">≡</span>
@@ -360,7 +360,73 @@ watch(
 </script>
 
 <style>
+/*
+ * Compact typography. @tailwindcss/typography ships a reading layout — 16px/28px text with
+ * 20px paragraph and 28px table margins — which is far too airy for a review surface. These
+ * pull it back toward the dense/pro rhythm in docs/reference/visual-style.md.
+ *
+ * Scoped to .prose-diff-content so the shipped rendered view keeps its current density.
+ */
+.prose-diff-content {
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.prose-diff-content p,
+.prose-diff-content ul,
+.prose-diff-content ol,
+.prose-diff-content blockquote,
+.prose-diff-content pre,
+.prose-diff-content table {
+  margin-top: 0.3rem;
+  margin-bottom: 0.3rem;
+}
+
+.prose-diff-content h1,
+.prose-diff-content h2,
+.prose-diff-content h3,
+.prose-diff-content h4,
+.prose-diff-content h5,
+.prose-diff-content h6 {
+  font-size: 13.5px;
+  margin-top: 0.5rem;
+  margin-bottom: 0.2rem;
+}
+
+.prose-diff-content li {
+  margin-top: 0.05rem;
+  margin-bottom: 0.05rem;
+  padding-left: 0.25rem;
+}
+
+.prose-diff-content li > p {
+  margin: 0;
+}
+
+.prose-diff-content td,
+.prose-diff-content th {
+  padding: 3px 8px;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.prose-diff-content pre {
+  padding: 6px 10px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* No leading or trailing gap inside a block wrapper. */
+.prose-diff-content > :first-child,
+.prose-diff-content .prose-block > :first-child { margin-top: 0; }
+.prose-diff-content > :last-child,
+.prose-diff-content .prose-block > :last-child { margin-bottom: 0; }
+
 .prose-diff-content .prose-block { margin: 0; }
+
+/* Each block is its own wrapper, so the :first/:last-child rules above zero every internal
+   margin. Restore a minimal gap between blocks — rhythm without air. */
+.prose-diff-content .prose-block + .prose-block { margin-top: 4px; }
 
 /* Colours come from the shared diff tokens in src/style.css — see the note there on why
    these use bright hues rather than the near-black emerald-950/rose-950 tints. */
@@ -368,16 +434,16 @@ watch(
   background: var(--diff-add-fill);
   box-shadow: inset 3px 0 0 0 var(--diff-add-edge);
   border-radius: 0 0.25rem 0.25rem 0;
-  padding: 2px 8px 2px 12px;
-  margin: 6px 0;
+  padding: 1px 8px 1px 10px;
+  margin: 3px 0;
 }
 
 .prose-diff-content .prose-removed {
   background: var(--diff-del-fill);
   box-shadow: inset 3px 0 0 0 var(--diff-del-edge);
   border-radius: 0 0.25rem 0.25rem 0;
-  padding: 2px 8px 2px 12px;
-  margin: 6px 0;
+  padding: 1px 8px 1px 10px;
+  margin: 3px 0;
   /* Muted enough to read as "gone", bright enough to still be readable. */
   color: rgb(148 163 184);
   text-decoration: line-through;
@@ -390,8 +456,8 @@ watch(
   background: var(--diff-changed-fill);
   box-shadow: inset 3px 0 0 0 var(--diff-changed-edge);
   border-radius: 0 0.25rem 0.25rem 0;
-  padding: 2px 8px 2px 12px;
-  margin: 6px 0;
+  padding: 1px 8px 1px 10px;
+  margin: 3px 0;
 }
 
 /* Per-row table diffing: the table renders normally, individual rows carry the change. */
