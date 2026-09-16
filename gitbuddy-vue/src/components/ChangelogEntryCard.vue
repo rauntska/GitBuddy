@@ -14,18 +14,20 @@
       <span class="font-mono text-xs text-slate-500">{{ formattedDate }}</span>
     </div>
     <h3 class="text-[15px] text-slate-200 mb-1.5">{{ entry.title }}</h3>
-    <DescriptionRenderer :content="entry.body" />
+    <div class="prose prose-invert prose-sm max-w-none text-sm text-slate-300 leading-relaxed markdown-content" v-html="html" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { ChangelogEntry } from '../types';
-import DescriptionRenderer from './DescriptionRenderer.vue';
+import { useProxiedHtml } from '../composables/useProxiedHtml';
 
 const props = defineProps<{
   entry: ChangelogEntry;
 }>();
+
+const { html } = useProxiedHtml(() => props.entry.body, { isMarkdown: true });
 
 const categoryStyles: Record<ChangelogEntry['category'], { glyph: string; color: string }> = {
   Feature: { glyph: '●', color: 'text-blue-400' },
