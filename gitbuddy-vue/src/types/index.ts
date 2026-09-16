@@ -344,9 +344,11 @@ export interface PendingReviewComment {
   threadId?: string;
 }
 
+export type MarkdownDiffMode = 'rendered' | 'source' | 'prose';
+
 export interface UserPreferences {
   diffViewMode: 'split' | 'unified';
-  markdownDiffMode?: 'rendered' | 'source';
+  markdownDiffMode?: MarkdownDiffMode;
   showContext: boolean;
   fileTreeWidth: number;
   commentsPanelWidth: number;

@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prose Diff — mockup</title>
+<style>
+  :root {
+    --bg:#0f172a; --surface:#1e293b66; --surface-raised:#1e293b;
+    --border:#1e293b; --border-hover:#334155;
+    --text:#e2e8f0; --text-dim:#94a3b8; --text-faint:#64748b; --text-ghost:#475569;
+    --heading:#cbd5e1; --bright:#f1f5f9;
+    --add:#34d399; --del:#f87171; --pending:#fbbf24; --info:#60a5fa; --violet:#a78bfa;
+    --add-bg:#022c2233; --del-bg:#2c020233;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    font-feature-settings:"tnum";
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:20px 16px 64px}
+
+  .mock-note{
+    border:1px solid var(--border); border-left:2px solid var(--violet);
+    padding:8px 12px; margin-bottom:20px; font-size:11px; color:var(--text-faint);
+  }
+  .mock-note b{color:var(--heading);font-weight:400}
+
+  /* ---------- file header ---------- */
+  .fh{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+      padding:8px 12px;border:1px solid var(--border);border-radius:4px;background:#1e293b26}
+  .path{font-family:var(--mono);font-size:13px;color:var(--text)}
+  .path .dir{color:var(--text-faint)}
+  .chip{border:1px solid #33415599;background:#1e293b99;border-radius:3px;
+        padding:1px 6px;font-size:11px;color:var(--text-dim)}
+  .stat{font-family:var(--mono);font-size:12px}
+  .stat .p{color:var(--add)} .stat .m{color:var(--del)}
+  .spacer{flex:1}
+
+  .seg{display:flex;border:1px solid var(--border);background:#0f172a99;border-radius:3px;padding:2px}
+  .seg button{
+    font-family:var(--mono);font-size:11px;background:none;border:0;color:var(--text-faint);
+    padding:3px 9px;cursor:pointer;border-radius:2px;transition:color .15s,background .15s}
+  .seg button:hover{color:var(--heading)}
+  .seg button[aria-pressed="true"]{background:#334155;color:var(--bright)}
+  .seg .new::after{content:"new";margin-left:5px;font-size:9px;color:var(--add);letter-spacing:.04em}
+
+  /* ---------- section map ---------- */
+  .map{margin-top:14px;border-bottom:1px solid var(--border);padding-bottom:8px}
+  .map-h{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+  .map-h h2{font-size:12px;text-transform:uppercase;letter-spacing:.09em;font-weight:600;
+            color:var(--heading);margin:0}
+  .map-h .n{font-family:var(--mono);font-size:11px;color:var(--text-faint)}
+  .map-list{display:flex;gap:6px;flex-wrap:wrap}
+  .sec-chip{
+    display:flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:3px;
+    background:none;padding:3px 9px;cursor:pointer;color:var(--text);font-size:12px;
+    font-family:inherit;transition:border-color .15s,transform .15s,background .15s}
+  .sec-chip:hover{background:#1e293b66;border-color:var(--border-hover);transform:translateY(-1px)}
+  .sec-chip .g{font-family:var(--mono);font-size:11px}
+  .sec-chip .meta{font-family:var(--mono);font-size:10px;color:var(--text-faint)}
+  .sec-chip.added .g{color:var(--add)} .sec-chip.removed .g{color:var(--del)}
+  .sec-chip.mod .g{color:var(--pending)} .sec-chip.same .g{color:var(--text-ghost)}
+  .sec-chip.same{color:var(--text-faint)}
+
+  /* ---------- document ---------- */
+  .doc{margin-top:18px}
+  .sec{border-left:2px solid transparent;padding-left:14px;margin-bottom:22px}
+  .sec.added{border-left-color:#065f46}
+  .sec.removed{border-left-color:#7f1d1d}
+  .sec.mod{border-left-color:#78350f}
+  .sec h3{font-size:15px;color:var(--bright);margin:0 0 4px;font-weight:400}
+  .sec h3 .hash{color:var(--text-ghost);font-family:var(--mono);margin-right:6px}
+  .sec .tag{font-family:var(--mono);font-size:10px;margin-left:8px;letter-spacing:.04em}
+  .sec.added .tag{color:var(--add)} .sec.removed .tag{color:var(--del)}
+  .sec.mod .tag{color:var(--pending)} .sec.same .tag{color:var(--text-ghost)}
+  .sec p{margin:9px 0;color:var(--text)}
+  .sec ul{margin:9px 0;padding-left:20px} .sec li{margin:3px 0}
+  .collapsed-body{display:none}
+  .sec.is-collapsed .collapsed-body{display:none}
+  .sec.is-open .collapsed-body{display:block}
+  .peek{font-size:12px;color:var(--text-faint);cursor:pointer;padding:2px 0;
+        display:flex;align-items:center;gap:7px}
+  .peek:hover{color:var(--text-dim)}
+  .peek .g{font-family:var(--mono);font-size:10px;color:var(--text-ghost)}
+  .sec.is-open .peek{display:none}
+
+  ins{background:var(--add-bg);color:var(--add);text-decoration:none;
+      border-bottom:1px solid #34d39966;padding:0 1px}
+  del{background:var(--del-bg);color:var(--del);text-decoration:line-through;
+      text-decoration-color:#f8717199;padding:0 1px}
+  .gone{color:var(--text-ghost);text-decoration:line-through;
+        text-decoration-color:#47556999}
+  .gone-blk{background:#2c020218;border-left:1px solid #7f1d1d;padding:4px 0 4px 10px;margin:9px 0}
+
+  /* ---------- noise bar ---------- */
+  .noise{display:flex;align-items:center;gap:9px;border:1px solid var(--border);
+         border-radius:3px;padding:5px 11px;margin:9px 0;font-size:12px;color:var(--text-faint)}
+  .noise .g{font-family:var(--mono);color:var(--text-ghost);font-size:11px}
+  .noise button{background:none;border:0;color:var(--info);font-size:12px;cursor:pointer;
+                font-family:inherit;padding:0;text-decoration:underline;text-underline-offset:2px}
+  .noise-body{display:none;font-family:var(--mono);font-size:11px;color:var(--text-faint);
+              padding:7px 0 2px 20px;line-height:1.7}
+  .noise-body.open{display:block}
+
+  /* ---------- source view ---------- */
+  .src{font-family:var(--mono);font-size:12px;border:1px solid var(--border);border-radius:4px;
+       overflow:hidden;margin-top:18px}
+  .src .ln{display:flex;white-space:pre-wrap}
+  .src .no{width:46px;flex:none;text-align:right;padding:1px 9px 1px 0;color:var(--text-ghost);
+           background:#02061733;user-select:none;border-right:1px solid var(--border)}
+  .src .tx{padding:1px 10px;flex:1;word-break:break-word}
+  .src .ln.a{background:#022c2226} .src .ln.a .tx{color:var(--add)}
+  .src .ln.d{background:#2c020226} .src .ln.d .tx{color:var(--del)}
+  .src .ln.h .tx{color:var(--info);background:#0f172a}
+  .callout{border:1px solid var(--border);border-left:2px solid var(--pending);
+           padding:8px 12px;margin-top:14px;font-size:12px;color:var(--text-dim)}
+  .callout b{color:var(--pending);font-weight:400}
+
+  .legend{margin-top:26px;border-top:1px solid var(--border);padding-top:10px;
+          display:flex;gap:18px;flex-wrap:wrap;font-size:11px;color:var(--text-faint)}
+  .legend span b{font-weight:400;color:var(--text-dim)}
+  .hidden{display:none}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="mock-note">
+    <b>Static mockup</b> — <code>docs/ideas/prose-diff/idea.md</code>. Same file, same change, three views:
+    <b>Source</b> and <b>Rendered</b> are what ships today; <b>Prose</b> is the proposal. Switch between them to compare.
+  </div>
+
+  <!-- ============ file header ============ -->
+  <div class="fh">
+    <span class="path"><span class="dir">specs/2026-09-10-payment-retry/</span>requirements.md</span>
+    <span class="chip">docs</span>
+    <span class="stat"><span class="p">+142</span> <span class="m">−38</span></span>
+    <span class="spacer"></span>
+    <div class="seg" role="group" aria-label="Diff mode">
+      <button data-mode="source"  aria-pressed="false">Source</button>
+      <button data-mode="rendered" aria-pressed="false">Rendered</button>
+      <button data-mode="prose" class="new" aria-pressed="true">Prose</button>
+    </div>
+  </div>
+
+  <!-- ============ PROSE (proposed) ============ -->
+  <div id="view-prose">
+    <div class="map">
+      <div class="map-h">
+        <h2>Sections</h2>
+        <span class="n">5 · 1 added · 1 removed · 1 changed · 2 unchanged</span>
+      </div>
+      <div class="map-list">
+        <button class="sec-chip same"    data-target="s-problem"><span class="g">–</span>Problem<span class="meta">unchanged</span></button>
+        <button class="sec-chip mod"     data-target="s-req"><span class="g">◐</span>Requirements<span class="meta">2 blocks</span></button>
+        <button class="sec-chip added"   data-target="s-retry"><span class="g">+</span>Retry Policy<span class="meta">new</span></button>
+        <button class="sec-chip removed" data-target="s-scope"><span class="g">−</span>Out of Scope<span class="meta">removed</span></button>
+        <button class="sec-chip same"    data-target="s-open"><span class="g">–</span>Open Questions<span class="meta">unchanged</span></button>
+      </div>
+    </div>
+
+    <div class="doc">
+
+      <section class="sec same is-collapsed" id="s-problem">
+        <h3><span class="hash">##</span>Problem<span class="tag">unchanged</span></h3>
+        <div class="peek"><span class="g">▸</span>unchanged — 3 paragraphs</div>
+        <div class="collapsed-body">
+          <p>Payment webhooks from the provider fail intermittently under load. Failed deliveries
+          are dropped rather than retried, so a customer's subscription silently lapses.</p>
+        </div>
+      </section>
+
+      <section class="sec mod" id="s-req">
+        <h3><span class="hash">##</span>Requirements<span class="tag">2 blocks changed</span></h3>
+
+        <p>The retry worker MUST re-attempt any delivery that returns a
+        <del>5xx</del><ins>retryable</ins> status, backing off
+        <del>linearly</del><ins>exponentially</ins> between attempts, and MUST stop after
+        <del>three</del><ins>five</ins> attempts or
+        <ins>24 hours, whichever comes first</ins><del>one hour</del>.</p>
+
+        <div class="noise">
+          <span class="g">≡</span>
+          <span>6 formatting-only changes hidden in this section</span>
+          <button id="noise-toggle">show</button>
+        </div>
+        <div class="noise-body" id="noise-body">
+          L18–21 · paragraph re-wrapped, text identical<br>
+          L34 · trailing whitespace removed<br>
+          L52–55 · ordered list renumbered 1,2,3 → 1,1,1<br>
+          L61 · reference link moved to footer
+        </div>
+
+        <ul>
+          <li>Deliveries are idempotent — the consumer MUST tolerate duplicates.</li>
+          <li>Each attempt is recorded with <ins>attempt number, </ins>timestamp and response code.</li>
+          <li class="gone-blk"><span class="gone">Retries are best-effort and need not be durable across restarts.</span></li>
+        </ul>
+      </section>
+
+      <section class="sec added" id="s-retry">
+        <h3><span class="hash">##</span>Retry Policy<span class="tag">new section</span></h3>
+        <p>Backoff is <code>2^n × 30s</code> with full jitter, capped at 4 hours. The worker holds
+        a lease per delivery so two instances cannot retry the same payload concurrently.</p>
+      </section>
+
+      <section class="sec removed" id="s-scope">
+        <h3><span class="hash">##</span><span class="gone">Out of Scope</span><span class="tag">removed</span></h3>
+        <div class="gone-blk">
+          <span class="gone">Dead-letter queue handling is out of scope for this change and will be
+          specified separately.</span>
+        </div>
+      </section>
+
+      <section class="sec same is-collapsed" id="s-open">
+        <h3><span class="hash">##</span>Open Questions<span class="tag">unchanged</span></h3>
+        <div class="peek"><span class="g">▸</span>unchanged — 4 bullets</div>
+        <div class="collapsed-body">
+          <ul><li>Does the provider expose a replay endpoint we could use instead?</li></ul>
+        </div>
+      </section>
+
+    </div>
+
+    <div class="legend">
+      <span><ins>inserted words</ins></span>
+      <span><del>deleted words</del></span>
+      <span><b>◐</b> section changed</span>
+      <span><b>+ / −</b> section added / removed</span>
+      <span><b>≡</b> formatting-only, suppressed</span>
+    </div>
+  </div>
+
+  <!-- ============ RENDERED (today) ============ -->
+  <div id="view-rendered" class="hidden">
+    <div class="doc" style="margin-top:20px">
+      <section class="sec"><h3><span class="hash">##</span>Problem</h3>
+        <p>Payment webhooks from the provider fail intermittently under load. Failed deliveries
+        are dropped rather than retried, so a customer's subscription silently lapses.</p></section>
+
+      <section class="sec"><h3><span class="hash">##</span>Requirements</h3>
+        <p style="background:#022c2226;border-left:2px solid #065f46;padding:6px 10px">
+        The retry worker MUST re-attempt any delivery that returns a retryable status, backing off
+        exponentially between attempts, and MUST stop after five attempts or 24 hours, whichever
+        comes first.</p>
+        <p style="background:#022c2226;border-left:2px solid #065f46;padding:6px 10px">
+        Deliveries must be processed in order where the provider supplies a sequence number.
+        Ordering is not guaranteed across partitions.</p>
+        <ul>
+          <li>Deliveries are idempotent — the consumer MUST tolerate duplicates.</li>
+          <li style="background:#022c2226">Each attempt is recorded with attempt number, timestamp and response code.</li>
+        </ul>
+      </section>
+
+      <section class="sec"><h3><span class="hash">##</span>Retry Policy</h3>
+        <p style="background:#022c2226;border-left:2px solid #065f46;padding:6px 10px">
+        Backoff is <code>2^n × 30s</code> with full jitter, capped at 4 hours. The worker holds
+        a lease per delivery so two instances cannot retry the same payload concurrently.</p></section>
+
+      <section class="sec"><h3><span class="hash">##</span>Open Questions</h3>
+        <ul><li>Does the provider expose a replay endpoint we could use instead?</li></ul></section>
+    </div>
+
+    <div class="callout">
+      <b>Two problems visible here.</b> Whole blocks are tinted, so a one-word change lights up an
+      entire paragraph — <code>renderMarkdownWithAddedHighlights</code> tags any block containing an
+      added line. And the removed <code>## Out of Scope</code> section and the deleted "best-effort"
+      bullet are <b>absent entirely</b>: the renderer takes only <code>addedLineNumbers</code>, so
+      removals are invisible in the default mode.
+    </div>
+  </div>
+
+  <!-- ============ SOURCE (today) ============ -->
+  <div id="view-source" class="hidden">
+    <div class="src">
+      <div class="ln h"><span class="no"></span><span class="tx">@@ -14,21 +14,26 @@ ## Requirements</span></div>
+      <div class="ln d"><span class="no">14</span><span class="tx">-The retry worker MUST re-attempt any delivery that returns a 5xx status,</span></div>
+      <div class="ln d"><span class="no">15</span><span class="tx">-backing off linearly between attempts, and MUST stop after three attempts</span></div>
+      <div class="ln d"><span class="no">16</span><span class="tx">-or one hour.</span></div>
+      <div class="ln a"><span class="no">14</span><span class="tx">+The retry worker MUST re-attempt any delivery that returns a retryable</span></div>
+      <div class="ln a"><span class="no">15</span><span class="tx">+status, backing off exponentially between attempts, and MUST stop after</span></div>
+      <div class="ln a"><span class="no">16</span><span class="tx">+five attempts or 24 hours, whichever comes first.</span></div>
+      <div class="ln"><span class="no">17</span><span class="tx"> </span></div>
+      <div class="ln d"><span class="no">18</span><span class="tx">-Deliveries must be processed in order where the provider supplies a</span></div>
+      <div class="ln d"><span class="no">19</span><span class="tx">-sequence number. Ordering is not guaranteed across partitions.</span></div>
+      <div class="ln a"><span class="no">18</span><span class="tx">+Deliveries must be processed in order where the provider supplies a sequence</span></div>
+      <div class="ln a"><span class="no">19</span><span class="tx">+number. Ordering is not guaranteed across partitions.</span></div>
+      <div class="ln"><span class="no">20</span><span class="tx"> </span></div>
+      <div class="ln"><span class="no">21</span><span class="tx"> - Deliveries are idempotent — the consumer MUST tolerate duplicates.</span></div>
+      <div class="ln d"><span class="no">22</span><span class="tx">-- Each attempt is recorded with timestamp and response code.</span></div>
+      <div class="ln d"><span class="no">23</span><span class="tx">-- Retries are best-effort and need not be durable across restarts.</span></div>
+      <div class="ln a"><span class="no">22</span><span class="tx">+- Each attempt is recorded with attempt number, timestamp and response code.</span></div>
+    </div>
+
+    <div class="callout">
+      <b>Lines 18–19 are the problem case.</b> The text is <em>identical</em> — the paragraph was
+      re-wrapped one word wider. The line diff reports two deletions and two insertions, and the
+      reviewer has to read all four lines to establish that nothing changed. On a 400-line spec
+      this happens dozens of times.
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const views = {
+    source:   document.getElementById('view-source'),
+    rendered: document.getElementById('view-rendered'),
+    prose:    document.getElementById('view-prose'),
+  };
+  document.querySelectorAll('.seg button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const mode = btn.dataset.mode;
+      document.querySelectorAll('.seg button').forEach(b =>
+        b.setAttribute('aria-pressed', String(b === btn)));
+      Object.entries(views).forEach(([k, el]) => el.classList.toggle('hidden', k !== mode));
+    });
+  });
+
+  // collapsed unchanged sections
+  document.querySelectorAll('.peek').forEach(p => {
+    p.addEventListener('click', () => {
+      p.closest('.sec').classList.replace('is-collapsed', 'is-open');
+    });
+  });
+
+  // section map -> jump + expand
+  document.querySelectorAll('.sec-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const sec = document.getElementById(chip.dataset.target);
+      if (sec.classList.contains('is-collapsed')) {
+        sec.classList.replace('is-collapsed', 'is-open');
+      }
+      sec.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  });
+
+  // formatting-only disclosure
+  const nt = document.getElementById('noise-toggle');
+  const nb = document.getElementById('noise-body');
+  nt.addEventListener('click', () => {
+    const open = nb.classList.toggle('open');
+    nt.textContent = open ? 'hide' : 'show';
+  });
+</script>
+</body>
+</html>

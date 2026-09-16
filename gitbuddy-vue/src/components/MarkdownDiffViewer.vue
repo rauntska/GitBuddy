@@ -160,20 +160,38 @@ watch(
 }
 
 .markdown-diff-content :deep(.md-added-block) {
-  background-color: rgb(16 185 129 / 0.1);
-  box-shadow: inset 3px 0 0 0 rgb(16 185 129 / 0.7);
+  background-color: var(--diff-add-fill);
+  box-shadow: inset 3px 0 0 0 var(--diff-add-edge);
   border-radius: 0 0.25rem 0.25rem 0;
+  padding: 0.125rem 0.5rem;
 }
 
 .markdown-diff-content :deep(.md-added-block > pre) {
-  background-color: rgb(16 185 129 / 0.08);
+  background-color: var(--diff-add-fill);
 }
+
 
 .markdown-diff-content :deep(td.md-added-block),
 .markdown-diff-content :deep(th.md-added-block) {
-  background-color: rgb(16 185 129 / 0.12);
-  box-shadow: none;
+  background-color: var(--diff-add-fill);
+  box-shadow: inset 2px 0 0 0 var(--diff-add-edge);
   border-radius: 0;
+}
+
+/* An added table row highlights across every cell, with the edge marker on the first. */
+.markdown-diff-content :deep(tr.md-added-block) {
+  background-color: transparent;
+  box-shadow: none;
+}
+
+.markdown-diff-content :deep(tr.md-added-block) > td,
+.markdown-diff-content :deep(tr.md-added-block) > th {
+  background-color: var(--diff-add-fill);
+}
+
+.markdown-diff-content :deep(tr.md-added-block) > td:first-child,
+.markdown-diff-content :deep(tr.md-added-block) > th:first-child {
+  box-shadow: inset 3px 0 0 0 var(--diff-add-edge);
 }
 
 .markdown-diff-content :deep(pre) {
