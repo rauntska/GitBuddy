@@ -30,7 +30,8 @@
     </div>
 
     <div v-else-if="renderedSections.length === 0" class="p-8 text-center">
-      <p class="text-slate-400 text-sm">No content to render</p>
+      <p class="text-slate-400 text-sm">Prose view: neither revision returned any content</p>
+      <p class="text-slate-600 text-xs mt-1">Use the Source view to see the exact change.</p>
     </div>
 
     <div v-else ref="contentRef" class="px-4 py-4">
