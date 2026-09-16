@@ -23,6 +23,11 @@ export function renderMarkdownWithAddedHighlights(
   return highlightWithDom(renderedHtml);
 }
 
+/** `| a | b |` — a GFM table row. */
+const TABLE_ROW = /^\s{0,3}\|.*\|\s*$/;
+/** `|---|:--:|` — the header delimiter, which renders no row of its own. */
+const TABLE_DELIMITER = /^\s{0,3}\|[\s:|-]+\|\s*$/;
+
 function tagAddedLines(src: string, addedLineNumbers: Set<number>): string {
   if (addedLineNumbers.size === 0) return src;
   const lines = src.split('\n');
@@ -31,10 +36,24 @@ function tagAddedLines(src: string, addedLineNumbers: Set<number>): string {
     if (!line) continue;
     const lineNumber = i + 1;
     if (addedLineNumbers.has(lineNumber) && line.trim().length > 0) {
-      lines[i] = `${line}${ADDED_MARKER}`;
+      lines[i] = markLine(line);
     }
   }
   return lines.join('\n');
+}
+
+function markLine(line: string): string {
+  // The delimiter row produces no output element, and injecting into it breaks table parsing.
+  if (TABLE_DELIMITER.test(line)) return line;
+
+  // For a table row the marker has to go *inside* the last cell. Appended after the closing
+  // pipe, the GFM table parser drops it — which is why added table rows were never highlighted.
+  if (TABLE_ROW.test(line)) {
+    const lastPipe = line.lastIndexOf('|');
+    return line.slice(0, lastPipe) + ADDED_MARKER + line.slice(lastPipe);
+  }
+
+  return `${line}${ADDED_MARKER}`;
 }
 
 function highlightWithDom(html: string): string {
@@ -64,7 +83,15 @@ function highlightWithDom(html: string): string {
 function closestBlock(node: Node): HTMLElement | null {
   let el = node.parentElement;
   while (el && el.id !== '__md-diff-root') {
-    if (BLOCK_TAGS.has(el.tagName)) return el;
+    if (BLOCK_TAGS.has(el.tagName)) {
+      // A marker inside a cell means the whole row was added — highlight the row, not the
+      // one cell that happened to contain the marker.
+      if (el.tagName === 'TD' || el.tagName === 'TH') {
+        const row = el.closest('tr');
+        if (row) return row as HTMLElement;
+      }
+      return el;
+    }
     el = el.parentElement;
   }
   return null;
