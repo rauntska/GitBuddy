@@ -8,6 +8,7 @@ RUN dotnet restore "GitBuddy.Api/GitBuddy.Api.csproj"
 
 COPY GitBuddy.Api/. GitBuddy.Api/
 COPY GitBuddy.Domain/. GitBuddy.Domain/
+COPY ["CHANGELOG.md", "."]
 
 WORKDIR "/src/GitBuddy.Api"
 RUN dotnet publish "GitBuddy.Api.csproj" -c Release -o /app/publish /p:UseAppHost=false

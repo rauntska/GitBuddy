@@ -26,4 +26,8 @@
   <ItemGroup>
     <ProjectReference Include="..\GitBuddy.Domain\GitBuddy.Domain.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="../CHANGELOG.md" CopyToOutputDirectory="PreserveNewest" Link="CHANGELOG.md" />
+  </ItemGroup>
 </Project>

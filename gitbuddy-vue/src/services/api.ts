@@ -1,5 +1,5 @@
 import apiClient from '../utils/api';
-import type { GroupedPRs, PRStats, Settings, PRDetail, FileDiff, Comment, UserPreferences, PullRequest, CommentTemplate, CommentDraft, MentionableUser, ReactionGroup, User, UserRole, Invitation, AllowedUser, AdminStats, PendingReview, ReviewerStatus, ReviewTimeline, PotentialReviewer, Repository, Branch, BranchComparison, CreatePullRequestRequest, CreatePullRequestResult, BranchWithoutPR, ThroughputAnalytics, ReviewerAnalytics, HealthAnalytics } from '../types';
+import type { GroupedPRs, PRStats, Settings, PRDetail, FileDiff, Comment, UserPreferences, PullRequest, CommentTemplate, CommentDraft, MentionableUser, ReactionGroup, User, UserRole, Invitation, AllowedUser, AdminStats, PendingReview, ReviewerStatus, ReviewTimeline, PotentialReviewer, Repository, Branch, BranchComparison, CreatePullRequestRequest, CreatePullRequestResult, BranchWithoutPR, ThroughputAnalytics, ReviewerAnalytics, HealthAnalytics, ChangelogResponse } from '../types';
 
 const api = apiClient;
 
@@ -184,6 +184,17 @@ export const apiService = {
 
   updateUserPreferences: async (preferences: Partial<UserPreferences>): Promise<UserPreferences> => {
     const response = await api.patch<UserPreferences>('/userpreferences', preferences);
+    return response.data;
+  },
+
+  // Changelog endpoints
+  getChangelog: async (): Promise<ChangelogResponse> => {
+    const response = await api.get<ChangelogResponse>('/changelog');
+    return response.data;
+  },
+
+  markChangelogSeen: async (): Promise<{ lastSeenChangelogAt: string }> => {
+    const response = await api.post<{ lastSeenChangelogAt: string }>('/changelog/mark-seen');
     return response.data;
   },
 

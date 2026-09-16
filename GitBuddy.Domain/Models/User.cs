@@ -7,6 +7,7 @@ public class User
     public string Email { get; set; } = string.Empty;
     public string? Name { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime LastSeenChangelogAt { get; set; } = DateTime.UtcNow;
 
     public UserRole Role { get; set; } = UserRole.Developer;
 

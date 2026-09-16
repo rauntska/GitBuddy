@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>What's New Changelog — Mockup</title>
+<style>
+  :root {
+    --slate-900: #0f172a;
+    --slate-800: #1e293b;
+    --slate-800-40: rgba(30, 41, 59, 0.4);
+    --slate-800-60: rgba(30, 41, 59, 0.6);
+    --slate-700: #334155;
+    --slate-700-60: rgba(51, 65, 85, 0.6);
+    --slate-600: #475569;
+    --slate-500: #64748b;
+    --slate-300: #cbd5e1;
+    --slate-200: #e2e8f0;
+    --slate-100: #f1f5f9;
+    --white: #ffffff;
+    --blue-400: #60a5fa;
+    --violet-400: #a78bfa;
+    --emerald-400: #34d399;
+    --emerald-950-20: rgba(2, 44, 34, 0.2);
+    --green-500: #22c55e;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--slate-900);
+    color: var(--slate-200);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px;
+  }
+
+  .mono { font-family: "SF Mono", "Cascadia Code", Consolas, monospace; font-variant-numeric: tabular-nums; }
+
+  .mockup-frame {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 32px 24px 80px;
+  }
+
+  .mockup-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--slate-500);
+    margin: 48px 0 12px;
+    font-weight: 600;
+  }
+  .mockup-label:first-child { margin-top: 0; }
+
+  /* ---- Shared app chrome ---- */
+  .app-shell {
+    border: 1px solid var(--slate-800);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--slate-900);
+  }
+
+  .app-header {
+    border-bottom: 1px solid var(--slate-800);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .app-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--white);
+  }
+
+  .app-header-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .whats-new-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    color: var(--slate-300);
+    font-size: 13px;
+    text-decoration: none;
+    position: relative;
+  }
+  .whats-new-link:hover { background: var(--slate-800-40); color: var(--slate-100); }
+  .whats-new-link .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--blue-400);
+    position: absolute;
+    top: 4px;
+    right: 4px;
+  }
+
+  .btn {
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid transparent;
+    cursor: pointer;
+  }
+  .btn-secondary {
+    border-color: var(--slate-800);
+    background: transparent;
+    color: var(--slate-300);
+  }
+  .btn-primary {
+    background: var(--slate-200);
+    color: #0f172a;
+  }
+
+  .avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    background: var(--slate-700);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: var(--slate-300);
+  }
+
+  /* ---- Category badge ---- */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--slate-800-60);
+    border: 1px solid var(--slate-700-60);
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .badge .glyph { font-family: "SF Mono", monospace; line-height: 1; }
+  .badge.feature { color: var(--blue-400); }
+  .badge.improvement { color: var(--violet-400); }
+  .badge.fix { color: var(--emerald-400); }
+
+  /* ---- Entry card (shared by modal + page) ---- */
+  .entry {
+    padding: 16px 4px;
+    border-bottom: 1px solid var(--slate-800);
+  }
+  .entry:last-child { border-bottom: none; }
+
+  .entry-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  .entry-date {
+    color: var(--slate-500);
+    font-size: 12px;
+  }
+  .entry-title {
+    font-size: 15px;
+    color: var(--slate-200);
+    margin: 4px 0 6px;
+  }
+  .entry-body {
+    color: var(--slate-300);
+    line-height: 1.6;
+    font-size: 13.5px;
+  }
+  .entry-body p { margin: 0 0 8px; }
+  .entry-image {
+    margin-top: 10px;
+    border: 1px solid var(--slate-800);
+    border-radius: 6px;
+    background: repeating-linear-gradient(
+      45deg,
+      var(--slate-800) 0,
+      var(--slate-800) 10px,
+      var(--slate-900) 10px,
+      var(--slate-900) 20px
+    );
+    height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--slate-500);
+    font-size: 12px;
+  }
+
+  /* ---- State 1: modal ---- */
+  .modal-scene {
+    position: relative;
+    min-height: 560px;
+  }
+  .modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(2, 6, 23, 0.7);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 64px;
+    border-radius: 0 0 8px 8px;
+  }
+  .modal-card {
+    width: 480px;
+    max-height: 480px;
+    background: var(--slate-900);
+    border: 1px solid var(--slate-700);
+    border-radius: 10px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    display: flex;
+    flex-direction: column;
+  }
+  .modal-header {
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid var(--slate-800);
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+  .modal-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--white);
+  }
+  .modal-subtitle {
+    font-size: 12px;
+    color: var(--slate-500);
+    margin-top: 2px;
+  }
+  .modal-body {
+    padding: 4px 20px;
+    overflow-y: auto;
+  }
+  .modal-footer {
+    padding: 14px 20px;
+    border-top: 1px solid var(--slate-800);
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  /* dashboard skeleton behind the modal, just for context */
+  .dashboard-skeleton { padding: 20px; opacity: 0.55; }
+  .skeleton-row {
+    height: 14px;
+    border-radius: 3px;
+    background: var(--slate-800);
+    margin-bottom: 10px;
+  }
+  .skeleton-row.short { width: 40%; }
+  .skeleton-row.pr {
+    height: 40px;
+    background: var(--slate-800-40);
+    border: 1px solid var(--slate-800);
+    border-radius: 6px;
+    margin-bottom: 8px;
+  }
+
+  /* ---- State 2: /whats-new page ---- */
+  .page-body {
+    padding: 24px 28px;
+  }
+  .page-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--white);
+    margin: 0 0 4px;
+  }
+  .page-subtitle {
+    font-size: 13px;
+    color: var(--slate-500);
+    margin: 0 0 20px;
+  }
+
+  .note {
+    max-width: 1100px;
+    margin: 8px auto 0;
+    font-size: 12.5px;
+    color: var(--slate-500);
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+<div class="mockup-frame">
+
+  <div class="mockup-label">State 1 — Modal auto-opens on dashboard load (unseen entries exist)</div>
+  <div class="app-shell">
+    <div class="app-header">
+      <div class="app-logo">🔧 Git Buddy</div>
+      <div class="app-header-controls">
+        <a class="whats-new-link" href="#"><span class="dot"></span>What's new</a>
+        <button class="btn btn-primary">+ Create PR</button>
+        <button class="btn btn-secondary">⟳ Refresh</button>
+        <span class="avatar">RK</span>
+      </div>
+    </div>
+
+    <div class="modal-scene">
+      <div class="dashboard-skeleton">
+        <div class="skeleton-row short"></div>
+        <div class="skeleton-row pr"></div>
+        <div class="skeleton-row pr"></div>
+        <div class="skeleton-row pr"></div>
+        <div class="skeleton-row pr"></div>
+      </div>
+
+      <div class="modal-backdrop">
+        <div class="modal-card">
+          <div class="modal-header">
+            <div>
+              <div class="modal-title">What's new</div>
+              <div class="modal-subtitle">2 updates since your last visit</div>
+            </div>
+          </div>
+          <div class="modal-body">
+
+            <div class="entry">
+              <div class="entry-meta">
+                <span class="badge feature"><span class="glyph">●</span>Feature</span>
+                <span class="entry-date mono">Sep 16, 2026</span>
+              </div>
+              <div class="entry-title">Prose diff view for markdown PRs</div>
+              <div class="entry-body">
+                <p>You can now view a rendered, formatted diff for markdown files instead of raw text — tables, headings and lists render side-by-side just like the merged result.</p>
+                <div class="entry-image">screenshot placeholder</div>
+              </div>
+            </div>
+
+            <div class="entry">
+              <div class="entry-meta">
+                <span class="badge fix"><span class="glyph">✓</span>Fix</span>
+                <span class="entry-date mono">Sep 12, 2026</span>
+              </div>
+              <div class="entry-title">Dark-theme table diff legibility</div>
+              <div class="entry-body">
+                <p>Table rows in the prose diff view no longer wash out on the dark theme — added/removed cells now keep readable contrast.</p>
+              </div>
+            </div>
+
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-primary">Got it</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="note">Backdrop dims the dashboard behind it; modal only ever appears when <span class="mono">unseenEntries.length &gt; 0</span>. A single "Got it" dismisses the whole batch at once — no per-entry acknowledgment.</div>
+
+  <div class="mockup-label">State 2 — /whats-new full history page</div>
+  <div class="app-shell">
+    <div class="app-header">
+      <div class="app-logo">🔧 Git Buddy</div>
+      <div class="app-header-controls">
+        <a class="whats-new-link" href="#" style="background: var(--slate-800-40); color: var(--slate-100);">What's new</a>
+        <span class="avatar">RK</span>
+      </div>
+    </div>
+
+    <div class="page-body">
+      <div class="page-title">What's new</div>
+      <div class="page-subtitle">Everything GitBuddy has shipped, newest first.</div>
+
+      <div class="entry">
+        <div class="entry-meta">
+          <span class="badge feature"><span class="glyph">●</span>Feature</span>
+          <span class="entry-date mono">Sep 16, 2026</span>
+        </div>
+        <div class="entry-title">Prose diff view for markdown PRs</div>
+        <div class="entry-body">
+          <p>You can now view a rendered, formatted diff for markdown files instead of raw text — tables, headings and lists render side-by-side just like the merged result.</p>
+          <div class="entry-image">screenshot placeholder</div>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="entry-meta">
+          <span class="badge fix"><span class="glyph">✓</span>Fix</span>
+          <span class="entry-date mono">Sep 12, 2026</span>
+        </div>
+        <div class="entry-title">Dark-theme table diff legibility</div>
+        <div class="entry-body">
+          <p>Table rows in the prose diff view no longer wash out on the dark theme — added/removed cells now keep readable contrast.</p>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="entry-meta">
+          <span class="badge improvement"><span class="glyph">◐</span>Improvement</span>
+          <span class="entry-date mono">Aug 28, 2026</span>
+        </div>
+        <div class="entry-title">Faster dashboard refresh</div>
+        <div class="entry-body">
+          <p>Pull request list refreshes now debounce SignalR bursts, cutting perceived refresh time on large orgs by roughly half.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <div class="note">Reachable via the persistent header link (highlighted here as the active route). Visiting this page also marks everything seen — the header dot clears whether the user dismisses the modal or just browses here directly.</div>
+
+</div>
+</body>
+</html>

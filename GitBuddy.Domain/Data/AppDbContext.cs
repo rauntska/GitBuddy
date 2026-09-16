@@ -26,6 +26,7 @@ public class AppDbContext : DbContext
     public DbSet<PendingComment> PendingComments { get; set; }
     public DbSet<RepositoryRule> RepositoryRules { get; set; }
     public DbSet<BranchWithoutPR> BranchesWithoutPR { get; set; }
+    public DbSet<ChangelogEntry> ChangelogEntries { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -272,6 +273,13 @@ public class AppDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => new { e.RepoFullName, e.BranchName }).IsUnique();
             entity.HasIndex(e => e.LastRefreshedAt);
+        });
+
+        modelBuilder.Entity<ChangelogEntry>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Slug).IsUnique();
+            entity.HasIndex(e => e.PublishedOn);
         });
     }
 }

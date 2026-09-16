@@ -363,6 +363,20 @@ export interface UserPreferences {
   notificationPreferences?: NotificationPreferences;
 }
 
+export interface ChangelogEntry {
+  slug: string;
+  publishedOn: string;
+  category: 'Feature' | 'Improvement' | 'Fix';
+  title: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface ChangelogResponse {
+  entries: ChangelogEntry[];
+  lastSeenChangelogAt: string;
+}
+
 export interface NotificationPreferences {
   enabled: boolean;
   events: {
