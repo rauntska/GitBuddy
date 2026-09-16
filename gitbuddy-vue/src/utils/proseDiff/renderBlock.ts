@@ -1,5 +1,6 @@
 import { marked } from 'marked';
 import { computeInlineDiff } from '../diffHelpers';
+import { renderTableDiff } from './renderTable';
 import type { ClassifiedPair, PairedBlock } from './types';
 
 /**
@@ -33,9 +34,15 @@ export function renderPairedBlock(pair: ClassifiedPair): string {
     return wrap('prose-block', parse(pair.new.raw));
   }
 
-  // Changed, and meaningfully so. A block we cannot word-diff (table, code, html) gets a
-  // block-level treatment instead — otherwise it would change completely silently, which is
-  // exactly what happens to a table gaining a row.
+  // Tables diff per row, so a table that gained one row marks that row rather than shouting
+  // that the whole table changed.
+  if (pair.old && pair.old.kind === 'table' && pair.new.kind === 'table') {
+    const tableHtml = renderTableDiff(pair.old.raw, pair.new.raw);
+    if (tableHtml !== null) return wrap('prose-block prose-table-diff', tableHtml);
+  }
+
+  // Changed, and meaningfully so. A block we cannot word-diff (code, html, a table that
+  // wouldn't parse) gets a block-level treatment instead — otherwise it changes silently.
   if (!pair.old || !pair.new.wordDiffable || !pair.old.wordDiffable) {
     return wrap('prose-block prose-changed-opaque', parse(pair.new.raw));
   }

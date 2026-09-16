@@ -394,6 +394,40 @@ watch(
   margin: 6px 0;
 }
 
+/* Per-row table diffing: the table renders normally, individual rows carry the change. */
+.prose-diff-content .prose-row-added > td,
+.prose-diff-content .prose-row-added > th {
+  background: var(--diff-add-fill);
+}
+
+.prose-diff-content .prose-row-added > td:first-child,
+.prose-diff-content .prose-row-added > th:first-child {
+  box-shadow: inset 3px 0 0 0 var(--diff-add-edge);
+}
+
+.prose-diff-content .prose-row-removed > td,
+.prose-diff-content .prose-row-removed > th {
+  background: var(--diff-del-fill);
+  color: rgb(148 163 184);
+  text-decoration: line-through;
+  text-decoration-color: var(--diff-del-edge);
+}
+
+.prose-diff-content .prose-row-removed > td:first-child,
+.prose-diff-content .prose-row-removed > th:first-child {
+  box-shadow: inset 3px 0 0 0 var(--diff-del-edge);
+}
+
+.prose-diff-content .prose-row-changed > td,
+.prose-diff-content .prose-row-changed > th {
+  background: var(--diff-changed-fill);
+}
+
+.prose-diff-content .prose-row-changed > td:first-child,
+.prose-diff-content .prose-row-changed > th:first-child {
+  box-shadow: inset 3px 0 0 0 var(--diff-changed-edge);
+}
+
 .prose-diff-content ins.prose-ins {
   background: var(--diff-add-fill-strong);
   color: var(--diff-add-text);
