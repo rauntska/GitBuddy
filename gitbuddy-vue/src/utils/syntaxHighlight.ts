@@ -3,6 +3,8 @@ import 'prismjs/components/prism-typescript';
 import 'prismjs/components/prism-javascript';
 import 'prismjs/components/prism-csharp';
 import 'prismjs/components/prism-css';
+import 'prismjs/components/prism-scss';
+import 'prismjs/components/prism-less';
 import 'prismjs/components/prism-markup'; // HTML
 import 'prismjs/components/prism-markup-templating'; // Required for Vue
 import 'prismjs/components/prism-json';
@@ -17,16 +19,14 @@ import 'prismjs/components/prism-yaml';
 
 export function highlightCode(code: string, language: string): string {
   const lang = getLanguageForHighlight(language);
-  
-  // For Vue files, use markup (HTML) highlighting
-  const grammar = lang === 'vue' ? Prism.languages.markup : Prism.languages[lang];
-  
+  const grammar = Prism.languages[lang];
+
   if (!grammar) {
     return escapeHtml(code);
   }
-  
+
   try {
-    return Prism.highlight(code, grammar, lang === 'vue' ? 'markup' : lang);
+    return Prism.highlight(code, grammar, lang);
   } catch (e) {
     return escapeHtml(code);
   }
@@ -38,7 +38,8 @@ function getLanguageForHighlight(lang: string): string {
     tsx: 'typescript',
     js: 'javascript',
     jsx: 'javascript',
-    vue: 'markup', // Vue templates are HTML-like
+    // Fallback only: SFC lines normally arrive pre-tagged per section by resolveVueHunkGrammars.
+    vue: 'markup',
     cs: 'csharp',
     html: 'markup',
     xml: 'markup',

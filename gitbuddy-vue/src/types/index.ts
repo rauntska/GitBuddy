@@ -276,6 +276,8 @@ export interface DiffLine {
   newLineNumber?: number;
   hasComment?: boolean;
   isExpanded?: boolean;
+  /** Prism grammar for this line, when the file mixes languages (Vue SFCs). */
+  grammar?: string;
 }
 
 export interface InlineDiffSegment {
@@ -289,6 +291,8 @@ export interface AlignedLine {
   lineNumber?: number;
   inlineDiff?: InlineDiffSegment[];
   isExpanded?: boolean;
+  /** Prism grammar for this line, when the file mixes languages (Vue SFCs). */
+  grammar?: string;
 }
 
 export interface AlignedRow {

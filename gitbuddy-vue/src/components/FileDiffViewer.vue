@@ -314,6 +314,7 @@ import { ref, computed, nextTick, onMounted, watch } from 'vue';
 import type { FileDiff, Comment, ReviewThread, DiffHunk, AlignedRow, AlignedLine, ExpandPosition, PendingReviewComment, MarkdownDiffMode } from '../types';
 import { parsePatch, alignDiffLines, renderInlineDiffSegments, calculateExpandRange, getGapBetweenHunks, mergeExpandedLines } from '../utils/diffHelpers';
 import { highlightCode, detectLanguageFromPath } from '../utils/syntaxHighlight';
+import { resolveVueHunkGrammars } from '../utils/vueSfcSections';
 import { isMarkdownFile, canReconstruct } from '../utils/markdownDiffReconstruct';
 import { useUserPreferences } from '../composables/useUserPreferences';
 import { useFileContent } from '../composables/useFileContent';
@@ -469,11 +470,22 @@ const setMarkdownMode = (mode: MarkdownDiffMode) => {
   void setMarkdownDiffMode(mode);
 };
 
+// A Vue SFC needs a grammar per line rather than per file — see utils/vueSfcSections.
+const vueHunkGrammars = computed<string[][] | null>(() =>
+  language.value === 'vue'
+    ? resolveVueHunkGrammars(hunks.value.map(h => h.lines.map(l => l.content)))
+    : null
+);
+
 const getAlignedRows = (hunk: DiffHunk, hunkIndex: number): AlignedRow[] => {
   if (alignedRowsCache.value.has(hunkIndex)) {
     return alignedRowsCache.value.get(hunkIndex)!;
   }
-  const rows = alignDiffLines(hunk.lines);
+  const grammars = vueHunkGrammars.value?.[hunkIndex];
+  const lines = grammars
+    ? hunk.lines.map((line, i) => ({ ...line, grammar: grammars[i] }))
+    : hunk.lines;
+  const rows = alignDiffLines(lines);
   alignedRowsCache.value.set(hunkIndex, rows);
   return rows;
 };
@@ -485,11 +497,7 @@ const renderAlignedLineContent = (line: AlignedLine | undefined): string => {
   if (line.inlineDiff && line.inlineDiff.length > 0) {
     return renderInlineDiffSegments(line.inlineDiff);
   }
-  return highlightSyntax(line.content);
-};
-
-const highlightSyntax = (code: string): string => {
-  return highlightCode(code, language.value);
+  return highlightCode(line.content, line.grammar ?? language.value);
 };
 
 const getCommentsForLine = (line: number | undefined, side?: 'left' | 'right'): Comment[] => {
