@@ -205,12 +205,14 @@ export function alignDiffLines(lines: DiffLine[]): AlignedRow[] {
           content: line.content,
           lineNumber: line.oldLineNumber,
           isExpanded: line.isExpanded,
+          grammar: line.grammar,
         },
         rightLine: {
           type: 'context',
           content: line.content,
           lineNumber: line.newLineNumber,
           isExpanded: line.isExpanded,
+          grammar: line.grammar,
         },
       });
       i++;
@@ -249,6 +251,7 @@ export function alignDiffLines(lines: DiffLine[]): AlignedRow[] {
                 content: delLine.content,
                 lineNumber: delLine.oldLineNumber,
                 inlineDiff: inlineDiff?.oldSegments,
+                grammar: delLine.grammar,
               }
             : {
                 type: 'spacer',
@@ -260,6 +263,7 @@ export function alignDiffLines(lines: DiffLine[]): AlignedRow[] {
                 content: addLine.content,
                 lineNumber: addLine.newLineNumber,
                 inlineDiff: inlineDiff?.newSegments,
+                grammar: addLine.grammar,
               }
             : {
                 type: 'spacer',
@@ -278,6 +282,7 @@ export function alignDiffLines(lines: DiffLine[]): AlignedRow[] {
           type: 'add',
           content: line.content,
           lineNumber: line.newLineNumber,
+          grammar: line.grammar,
         },
       });
       i++;
