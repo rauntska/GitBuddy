@@ -30,12 +30,27 @@ public class CacheService(
 
         await context.SaveChangesAsync();
 
+        await HealMergedStatusAsync();
+
         if (!prNumber.HasValue)
         {
             await CleanupOldPRsAsync(prDataList);
         }
 
         InvalidateDashboardCache();
+    }
+
+    // A refresh can overwrite Status using a stale in-memory IsMerged=false after a "closed" webhook
+    // already persisted IsMerged=true/Status=Merged (EF only writes changed columns, so IsMerged
+    // survives while Status is clobbered). Repair any such rows.
+    private async Task HealMergedStatusAsync()
+    {
+        var healed = await context.PullRequests
+            .Where(pr => pr.IsMerged && pr.Status != "Merged")
+            .ExecuteUpdateAsync(s => s.SetProperty(pr => pr.Status, "Merged"));
+
+        if (healed > 0)
+            logger.LogWarning("Repaired {Count} PR(s) with IsMerged=true but non-Merged status", healed);
     }
 
     public void InvalidateDashboardCache() => memoryCache.Remove(DashboardDtosCacheKey);
@@ -350,8 +365,18 @@ public class CacheService(
     {
         try
         {
+            // The entity was loaded before several slow GitHub calls; a webhook may have merged it meanwhile.
+            var dbValues = await context.Entry(pr).GetDatabaseValuesAsync();
+            if (dbValues != null && dbValues.GetValue<bool>(nameof(PullRequest.IsMerged)))
+            {
+                pr.IsMerged = true;
+                pr.MergedAt = dbValues.GetValue<DateTime?>(nameof(PullRequest.MergedAt));
+                pr.Status = "Merged";
+                return;
+            }
+
             await repositoryRuleService.CalculateMergeReadinessAsync(pr);
-            
+
             if (pr.Status != "Merged" && pr.Status != "Closed")
             {
                 var reviewData = pr.Reviews.Select(r => new GitHubReviewData(
