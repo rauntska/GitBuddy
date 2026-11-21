@@ -125,19 +125,47 @@
         </thead>
         <tbody>
           <tr v-for="r in rules" :key="r.id" class="border-b border-slate-800/60">
-            <td class="px-3 py-2 text-sm text-slate-200">
+            <td class="px-3 py-2 text-sm text-slate-200 whitespace-nowrap">
               {{ r.name }}
               <span v-if="r.dryRun" class="ml-2 text-[11px] px-1.5 py-0.5 rounded border border-amber-700/60 text-amber-300">dry run</span>
             </td>
-            <td class="px-3 py-2 text-sm text-slate-300">{{ r.triggerType }}</td>
-            <td class="px-3 py-2 text-sm text-slate-300">{{ r.repositories.length ? r.repositories.join(', ') : 'All repositories' }}</td>
-            <td class="px-3 py-2 text-sm text-slate-400">{{ r.lastTriggeredAt ? new Date(r.lastTriggeredAt).toLocaleString() : '—' }}</td>
+            <td class="px-3 py-2 text-sm text-slate-300 whitespace-nowrap">{{ r.triggerType }}</td>
+            <td class="px-3 py-2 text-sm text-slate-300 max-w-[24rem]" :title="r.repositories.length ? r.repositories.join('\n') : 'All repositories'">
+              <div class="flex items-center gap-1.5 min-w-0 whitespace-nowrap">
+                <span class="truncate">{{ r.repositories[0] ?? 'All repositories' }}</span>
+                <span
+                  v-if="r.repositories.length > 1"
+                  class="shrink-0 text-[11px] px-1.5 py-0.5 rounded border border-slate-700 bg-slate-800/60 text-slate-400"
+                >+{{ r.repositories.length - 1 }} more</span>
+              </div>
+            </td>
+            <td class="px-3 py-2 text-sm text-slate-400 whitespace-nowrap">{{ r.lastTriggeredAt ? new Date(r.lastTriggeredAt).toLocaleString() : '—' }}</td>
             <td class="px-3 py-2 text-sm text-slate-400 tabular-nums">{{ r.triggerCount }}</td>
-            <td class="px-3 py-2 text-sm text-right whitespace-nowrap space-x-3">
-              <button class="text-slate-300 hover:text-slate-100" @click="setEnabled(r, !r.enabled)">{{ r.enabled ? 'Disable' : 'Enable' }}</button>
-              <button class="text-slate-300 hover:text-slate-100" @click="edit(r)">Edit</button>
-              <button class="text-slate-300 hover:text-slate-100" @click="showLog(r)">Log</button>
-              <button class="text-slate-400 hover:text-red-400" @click="confirmRemove(r)">Delete</button>
+            <td class="px-3 py-2 text-right whitespace-nowrap">
+              <div class="inline-flex items-center gap-1.5">
+                <button
+                  :class="[actionBtn, r.enabled
+                    ? 'border-amber-700/60 text-amber-300 hover:bg-amber-900/30'
+                    : 'border-emerald-700/60 text-emerald-300 hover:bg-emerald-900/30']"
+                  :title="r.enabled ? 'Disable this rule' : 'Enable this rule'"
+                  @click="setEnabled(r, !r.enabled)"
+                >
+                  <component :is="r.enabled ? PauseIcon : PlayIcon" class="w-3.5 h-3.5" />
+                  {{ r.enabled ? 'Disable' : 'Enable' }}
+                </button>
+                <button :class="[actionBtn, 'border-sky-700/60 text-sky-300 hover:bg-sky-900/30']" title="Edit this rule" @click="edit(r)">
+                  <PencilSquareIcon class="w-3.5 h-3.5" />
+                  Edit
+                </button>
+                <button :class="[actionBtn, 'border-slate-600 text-slate-200 hover:bg-slate-800']" title="View run log" @click="showLog(r)">
+                  <ClipboardDocumentListIcon class="w-3.5 h-3.5" />
+                  Log
+                </button>
+                <button :class="[actionBtn, 'border-red-800/60 text-red-300 hover:bg-red-900/30']" title="Delete this rule" @click="confirmRemove(r)">
+                  <TrashIcon class="w-3.5 h-3.5" />
+                  Delete
+                </button>
+              </div>
             </td>
           </tr>
         </tbody>
@@ -171,6 +199,9 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useAutomationRules } from '../../composables/useAutomationRules';
 import RepositoryMultiSelect from './RepositoryMultiSelect.vue';
+import { ClipboardDocumentListIcon, PauseIcon, PencilSquareIcon, PlayIcon, TrashIcon } from '@heroicons/vue/24/outline';
+
+const actionBtn = 'inline-flex items-center gap-1 px-2 py-1 rounded border text-xs font-medium transition-colors duration-150';
 import type { AutomationAction, AutomationRule, AutomationRuleTemplate, UpsertAutomationRuleRequest } from '../../types/automation';
 
 const { rules, templates, catalog, runs, loading, error, repositoryOptions, repositoriesLoading, load, save, remove, setEnabled, loadRuns } = useAutomationRules();

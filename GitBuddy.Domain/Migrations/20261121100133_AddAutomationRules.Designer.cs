@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace GitBuddy.Domain.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20261121110434_AddAutomationRules")]
+    [Migration("20261121100133_AddAutomationRules")]
     partial class AddAutomationRules
     {
         /// <inheritdoc />
@@ -97,7 +97,7 @@ namespace GitBuddy.Domain.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("Repositories")
+                    b.Property<string>("RepositoryFullName")
                         .HasColumnType("text");
 
                     b.Property<int>("TriggerCount")
@@ -115,7 +115,7 @@ namespace GitBuddy.Domain.Migrations
 
                     b.HasIndex("CreatedBy");
 
-                    b.HasIndex("Repositories");
+                    b.HasIndex("RepositoryFullName");
 
                     b.HasIndex("Enabled", "TriggerType");
 

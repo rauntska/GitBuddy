@@ -32,7 +32,7 @@ namespace GitBuddy.Domain.Migrations
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    Repositories = table.Column<string>(type: "text", nullable: true),
+                    RepositoryFullName = table.Column<string>(type: "text", nullable: true),
                     Name = table.Column<string>(type: "text", nullable: false),
                     Enabled = table.Column<bool>(type: "boolean", nullable: false),
                     DryRun = table.Column<bool>(type: "boolean", nullable: false),
@@ -110,9 +110,9 @@ namespace GitBuddy.Domain.Migrations
                 columns: new[] { "Enabled", "TriggerType" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_AutomationRules_Repositories",
+                name: "IX_AutomationRules_RepositoryFullName",
                 table: "AutomationRules",
-                column: "Repositories");
+                column: "RepositoryFullName");
 
             migrationBuilder.CreateIndex(
                 name: "IX_AutomationRunLogs_AutomationRuleId_PullRequestId_Idempotenc~",
