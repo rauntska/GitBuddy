@@ -38,11 +38,11 @@ All endpoints: `[Authorize(Roles = "Admin")]`, controller `AutomationRulesContro
 | GET | `/templates` | – | `AutomationRuleTemplateDto[]` |
 | GET | `/catalog` | – | triggers, condition types, action types (drives the builder UI) |
 
-`UpsertAutomationRuleRequest`: `repositoryFullName?`, `name`, `enabled`, `dryRun`, `triggerType`, `minIntervalSeconds`, `conditions[]` (`{ type, value }`), `actions[]` (`{ type, params }`). The server validates the trigger/condition/action combination against the fixed catalog and rejects unknown types.
+`UpsertAutomationRuleRequest`: `repositories[]` (empty = all repositories), `name`, `enabled`, `dryRun`, `triggerType`, `minIntervalSeconds`, `conditions[]` (`{ type, value }`), `actions[]` (`{ type, params }`). The server validates the trigger/condition/action combination against the fixed catalog and rejects unknown types.
 
 ## Data model
 
-- `AutomationRule`: Id, RepositoryFullName (null = org-wide), Name, Enabled, DryRun, TriggerType, Conditions (JSON), Actions (JSON), MinIntervalSeconds, CreatedBy (FK User), CreatedAt/UpdatedAt, LastTriggeredAt, TriggerCount.
+- `AutomationRule`: Id, Repositories (comma-separated owner/repo list; empty = all repositories), Name, Enabled, DryRun, TriggerType, Conditions (JSON), Actions (JSON), MinIntervalSeconds, CreatedBy (FK User), CreatedAt/UpdatedAt, LastTriggeredAt, TriggerCount.
 - `AutomationRunLog`: Id, AutomationRuleId (FK, cascade), PullRequestId (FK), TriggeredAt, ConditionsMatched, DryRun, ActionsTaken (JSON summary), Error.
 - `PullRequest`: add `BaseBranch`, `Labels` (stored list), and requested reviewers if not already derivable.
 - `RepositoryRule`: add required check names (JSON or comma-separated, matching local convention).

@@ -94,7 +94,7 @@ namespace GitBuddy.Domain.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("RepositoryFullName")
+                    b.Property<string>("Repositories")
                         .HasColumnType("text");
 
                     b.Property<int>("TriggerCount")
@@ -112,7 +112,7 @@ namespace GitBuddy.Domain.Migrations
 
                     b.HasIndex("CreatedBy");
 
-                    b.HasIndex("RepositoryFullName");
+                    b.HasIndex("Repositories");
 
                     b.HasIndex("Enabled", "TriggerType");
 

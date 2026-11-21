@@ -19,8 +19,26 @@ export function useAutomationRules() {
   const templates = ref<AutomationRuleTemplate[]>([]);
   const catalog = ref<AutomationCatalog | null>(null);
   const runs = ref<AutomationRunLog[]>([]);
+  const repositoryOptions = ref<string[]>([]);
+  const repositoriesLoading = ref(false);
   const loading = ref(false);
   const error = ref<string | null>(null);
+
+  async function loadRepositories() {
+    repositoriesLoading.value = true;
+    try {
+      const org = await apiService.getOrganizationRepositories();
+      repositoryOptions.value = org.repositories.map((r) => r.fullName);
+    } catch {
+      try {
+        repositoryOptions.value = (await apiService.getRepositories()).map((r) => r.fullName);
+      } catch {
+        repositoryOptions.value = [];
+      }
+    } finally {
+      repositoriesLoading.value = false;
+    }
+  }
 
   async function load() {
     loading.value = true;
@@ -34,6 +52,7 @@ export function useAutomationRules() {
       rules.value = r;
       templates.value = t;
       catalog.value = c;
+      void loadRepositories();
     } catch (e) {
       error.value = extractError(e, 'Failed to load automation rules');
     } finally {
@@ -85,5 +104,5 @@ export function useAutomationRules() {
     }
   }
 
-  return { rules, templates, catalog, runs, loading, error, load, save, remove, setEnabled, loadRuns };
+  return { rules, templates, catalog, runs, loading, error, repositoryOptions, repositoriesLoading, load, save, remove, setEnabled, loadRuns };
 }

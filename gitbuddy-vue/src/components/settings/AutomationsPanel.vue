@@ -35,8 +35,8 @@
           <input v-model="form.name" required class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm text-slate-200" />
         </label>
         <label class="text-xs text-slate-400 space-y-1">
-          Repository (blank = all)
-          <input v-model="form.repositoryFullName" placeholder="owner/repo" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm text-slate-200" />
+          Repositories
+          <RepositoryMultiSelect v-model="form.repositories" :options="repositoryOptions" :loading="repositoriesLoading" />
         </label>
         <label class="text-xs text-slate-400 space-y-1">
           Trigger
@@ -130,7 +130,7 @@
               <span v-if="r.dryRun" class="ml-2 text-[11px] px-1.5 py-0.5 rounded border border-amber-700/60 text-amber-300">dry run</span>
             </td>
             <td class="px-3 py-2 text-sm text-slate-300">{{ r.triggerType }}</td>
-            <td class="px-3 py-2 text-sm text-slate-300">{{ r.repositoryFullName ?? 'All repositories' }}</td>
+            <td class="px-3 py-2 text-sm text-slate-300">{{ r.repositories.length ? r.repositories.join(', ') : 'All repositories' }}</td>
             <td class="px-3 py-2 text-sm text-slate-400">{{ r.lastTriggeredAt ? new Date(r.lastTriggeredAt).toLocaleString() : '—' }}</td>
             <td class="px-3 py-2 text-sm text-slate-400 tabular-nums">{{ r.triggerCount }}</td>
             <td class="px-3 py-2 text-sm text-right whitespace-nowrap space-x-3">
@@ -170,9 +170,10 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useAutomationRules } from '../../composables/useAutomationRules';
+import RepositoryMultiSelect from './RepositoryMultiSelect.vue';
 import type { AutomationAction, AutomationRule, AutomationRuleTemplate, UpsertAutomationRuleRequest } from '../../types/automation';
 
-const { rules, templates, catalog, runs, loading, error, load, save, remove, setEnabled, loadRuns } = useAutomationRules();
+const { rules, templates, catalog, runs, loading, error, repositoryOptions, repositoriesLoading, load, save, remove, setEnabled, loadRuns } = useAutomationRules();
 
 const editing = ref(false);
 const editingId = ref<number | null>(null);
@@ -184,7 +185,7 @@ const logRule = ref<AutomationRule | null>(null);
 const tokens = '{{author}} {{prTitle}} {{prUrl}} {{reviewers}} {{checkName}} {{label}} {{repository}}';
 
 const emptyForm = (): UpsertAutomationRuleRequest => ({
-  repositoryFullName: null,
+  repositories: [],
   name: '',
   enabled: false,
   dryRun: true,
@@ -267,7 +268,7 @@ function startFromTemplate() {
 
 function edit(rule: AutomationRule) {
   assignForm({
-    repositoryFullName: rule.repositoryFullName,
+    repositories: rule.repositories,
     name: rule.name,
     enabled: rule.enabled,
     dryRun: rule.dryRun,
@@ -316,7 +317,6 @@ async function submit() {
   formError.value = null;
   const payload: UpsertAutomationRuleRequest = {
     ...JSON.parse(JSON.stringify(form)),
-    repositoryFullName: form.repositoryFullName?.trim() || null,
   };
   const message = await save(editingId.value, payload);
   saving.value = false;

@@ -281,7 +281,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<AutomationRule>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.HasIndex(e => e.RepositoryFullName);
+            entity.HasIndex(e => e.Repositories);
             entity.HasIndex(e => new { e.Enabled, e.TriggerType });
             entity.Property(e => e.TriggerType).HasConversion<string>().HasMaxLength(64);
 

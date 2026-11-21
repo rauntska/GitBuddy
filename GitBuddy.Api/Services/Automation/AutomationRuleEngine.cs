@@ -86,9 +86,10 @@ public class AutomationRuleEngine(
 
     private static bool AppliesToRepository(AutomationRule rule, PullRequest pr)
     {
-        if (string.IsNullOrWhiteSpace(rule.RepositoryFullName)) return true;
-        var name = rule.RepositoryFullName.Split('/').Last();
-        return string.Equals(name, pr.Repository, StringComparison.OrdinalIgnoreCase);
+        if (string.IsNullOrWhiteSpace(rule.Repositories)) return true;
+        return rule.Repositories
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Any(r => string.Equals(r.Split('/').Last(), pr.Repository, StringComparison.OrdinalIgnoreCase));
     }
 
     private async Task EvaluateRuleAsync(AutomationRule rule, PullRequest pr, GitHubConfig config, TriggerContext context)

@@ -19,7 +19,7 @@ public class AutomationRulesController(AppDbContext context) : BaseController(co
     {
         var query = _db.AutomationRules.Include(r => r.CreatedByUser).AsQueryable();
         if (!string.IsNullOrWhiteSpace(repository))
-            query = query.Where(r => r.RepositoryFullName == repository);
+            query = query.Where(r => r.Repositories != null && ("," + r.Repositories + ",").Contains("," + repository + ","));
 
         var rules = await query.OrderBy(r => r.Name).ToListAsync();
         return Ok(rules.Select(AutomationRuleDto.From).ToList());
@@ -149,7 +149,8 @@ public class AutomationRulesController(AppDbContext context) : BaseController(co
     private static void Apply(AutomationRule rule, UpsertAutomationRuleRequest request, DateTime now)
     {
         rule.Name = request.Name.Trim();
-        rule.RepositoryFullName = string.IsNullOrWhiteSpace(request.RepositoryFullName) ? null : request.RepositoryFullName.Trim();
+        var repos = (request.Repositories ?? []).Select(r => r.Trim()).Where(r => r.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        rule.Repositories = repos.Count == 0 ? null : string.Join(",", repos);
         rule.Enabled = request.Enabled;
         rule.DryRun = request.DryRun;
         rule.TriggerType = Enum.Parse<AutomationTriggerType>(request.TriggerType);
@@ -161,7 +162,7 @@ public class AutomationRulesController(AppDbContext context) : BaseController(co
 }
 
 public record UpsertAutomationRuleRequest(
-    string? RepositoryFullName,
+    List<string>? Repositories,
     string Name,
     bool Enabled,
     bool DryRun,
@@ -174,7 +175,7 @@ public record SetEnabledRequest(bool Enabled);
 
 public record AutomationRuleDto(
     int Id,
-    string? RepositoryFullName,
+    List<string> Repositories,
     string Name,
     bool Enabled,
     bool DryRun,
@@ -189,8 +190,11 @@ public record AutomationRuleDto(
     DateTime? LastTriggeredAt,
     int TriggerCount)
 {
+    public static List<string> SplitRepos(string? repositories) =>
+        (repositories ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+
     public static AutomationRuleDto From(AutomationRule r) => new(
-        r.Id, r.RepositoryFullName, r.Name, r.Enabled, r.DryRun, r.TriggerType.ToString(), r.MinIntervalSeconds,
+        r.Id, SplitRepos(r.Repositories), r.Name, r.Enabled, r.DryRun, r.TriggerType.ToString(), r.MinIntervalSeconds,
         AutomationJson.ParseConditions(r.Conditions), AutomationJson.ParseActions(r.Actions),
         r.CreatedBy, r.CreatedByUser?.Username, r.CreatedAt, r.UpdatedAt, r.LastTriggeredAt, r.TriggerCount);
 }

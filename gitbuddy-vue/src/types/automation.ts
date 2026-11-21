@@ -10,7 +10,7 @@ export interface AutomationAction {
 
 export interface AutomationRule {
   id: number;
-  repositoryFullName: string | null;
+  repositories: string[];
   name: string;
   enabled: boolean;
   dryRun: boolean;
@@ -27,7 +27,7 @@ export interface AutomationRule {
 }
 
 export interface UpsertAutomationRuleRequest {
-  repositoryFullName: string | null;
+  repositories: string[];
   name: string;
   enabled: boolean;
   dryRun: boolean;

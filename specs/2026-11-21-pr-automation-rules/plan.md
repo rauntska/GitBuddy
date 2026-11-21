@@ -5,7 +5,7 @@ Work top to bottom; each group should leave the build green.
 ## 1. Domain
 1. `AutomationRule`, `AutomationRunLog` in `GitBuddy.Domain/Models/`; enums for trigger/condition/action types.
 2. Add `BaseBranch`, `Labels` (and requested reviewers if needed) to `PullRequest`; add required check names to `RepositoryRule`.
-3. Register entities, relationships and indexes (`RepositoryFullName`, `AutomationRuleId + TriggeredAt`) in `AppDbContext`.
+3. Register entities, relationships and indexes (`Repositories`, `AutomationRuleId + TriggeredAt`) in `AppDbContext`.
 
 ## 2. Migration
 1. `dotnet ef migrations add AddAutomationRules` (run from `GitBuddy.Api`).

@@ -16,8 +16,8 @@ public class AutomationRule
 {
     public int Id { get; set; }
 
-    /// <summary>"owner/repo" or just "repo" matching PullRequest.Repository; null = org-wide.</summary>
-    public string? RepositoryFullName { get; set; }
+    /// <summary>Comma-separated "owner/repo" (or bare "repo") names the rule applies to; null/empty = all repositories.</summary>
+    public string? Repositories { get; set; }
     public string Name { get; set; } = string.Empty;
     public bool Enabled { get; set; }
     public bool DryRun { get; set; } = true;
