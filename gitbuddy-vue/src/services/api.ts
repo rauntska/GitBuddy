@@ -1,5 +1,6 @@
 import apiClient from '../utils/api';
 import type { GroupedPRs, PRStats, Settings, PRDetail, FileDiff, Comment, UserPreferences, PullRequest, CommentTemplate, CommentDraft, MentionableUser, ReactionGroup, User, UserRole, Invitation, AllowedUser, AdminStats, PendingReview, ReviewerStatus, ReviewTimeline, PotentialReviewer, Repository, Branch, BranchComparison, CreatePullRequestRequest, CreatePullRequestResult, BranchWithoutPR, ThroughputAnalytics, ReviewerAnalytics, HealthAnalytics, ChangelogResponse } from '../types';
+import type { AutomationRule, UpsertAutomationRuleRequest, AutomationRunLog, AutomationRuleTemplate, AutomationCatalog } from '../types/automation';
 
 const api = apiClient;
 
@@ -357,6 +358,46 @@ export const apiService = {
   // Admin - Stats
   getAdminStats: async (): Promise<AdminStats> => {
     const response = await api.get<AdminStats>('/admin/stats');
+    return response.data;
+  },
+
+  // Admin - Automation rules
+  getAutomationRules: async (): Promise<AutomationRule[]> => {
+    const response = await api.get<AutomationRule[]>('/admin/automation-rules');
+    return response.data;
+  },
+
+  createAutomationRule: async (data: UpsertAutomationRuleRequest): Promise<AutomationRule> => {
+    const response = await api.post<AutomationRule>('/admin/automation-rules', data);
+    return response.data;
+  },
+
+  updateAutomationRule: async (id: number, data: UpsertAutomationRuleRequest): Promise<AutomationRule> => {
+    const response = await api.put<AutomationRule>(`/admin/automation-rules/${id}`, data);
+    return response.data;
+  },
+
+  deleteAutomationRule: async (id: number): Promise<void> => {
+    await api.delete(`/admin/automation-rules/${id}`);
+  },
+
+  setAutomationRuleEnabled: async (id: number, enabled: boolean): Promise<AutomationRule> => {
+    const response = await api.post<AutomationRule>(`/admin/automation-rules/${id}/enabled`, { enabled });
+    return response.data;
+  },
+
+  getAutomationRuleRuns: async (id: number, take = 50, skip = 0): Promise<AutomationRunLog[]> => {
+    const response = await api.get<AutomationRunLog[]>(`/admin/automation-rules/${id}/runs`, { params: { take, skip } });
+    return response.data;
+  },
+
+  getAutomationTemplates: async (): Promise<AutomationRuleTemplate[]> => {
+    const response = await api.get<AutomationRuleTemplate[]>('/admin/automation-rules/templates');
+    return response.data;
+  },
+
+  getAutomationCatalog: async (): Promise<AutomationCatalog> => {
+    const response = await api.get<AutomationCatalog>('/admin/automation-rules/catalog');
     return response.data;
   },
 

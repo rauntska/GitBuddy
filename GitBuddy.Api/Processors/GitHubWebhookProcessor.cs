@@ -6,6 +6,7 @@ using Octokit.Webhooks.Events.IssueComment;
 using Octokit.Webhooks.Events.PullRequestReview;
 using Octokit.Webhooks.Events.PullRequestReviewComment;
 using Octokit.Webhooks.Events.PullRequestReviewThread;
+using Octokit.Webhooks.Events.CheckRun;
 
 namespace GitBuddy.Api.Processors;
 
@@ -59,6 +60,16 @@ public class GitHubWebhookProcessor(IWebhookService webhookService, ILogger<GitH
     {
         logger.LogInformation("Processing pull request review thread webhook: {Action}", action);
         await webhookService.HandleReviewThreadEventAsync(pullRequestReviewThreadEvent);
+    }
+
+    protected override async ValueTask ProcessCheckRunWebhookAsync(
+        WebhookHeaders headers,
+        CheckRunEvent checkRunEvent,
+        CheckRunAction action,
+        CancellationToken cancellationToken = default)
+    {
+        logger.LogInformation("Processing check run webhook: {Action}", action);
+        await webhookService.HandleCheckRunEventAsync(checkRunEvent);
     }
 
     protected override async ValueTask ProcessPullRequestReviewWebhookAsync(WebhookHeaders headers, PullRequestReviewEvent pullRequestReviewEvent,

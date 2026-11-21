@@ -27,6 +27,9 @@ public class AppDbContext : DbContext
     public DbSet<RepositoryRule> RepositoryRules { get; set; }
     public DbSet<BranchWithoutPR> BranchesWithoutPR { get; set; }
     public DbSet<ChangelogEntry> ChangelogEntries { get; set; }
+    public DbSet<AutomationRule> AutomationRules { get; set; }
+    public DbSet<CheckFailureStreak> CheckFailureStreaks { get; set; }
+    public DbSet<AutomationRunLog> AutomationRunLogs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -273,6 +276,37 @@ public class AppDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => new { e.RepoFullName, e.BranchName }).IsUnique();
             entity.HasIndex(e => e.LastRefreshedAt);
+        });
+
+        modelBuilder.Entity<AutomationRule>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Repositories);
+            entity.HasIndex(e => new { e.Enabled, e.TriggerType });
+            entity.Property(e => e.TriggerType).HasConversion<string>().HasMaxLength(64);
+
+            entity.HasOne(e => e.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.CreatedBy)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasMany(e => e.RunLogs)
+                .WithOne(l => l.AutomationRule)
+                .HasForeignKey(l => l.AutomationRuleId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CheckFailureStreak>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.PullRequestId, e.CheckName }).IsUnique();
+        });
+
+        modelBuilder.Entity<AutomationRunLog>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.AutomationRuleId, e.TriggeredAt });
+            entity.HasIndex(e => new { e.AutomationRuleId, e.PullRequestId, e.IdempotencyKey });
         });
 
         modelBuilder.Entity<ChangelogEntry>(entity =>

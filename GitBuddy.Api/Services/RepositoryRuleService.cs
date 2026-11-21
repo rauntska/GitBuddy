@@ -74,6 +74,7 @@ public class RepositoryRuleService : IRepositoryRuleService
                         existingRule.RequiresApprovingReviews = ruleData.RequiresApprovingReviews;
                         existingRule.RequiredApprovingReviewCount = ruleData.RequiredApprovingReviewCount;
                         existingRule.RequiresStatusChecks = ruleData.RequiresStatusChecks;
+                        existingRule.RequiredStatusChecks = System.Text.Json.JsonSerializer.Serialize(ruleData.RequiredStatusChecks ?? new List<string>());
                         existingRule.LastSyncedAt = DateTime.UtcNow;
                         
                         _logger.LogDebug("Updated existing rule for {Repository}/{Pattern}: RequiresApprovingReviews={Requires}, Count={Count}", 
@@ -88,6 +89,7 @@ public class RepositoryRuleService : IRepositoryRuleService
                             RequiresApprovingReviews = ruleData.RequiresApprovingReviews,
                             RequiredApprovingReviewCount = ruleData.RequiredApprovingReviewCount,
                             RequiresStatusChecks = ruleData.RequiresStatusChecks,
+                            RequiredStatusChecks = System.Text.Json.JsonSerializer.Serialize(ruleData.RequiredStatusChecks ?? new List<string>()),
                             LastSyncedAt = DateTime.UtcNow
                         };
                         _context.RepositoryRules.Add(newRule);

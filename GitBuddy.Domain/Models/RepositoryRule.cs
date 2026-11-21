@@ -9,5 +9,7 @@ public class RepositoryRule
     public bool RequiresApprovingReviews { get; set; }
     public int? RequiredApprovingReviewCount { get; set; }
     public bool RequiresStatusChecks { get; set; }
+    /// <summary>JSON array of required status check names (empty = none known).</summary>
+    public string RequiredStatusChecks { get; set; } = "[]";
     public DateTime LastSyncedAt { get; set; }
 }

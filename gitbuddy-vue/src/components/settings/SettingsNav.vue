@@ -26,7 +26,8 @@ import {
   UserCircleIcon,
   Cog8ToothIcon,
   ShieldCheckIcon,
-  ChartBarIcon
+  ChartBarIcon,
+  BoltIcon
 } from '@heroicons/vue/24/outline';
 
 const route = useRoute();
@@ -68,6 +69,13 @@ const menuItems = computed<MenuItem[]>(() => {
       label: 'Analytics',
       path: '/settings/analytics',
       icon: h(ChartBarIcon),
+      adminOnly: true
+    },
+    {
+      id: 'automations',
+      label: 'Automations',
+      path: '/settings/automations',
+      icon: h(BoltIcon),
       adminOnly: true
     }
   ];
