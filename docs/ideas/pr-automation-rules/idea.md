@@ -114,9 +114,15 @@ Compared with the first version of this idea, the use cases above needed the fol
 - **Conditions:** all required checks passed, consecutive failure count, approval count, author is a bot, body contains / is empty, has requested reviewers, days inactive.
 - **Actions:** `SetLabelExclusive` for mutually exclusive label groups, and a `recipient` on `PostTeamsMessage`.
 
-## Open Questions
+## Decisions
 
-- **v1 trigger scope** — start with webhook-driven triggers only, and treat time/staleness-based triggers as a v2 hook-in once `stale-pr-management`'s worker exists (or ships as the first consumer of this engine instead of building its own)?
-- **Who can author rules** — admin-only org-wide rules via the existing allowlist/role model, or also personal per-user automations ("auto-snooze PRs opened by dependabot")? Likely two visibility tiers, not one table.
-- **Generic engine vs. fixed catalog** — a fully generic condition/action DSL invites scope creep into an internal Zapier; is a small fixed catalog (above) enough for the actual asks, revisited only if a real need outgrows it?
-- **Migration path** — if `bot-pr-automation` or `stale-pr-management` ship their own engines first, is retrofitting them onto this one worth the churn, or does this idea only make sense if built *before* either?
+- **v1 trigger scope: webhook-driven only.** `Scheduled` triggers and use cases that need them (e.g. stale PRs) wait for v2.
+- **Authoring: admin-only, org- or repo-wide**, via the existing allowlist/role model. Personal per-user automations come later as a second visibility tier.
+- **Engine shape: fixed catalog** of triggers, conditions and actions. Extend it only when a real need outgrows it; no generic DSL.
+- **Migration: build this engine first.** `bot-pr-automation` and `stale-pr-management` become pre-built rule templates on top of it instead of shipping their own engines.
+- **Required checks: both.** "All required checks passed" defaults to the required checks from branch protection / repository rules (already synced by `RepositoryRuleService`), with an optional per-rule override list. If neither defines any, it falls back to all checks on the PR.
+- **v1 template set:** #1 (checks pass → request reviewers), #2, #3, #6, #7 (label → team, file path → owner, size labels, area labels), and #9–#13 (CI failed notify, waiting-on labels, merge conflict, ready-to-merge, re-review after push). Quality gates, dependency-bot templates, `ReadyForReview`-dependent rules, and everything needing `Scheduled` are deferred.
+
+## Remaining Questions
+
+None for now.
