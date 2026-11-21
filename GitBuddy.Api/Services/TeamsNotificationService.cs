@@ -62,6 +62,65 @@ public class TeamsNotificationService(
         }
     }
 
+    public async Task<bool> SendMessageAsync(PullRequest pr, string title, string text)
+    {
+        var config = await cacheService.GetConfigAsync();
+
+        if (config is null || !config.TeamsEnabled || string.IsNullOrWhiteSpace(config.TeamsWebhookUrl)
+            || !TeamsWebhookValidator.IsValidWebhookUrl(config.TeamsWebhookUrl))
+        {
+            logger.LogDebug("Teams message skipped (disabled or no valid webhook) for PR #{PrId}", pr.Id);
+            return false;
+        }
+
+        var payload = new Dictionary<string, object>
+        {
+            ["type"] = "message",
+            ["attachments"] = new List<object>
+            {
+                new Dictionary<string, object>
+                {
+                    ["contentType"] = "application/vnd.microsoft.card.adaptive",
+                    ["contentUrl"] = string.Empty,
+                    ["content"] = new Dictionary<string, object>
+                    {
+                        ["$schema"] = "http://adaptivecards.io/schemas/adaptive-card.json",
+                        ["type"] = "AdaptiveCard",
+                        ["version"] = "1.4",
+                        ["body"] = new List<object>
+                        {
+                            new Dictionary<string, object> { ["type"] = "TextBlock", ["text"] = title, ["size"] = "Medium", ["weight"] = "Bolder", ["wrap"] = true },
+                            new Dictionary<string, object> { ["type"] = "TextBlock", ["text"] = text, ["wrap"] = true, ["spacing"] = "Small" },
+                            new Dictionary<string, object> { ["type"] = "TextBlock", ["text"] = $"[{pr.Repository}#{pr.GitHubId}]({pr.Url})", ["wrap"] = true, ["spacing"] = "Small" }
+                        },
+                        ["actions"] = new List<object>
+                        {
+                            new Dictionary<string, object> { ["type"] = "Action.OpenUrl", ["title"] = "Open on GitHub", ["url"] = pr.Url }
+                        }
+                    }
+                }
+            }
+        };
+
+        try
+        {
+            using var client = httpClientFactory.CreateClient();
+            using var content = new StringContent(JsonSerializer.Serialize(payload, JsonOptions), Encoding.UTF8, "application/json");
+            using var response = await client.PostAsync(config.TeamsWebhookUrl, content);
+            if (!response.IsSuccessStatusCode)
+            {
+                logger.LogWarning("Teams webhook returned {Status} for automation message on PR #{PrId}", (int)response.StatusCode, pr.Id);
+                return false;
+            }
+            return true;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to post Teams automation message for PR #{PrId}", pr.Id);
+            return false;
+        }
+    }
+
     private string GetGitBuddyPrUrl(PullRequest pr)
     {
         var frontendUrl = configuration["Frontend:Url"]?.TrimEnd('/');

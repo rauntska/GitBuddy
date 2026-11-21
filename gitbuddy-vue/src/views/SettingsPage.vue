@@ -7,6 +7,7 @@
         <GitHubAppPanel v-else-if="isGitHubApp" />
         <AdminPanel v-else-if="isAdmin" />
         <AnalyticsPanel v-else-if="isAnalytics" />
+        <AutomationsPanel v-else-if="isAutomations" />
         <div v-else class="text-slate-400 text-center py-8">
           Page not found
         </div>
@@ -23,6 +24,7 @@ import SettingsNav from '../components/settings/SettingsNav.vue';
 import UserSettingsPanel from '../components/settings/UserSettingsPanel.vue';
 import GitHubAppPanel from '../components/settings/GitHubAppPanel.vue';
 import AdminPanel from '../components/settings/AdminPanel.vue';
+import AutomationsPanel from '../components/settings/AutomationsPanel.vue';
 
 const AnalyticsPanel = defineAsyncComponent(() => import('../components/analytics/AnalyticsPanel.vue'));
 
@@ -33,4 +35,5 @@ const isUserSettings = computed(() => route.path === '/settings');
 const isGitHubApp = computed(() => route.path === '/settings/github-app');
 const isAdmin = computed(() => route.path === '/settings/admin' && authStore.isAdmin);
 const isAnalytics = computed(() => route.path === '/settings/analytics' && authStore.isAdmin);
+const isAutomations = computed(() => route.path === '/settings/automations' && authStore.isAdmin);
 </script>

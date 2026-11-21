@@ -3,7 +3,10 @@ using GitBuddy.Api.Extensions;
 using GitBuddy.Domain.Data;
 using GitBuddy.Domain.Models;
 using Microsoft.EntityFrameworkCore;
+using GitBuddy.Api.Services.Automation;
 using Octokit.Webhooks.Events;
+using Octokit.Webhooks.Events.CheckRun;
+using Octokit.Webhooks.Events.PullRequest;
 using Octokit.Webhooks.Models;
 using System.Globalization;
 
@@ -16,6 +19,7 @@ public class WebhookService(
     ILanguageDetectionService languageDetectionService,
     INotificationService notificationService,
     IBranchWithoutPRService branchWithoutPRService,
+    IAutomationDispatcher automationDispatcher,
     ILogger<WebhookService> logger,
     IServiceScopeFactory serviceScopeFactory)
     : IWebhookService
@@ -47,7 +51,16 @@ public class WebhookService(
 
            var needsSync= await ProcessPullRequestActionAsync(action, existingPr, pullRequestEvent, config, repo, prData);
            if(needsSync)
-               await TriggerBackgroundRefreshAsync(config, repo.Name, prData.Number);
+           {
+               // PROpened / PRUpdated rules run after the refresh so they see current files, checks and mergeable state.
+               var afterRefresh = action switch
+               {
+                   "opened" => new[] { AutomationTriggerType.PROpened },
+                   "synchronize" or "synchronized" => new[] { AutomationTriggerType.PRUpdated },
+                   _ => Array.Empty<AutomationTriggerType>()
+               };
+               await TriggerBackgroundRefreshAsync(config, repo.Name, prData.Number, afterRefresh);
+           }
         }
         catch (Exception ex)
         {
@@ -90,6 +103,31 @@ public class WebhookService(
                     await UpdatePrAsync(existingPR, prData, false);
                 }
                 break;
+
+            case "labeled":
+            case "unlabeled":
+                if (existingPR != null)
+                {
+                    existingPR.Labels = LabelsOf(prData);
+                    await context.SaveChangesAsync();
+
+                    var changedLabel = pullRequestEvent switch
+                    {
+                        PullRequestLabeledEvent labeled => labeled.Label?.Name,
+                        PullRequestUnlabeledEvent unlabeled => unlabeled.Label?.Name,
+                        _ => null
+                    };
+                    if (changedLabel != null)
+                    {
+                        automationDispatcher.Dispatch(new TriggerContext
+                        {
+                            Trigger = action == "labeled" ? AutomationTriggerType.LabelAdded : AutomationTriggerType.LabelRemoved,
+                            PullRequestId = existingPR.Id,
+                            Label = changedLabel
+                        });
+                    }
+                }
+                return false;
 
             case "closed":
                 if (existingPR != null)
@@ -198,6 +236,7 @@ public class WebhookService(
             Description = prData.Body ?? string.Empty,
             SourceBranch = prData.Head.Ref,
             TargetBranch = prData.Base.Ref,
+            Labels = LabelsOf(prData),
             MergeableState = null,
             IsMerged = false,
             MergedAt = null
@@ -341,6 +380,7 @@ public class WebhookService(
         existingPr.Description = prData.Body ?? string.Empty;
         existingPr.SourceBranch = prData.Head.Ref;
         existingPr.TargetBranch = prData.Base.Ref;
+        existingPr.Labels = LabelsOf(prData);
 
         if (reopened)
         {
@@ -829,6 +869,17 @@ public class WebhookService(
             existingPr.UpdatedAt = DateTime.UtcNow;
             await context.SaveChangesAsync();
 
+            if (action == "submitted")
+            {
+                automationDispatcher.Dispatch(new TriggerContext
+                {
+                    Trigger = AutomationTriggerType.ReviewSubmitted,
+                    PullRequestId = existingPr.Id,
+                    ReviewState = ((string?)review.State?.ToString())?.ToLowerInvariant(),
+                    Reviewer = (string?)review.User?.Login
+                });
+            }
+
             var config = await context.GitHubConfigs.FirstOrDefaultAsync();
             if (config != null)
             {
@@ -841,6 +892,104 @@ public class WebhookService(
             throw;
         }
     }
+
+    public async Task HandleCheckRunEventAsync(CheckRunEvent checkRunEvent)
+    {
+        try
+        {
+            var checkRun = checkRunEvent.CheckRun;
+            var repo = checkRunEvent.Repository;
+            if (checkRun == null || repo == null) return;
+
+            foreach (var prRef in checkRun.PullRequests ?? [])
+            {
+                var pr = await context.PullRequests
+                    .Include(p => p.CheckRuns)
+                    .FirstOrDefaultAsync(p => p.GitHubId == prRef.Number && p.Repository == repo.Name);
+                if (pr == null) continue;
+
+                var required = await ChecksEvaluator.ResolveRequiredAsync(context, pr);
+                var beforeAll = ChecksEvaluator.Aggregate(pr.CheckRuns);
+                var beforeRequired = ChecksEvaluator.Aggregate(pr.CheckRuns, required);
+
+                var id = checkRun.Id.ToString(CultureInfo.InvariantCulture);
+                var status = checkRun.Status.ToString().ToLowerInvariant();
+                var conclusion = checkRun.Conclusion?.ToString().ToLowerInvariant();
+
+                var row = pr.CheckRuns.FirstOrDefault(c => c.GitHubId == id);
+                if (row == null)
+                {
+                    row = new CheckRun { PullRequestId = pr.Id, GitHubId = id };
+                    pr.CheckRuns.Add(row);
+                }
+                row.Name = checkRun.Name;
+                row.Status = status;
+                row.Conclusion = conclusion;
+                row.Url = checkRun.HtmlUrl;
+                row.StartedAt = checkRun.StartedAt.UtcDateTime;
+                row.CompletedAt = checkRun.CompletedAt?.UtcDateTime;
+                row.LastSyncedAt = DateTime.UtcNow;
+
+                var completed = status == "completed";
+                if (completed)
+                    await UpdateFailureStreakAsync(pr.Id, checkRun.Name, ChecksEvaluator.IsFailing(row));
+
+                var afterAll = ChecksEvaluator.Aggregate(pr.CheckRuns);
+                var afterRequired = ChecksEvaluator.Aggregate(pr.CheckRuns, required);
+                pr.ChecksStatus = afterAll == "NONE" ? pr.ChecksStatus : afterAll;
+                await context.SaveChangesAsync();
+
+                if (completed)
+                {
+                    automationDispatcher.Dispatch(new TriggerContext
+                    {
+                        Trigger = AutomationTriggerType.CheckRunCompleted,
+                        PullRequestId = pr.Id,
+                        CheckName = checkRun.Name,
+                        CheckConclusion = conclusion
+                    });
+                }
+
+                if (beforeAll != afterAll || beforeRequired != afterRequired)
+                {
+                    automationDispatcher.Dispatch(new TriggerContext
+                    {
+                        Trigger = AutomationTriggerType.ChecksStatusChanged,
+                        PullRequestId = pr.Id
+                    });
+
+                    var full = await context.PullRequests
+                        .Include(p => p.Reviews)
+                        .Include(p => p.ReviewThreads)
+                        .FirstOrDefaultAsync(p => p.Id == pr.Id);
+                    if (full != null)
+                        await notificationService.BroadcastPRUpdatedAsync(full.ToPRListUpdateDto());
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error processing check run event");
+            throw;
+        }
+    }
+
+    private async Task UpdateFailureStreakAsync(int pullRequestId, string checkName, bool failed)
+    {
+        var streak = await context.CheckFailureStreaks
+            .FirstOrDefaultAsync(s => s.PullRequestId == pullRequestId && s.CheckName == checkName);
+        if (streak == null)
+        {
+            if (!failed) return;
+            streak = new CheckFailureStreak { PullRequestId = pullRequestId, CheckName = checkName };
+            context.CheckFailureStreaks.Add(streak);
+        }
+        streak.Count = failed ? streak.Count + 1 : 0;
+        streak.UpdatedAt = DateTime.UtcNow;
+    }
+
+    private static string LabelsOf(Octokit.Webhooks.Models.PullRequestEvent.PullRequest prData) =>
+        string.Join(",", (prData.Labels ?? []).Select(l => l.Name));
 
     private async Task ProcessPullRequestReviewActionAsync(string? action, PullRequest existingPR, dynamic review)
     {
@@ -938,7 +1087,8 @@ public class WebhookService(
         logger.LogInformation("Dismissed review #{ReviewId}", reviewId);
     }
 
-    private Task TriggerBackgroundRefreshAsync(GitHubConfig config, string? repository, long? prNumber)
+    private Task TriggerBackgroundRefreshAsync(GitHubConfig config, string? repository, long? prNumber,
+        IReadOnlyList<AutomationTriggerType>? afterRefresh = null)
     {
         _ = Task.Run(async () =>
         {
@@ -946,8 +1096,40 @@ public class WebhookService(
             {
                 logger.LogInformation("Triggering background refresh for repository: {Repository}, PR: {PRNumber}", repository, prNumber);
                 await using var scope = serviceScopeFactory.CreateAsyncScope();
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                 var cacheService = scope.ServiceProvider.GetRequiredService<ICacheService>();
+
+                var before = await db.PullRequests.AsNoTracking()
+                    .Where(p => p.GitHubId == prNumber && p.Repository == repository)
+                    .Select(p => new { p.MergeableState })
+                    .FirstOrDefaultAsync();
+
                 await cacheService.RefreshPullRequestsAsync(config, prNumber, repository);
+
+                var after = await db.PullRequests.AsNoTracking()
+                    .Where(p => p.GitHubId == prNumber && p.Repository == repository)
+                    .Select(p => new { p.Id, p.MergeableState })
+                    .FirstOrDefaultAsync();
+
+                if (after != null)
+                {
+                    foreach (var trigger in afterRefresh ?? [])
+                        automationDispatcher.Dispatch(new TriggerContext { Trigger = trigger, PullRequestId = after.Id });
+
+                    // Mergeable state is only known after a refresh; GitHub sends no webhook for it.
+                    var wasConflicting = string.Equals(before?.MergeableState, "CONFLICTING", StringComparison.OrdinalIgnoreCase);
+                    var isConflicting = string.Equals(after.MergeableState, "CONFLICTING", StringComparison.OrdinalIgnoreCase);
+                    var known = !string.IsNullOrEmpty(after.MergeableState) && !string.Equals(after.MergeableState, "UNKNOWN", StringComparison.OrdinalIgnoreCase);
+                    if (before != null && known && wasConflicting != isConflicting)
+                    {
+                        automationDispatcher.Dispatch(new TriggerContext
+                        {
+                            Trigger = AutomationTriggerType.MergeableStateChanged,
+                            PullRequestId = after.Id,
+                            MergeableState = after.MergeableState!.ToUpperInvariant()
+                        });
+                    }
+                }
             }
             catch (Exception ex)
             {

@@ -10,4 +10,5 @@ public interface IWebhookService
     Task HandleReviewCommentEventAsync(PullRequestReviewCommentEvent pullRequestReviewCommentEvent);
     Task HandleReviewThreadEventAsync(PullRequestReviewThreadEvent pullRequestReviewThreadEvent);
     Task HandlePullRequestReviewEventAsync(PullRequestReviewEvent pullRequestReviewEvent);
+    Task HandleCheckRunEventAsync(Octokit.Webhooks.Events.CheckRunEvent checkRunEvent);
 }

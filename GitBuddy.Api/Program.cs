@@ -63,6 +63,8 @@ builder.Services.AddScoped<ICacheService, CacheService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IWebhookService, WebhookService>();
+builder.Services.AddScoped<GitBuddy.Api.Services.Automation.IAutomationRuleEngine, GitBuddy.Api.Services.Automation.AutomationRuleEngine>();
+builder.Services.AddSingleton<GitBuddy.Api.Services.Automation.IAutomationDispatcher, GitBuddy.Api.Services.Automation.AutomationDispatcher>();
 builder.Services.AddSingleton<INotificationService, SignalRNotificationService>();
 builder.Services.AddScoped<IInvitationService, InvitationService>();
 builder.Services.AddScoped<IAllowlistService, AllowlistService>();

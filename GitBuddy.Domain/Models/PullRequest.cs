@@ -39,6 +39,9 @@ public class PullRequest
     public int? Priority { get; set; }
     public DateTime? LastNudgedAt { get; set; }
 
+    // Comma-separated label names, kept current from webhooks (used by automation rules).
+    public string Labels { get; set; } = string.Empty;
+
     public List<Review> Reviews { get; set; } = new();
     public List<ReviewThread> ReviewThreads { get; set; } = new();
     public List<Comment> Comments { get; set; } = new();

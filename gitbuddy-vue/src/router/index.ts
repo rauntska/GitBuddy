@@ -64,6 +64,12 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
+      path: '/settings/automations',
+      name: 'settings-automations',
+      component: SettingsPage,
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
       path: '/admin',
       redirect: '/settings/admin',
     },

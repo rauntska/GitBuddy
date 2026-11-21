@@ -40,6 +40,9 @@ public interface IGitHubService
     Task<GitHubRequestedReviewersData> GetRequestedReviewersAsync(string organization, string repository, long pullRequestNumber, GitHubConfig config);
     Task RequestReviewersAsync(string organization, string repository, long pullRequestNumber, List<string> reviewers, List<string> teamReviewers, string userAccessToken);
     Task RemoveReviewersAsync(string organization, string repository, long pullRequestNumber, string username, string type, string userAccessToken);
+    Task<List<string>> GetPullRequestLabelsAsync(string organization, string repository, long pullRequestNumber, string userAccessToken);
+    Task AddLabelsAsync(string organization, string repository, long pullRequestNumber, IReadOnlyList<string> labels, string userAccessToken);
+    Task RemoveLabelAsync(string organization, string repository, long pullRequestNumber, string label, string userAccessToken);
     Task<GitHubCollaboratorsAndTeamsData> GetRepositoryCollaboratorsAndTeamsAsync(string organization, string repository, GitHubConfig config);
     Task<List<GitHubRepositoryData>> GetAccessibleRepositoriesAsync(string userAccessToken);
     Task<List<GitHubRepositoryData>> GetOrganizationRepositoriesAsync(string organization, string accessToken);

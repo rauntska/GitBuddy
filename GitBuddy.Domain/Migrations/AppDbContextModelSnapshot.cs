@@ -56,6 +56,111 @@ namespace GitBuddy.Domain.Migrations
                     b.ToTable("AllowedUsers");
                 });
 
+            modelBuilder.Entity("GitBuddy.Domain.Models.AutomationRule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Actions")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Conditions")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("DryRun")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LastTriggeredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("MinIntervalSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("RepositoryFullName")
+                        .HasColumnType("text");
+
+                    b.Property<int>("TriggerCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TriggerType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedBy");
+
+                    b.HasIndex("RepositoryFullName");
+
+                    b.HasIndex("Enabled", "TriggerType");
+
+                    b.ToTable("AutomationRules");
+                });
+
+            modelBuilder.Entity("GitBuddy.Domain.Models.AutomationRunLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ActionsTaken")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("AutomationRuleId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("ConditionsMatched")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("DryRun")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("text");
+
+                    b.Property<string>("IdempotencyKey")
+                        .HasColumnType("text");
+
+                    b.Property<int>("PullRequestId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("TriggeredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AutomationRuleId", "TriggeredAt");
+
+                    b.HasIndex("AutomationRuleId", "PullRequestId", "IdempotencyKey");
+
+                    b.ToTable("AutomationRunLogs");
+                });
+
             modelBuilder.Entity("GitBuddy.Domain.Models.BranchWithoutPR", b =>
                 {
                     b.Property<int>("Id")
@@ -138,6 +243,35 @@ namespace GitBuddy.Domain.Migrations
                         .IsUnique();
 
                     b.ToTable("ChangelogEntries");
+                });
+
+            modelBuilder.Entity("GitBuddy.Domain.Models.CheckFailureStreak", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CheckName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Count")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PullRequestId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PullRequestId", "CheckName")
+                        .IsUnique();
+
+                    b.ToTable("CheckFailureStreaks");
                 });
 
             modelBuilder.Entity("GitBuddy.Domain.Models.CheckRun", b =>
@@ -648,6 +782,10 @@ namespace GitBuddy.Domain.Migrations
                     b.Property<bool>("IsMerged")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("Labels")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<DateTime?>("LastNudgedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -730,6 +868,10 @@ namespace GitBuddy.Domain.Migrations
 
                     b.Property<int?>("RequiredApprovingReviewCount")
                         .HasColumnType("integer");
+
+                    b.Property<string>("RequiredStatusChecks")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<bool>("RequiresApprovingReviews")
                         .HasColumnType("boolean");
@@ -1021,6 +1163,28 @@ namespace GitBuddy.Domain.Migrations
                     b.Navigation("CreatedByUser");
                 });
 
+            modelBuilder.Entity("GitBuddy.Domain.Models.AutomationRule", b =>
+                {
+                    b.HasOne("GitBuddy.Domain.Models.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByUser");
+                });
+
+            modelBuilder.Entity("GitBuddy.Domain.Models.AutomationRunLog", b =>
+                {
+                    b.HasOne("GitBuddy.Domain.Models.AutomationRule", "AutomationRule")
+                        .WithMany("RunLogs")
+                        .HasForeignKey("AutomationRuleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AutomationRule");
+                });
+
             modelBuilder.Entity("GitBuddy.Domain.Models.CheckRun", b =>
                 {
                     b.HasOne("GitBuddy.Domain.Models.PullRequest", "PullRequest")
@@ -1200,6 +1364,11 @@ namespace GitBuddy.Domain.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("GitBuddy.Domain.Models.AutomationRule", b =>
+                {
+                    b.Navigation("RunLogs");
                 });
 
             modelBuilder.Entity("GitBuddy.Domain.Models.Comment", b =>

@@ -895,6 +895,50 @@ public class GitHubService(
             string.Join(", ", reviewers), string.Join(", ", teamReviewers), organization, repository, pullRequestNumber);
     }
 
+    public async Task<List<string>> GetPullRequestLabelsAsync(string organization, string repository, long pullRequestNumber, string userAccessToken)
+    {
+        var restClient = new GitHubClient(new Octokit.ProductHeaderValue("GitBuddy-PR-Dashboard"))
+        {
+            Credentials = new Credentials(userAccessToken)
+        };
+
+        var labels = await restClient.Issue.Labels.GetAllForIssue(organization, repository, (int)pullRequestNumber);
+        return labels.Select(l => l.Name).ToList();
+    }
+
+    public async Task AddLabelsAsync(string organization, string repository, long pullRequestNumber, IReadOnlyList<string> labels, string userAccessToken)
+    {
+        var restClient = new GitHubClient(new Octokit.ProductHeaderValue("GitBuddy-PR-Dashboard"))
+        {
+            Credentials = new Credentials(userAccessToken)
+        };
+
+        await restClient.Issue.Labels.AddToIssue(organization, repository, (int)pullRequestNumber, labels.ToArray());
+        logger.LogInformation("Added labels {Labels} to {Organization}/{Repository}#{PullRequestNumber}",
+            string.Join(", ", labels), organization, repository, pullRequestNumber);
+    }
+
+    public async Task RemoveLabelAsync(string organization, string repository, long pullRequestNumber, string label, string userAccessToken)
+    {
+        var restClient = new GitHubClient(new Octokit.ProductHeaderValue("GitBuddy-PR-Dashboard"))
+        {
+            Credentials = new Credentials(userAccessToken)
+        };
+
+        try
+        {
+            await restClient.Issue.Labels.RemoveFromIssue(organization, repository, (int)pullRequestNumber, label);
+        }
+        catch (NotFoundException)
+        {
+            // Label was not on the PR; removing is idempotent.
+            return;
+        }
+
+        logger.LogInformation("Removed label {Label} from {Organization}/{Repository}#{PullRequestNumber}",
+            label, organization, repository, pullRequestNumber);
+    }
+
     public async Task RemoveReviewersAsync(string organization, string repository, long pullRequestNumber, string username, string type, string userAccessToken)
     {
         var restClient = new GitHubClient(new Octokit.ProductHeaderValue("GitBuddy-PR-Dashboard"))
