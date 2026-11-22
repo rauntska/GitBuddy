@@ -10,7 +10,14 @@ public class GetBranchesWithoutPRsHandler(AppDbContext context)
 {
     public async Task<List<BranchWithoutPRDto>> Handle(GetBranchesWithoutPRsQuery request, CancellationToken cancellationToken)
     {
-        return await context.BranchesWithoutPR
+        var query = context.BranchesWithoutPR.AsQueryable();
+        if (request.HiddenRepositories is { Count: > 0 })
+        {
+            var hidden = request.HiddenRepositories.ToArray();
+            query = query.Where(b => !hidden.Contains(b.Repo.ToLower()));
+        }
+
+        return await query
             .OrderByDescending(b => b.LastActivityAt ?? DateTime.MinValue)
             .Select(b => new BranchWithoutPRDto(
                 b.Owner, b.Repo, b.RepoFullName, b.BranchName, b.DefaultBranch, b.LastActivityAt))

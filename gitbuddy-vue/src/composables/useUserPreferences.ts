@@ -133,6 +133,17 @@ export function useUserPreferences() {
     await updatePreference('hiddenRepositories', repos);
   };
 
+  // PullRequest.repository is the bare repo name while the preference stores owner/repo,
+  // so compare on the lower-cased bare name.
+  const bareRepoName = (name: string) => (name.split('/').pop() ?? name).toLowerCase();
+
+  const isRepositoryHidden = (repository: string) => {
+    const hidden = preferences.value.hiddenRepositories ?? [];
+    if (hidden.length === 0) return false;
+    const bare = bareRepoName(repository);
+    return hidden.some(name => bareRepoName(name) === bare);
+  };
+
   const resetDashboardLayout = async () => {
     await updatePreferences({ dashboardGroupOrder: [], hiddenDashboardGroups: [] });
   };
@@ -182,6 +193,7 @@ export function useUserPreferences() {
     setDashboardGroupOrder,
     setHiddenDashboardGroups,
     setHiddenRepositories,
+    isRepositoryHidden,
     resetDashboardLayout,
     updatePreferences,
   };

@@ -1,3 +1,4 @@
+using GitBuddy.Api.DTOs;
 using GitBuddy.Api.Extensions;
 using GitBuddy.Domain.Data;
 using GitBuddy.Domain.Models;
@@ -482,7 +483,26 @@ public class CacheService(
         };
     }
 
-    public async Task<Dictionary<string, object>> GetCachedPullRequestDtosAsync()
+    public async Task<Dictionary<string, object>> GetCachedPullRequestDtosAsync(IReadOnlyCollection<string>? hiddenRepositories = null)
+    {
+        var all = await GetAllCachedPullRequestDtosAsync();
+        if (hiddenRepositories == null || hiddenRepositories.Count == 0)
+            return all;
+
+        // The cache is shared by all users, so the per-user filter is applied on a copy.
+        var filtered = new Dictionary<string, object>();
+        foreach (var (status, value) in all)
+        {
+            var visible = ((List<PullRequestDto>)value)
+                .Where(pr => !hiddenRepositories.Contains(pr.Repository.ToLowerInvariant()))
+                .ToList();
+            if (visible.Count > 0)
+                filtered[status] = visible;
+        }
+        return filtered;
+    }
+
+    private async Task<Dictionary<string, object>> GetAllCachedPullRequestDtosAsync()
     {
         return (await memoryCache.GetOrCreateAsync(DashboardDtosCacheKey, async entry =>
         {
@@ -498,12 +518,19 @@ public class CacheService(
         }))!;
     }
 
-    public async Task<PRStats> GetPullRequestStatsAsync()
+    public async Task<PRStats> GetPullRequestStatsAsync(IReadOnlyCollection<string>? hiddenRepositories = null)
     {
-        var pullRequests = await context.PullRequests
+        var query = context.PullRequests
             .Include(pullRequest => pullRequest.ReviewThreads)
-            .AsNoTracking()
-            .ToListAsync();
+            .AsNoTracking();
+
+        if (hiddenRepositories is { Count: > 0 })
+        {
+            var hidden = hiddenRepositories.ToArray();
+            query = query.Where(pr => !hidden.Contains(pr.Repository.ToLower()));
+        }
+
+        var pullRequests = await query.ToListAsync();
 
         var totalThreads = pullRequests.Sum(pr => pr.ReviewThreads.Count);
         var resolvedThreads = pullRequests.Sum(pr => pr.ReviewThreads.Count(rt => rt.IsResolved));

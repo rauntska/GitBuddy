@@ -6,9 +6,11 @@ public interface ICacheService
 {
     Task RefreshPullRequestsAsync(GitHubConfig config, long? prNumber = null, string? repository = null);
     Task<Dictionary<string, List<PullRequest>>> GetCachedPullRequestsAsync();
-    Task<Dictionary<string, object>> GetCachedPullRequestDtosAsync();
+    /// <param name="hiddenRepositories">Lower-cased bare repo names to leave out (per-user preference).</param>
+    Task<Dictionary<string, object>> GetCachedPullRequestDtosAsync(IReadOnlyCollection<string>? hiddenRepositories = null);
     void InvalidateDashboardCache();
-    Task<PRStats> GetPullRequestStatsAsync();
+    /// <param name="hiddenRepositories">Lower-cased bare repo names to leave out (per-user preference).</param>
+    Task<PRStats> GetPullRequestStatsAsync(IReadOnlyCollection<string>? hiddenRepositories = null);
     Task<GitHubConfig?> GetConfigAsync();
     Task SaveConfigAsync(string organization, string? token, int refreshIntervalMinutes, string? appId = "", string? privateKey = "", string? installationId = "", bool useGitHubApp = false, bool deleteOldPRs = false, string? teamsWebhookUrl = null, bool teamsEnabled = false);
     Task UpdateLastRefreshAsync();

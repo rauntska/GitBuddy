@@ -53,7 +53,7 @@ public class PullRequestsController(
     [HttpGet]
     public async Task<IActionResult> Get()
     {
-        var groupedPRsDtos = await cacheService.GetCachedPullRequestDtosAsync();
+        var groupedPRsDtos = await cacheService.GetCachedPullRequestDtosAsync(await GetHiddenRepositoriesAsync());
         return Ok(groupedPRsDtos);
     }
 
@@ -108,7 +108,7 @@ public class PullRequestsController(
     [HttpGet("stats")]
     public async Task<IActionResult> GetStats()
     {
-        var stats = await cacheService.GetPullRequestStatsAsync();
+        var stats = await cacheService.GetPullRequestStatsAsync(await GetHiddenRepositoriesAsync());
         return Ok(stats);
     }
 
@@ -126,17 +126,23 @@ public class PullRequestsController(
     [HttpGet("merged")]
     public async Task<IActionResult> GetMergedPRs([FromQuery] int skip = 0, [FromQuery] int take = 10)
     {
-        var mergedPRs = await _context.PullRequests
+        // Hidden repos are excluded before paging so a page never comes back empty (or short)
+        // just because the newest merged PRs belong to hidden repositories.
+        var hidden = await GetHiddenRepositoriesAsync();
+        var merged = _context.PullRequests.Where(pr => pr.IsMerged);
+        if (hidden.Length > 0)
+            merged = merged.Where(pr => !hidden.Contains(pr.Repository.ToLower()));
+
+        var mergedPRs = await merged
             .Include(pr => pr.Reviews)
             .Include(pr => pr.ReviewThreads)
-            .Where(pr => pr.IsMerged)
             .OrderByDescending(pr => pr.MergedAt)
             .Skip(skip)
             .Take(take)
             .AsNoTracking()
             .ToListAsync();
 
-        var totalCount = await _context.PullRequests.CountAsync(pr => pr.IsMerged);
+        var totalCount = await merged.CountAsync();
 
         Response.Headers.Append("X-Total-Count", totalCount.ToString());
         Response.Headers.Append("X-Has-More", ((skip + take) < totalCount).ToString().ToLower());

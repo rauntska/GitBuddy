@@ -274,7 +274,7 @@
       <!-- Branches Without PRs -->
       <BranchesWithoutPRSection
         v-if="authStore.isAuthenticated"
-        :grouped-branches="visibleGroupedBranches"
+        :grouped-branches="groupedBranchesWithoutPR"
         :total-branches="totalBranchesWithoutPR"
         :loading="branchesWithoutPRLoading"
         :refreshing="branchesWithoutPRRefreshing"
@@ -321,7 +321,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
   import { usePullRequests } from '../composables/usePullRequests';
   import { useUserPreferences } from '../composables/useUserPreferences';
   import { useFaviconBadge } from '../composables/useFaviconBadge';
@@ -337,10 +337,9 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
   import BranchesWithoutPRSection from '../components/BranchesWithoutPRSection.vue';
   import ContextMenu from '../components/ContextMenu.vue';
   import type { MenuItem } from '../components/ContextMenu.vue';
-  import type { GroupedPRs, PRStats } from '../types';
 
   const authStore = useAuthStore();
-  const { preferences, loadPreferences, setListViewMode, setShowColumnHeaders, togglePinnedPr, isPrPinned, setDashboardGroupOrder, setHiddenDashboardGroups, resetDashboardLayout, setPrioritySort } = useUserPreferences();
+  const { preferences, loadPreferences, isRepositoryHidden, setListViewMode, setShowColumnHeaders, togglePinnedPr, isPrPinned, setDashboardGroupOrder, setHiddenDashboardGroups, resetDashboardLayout, setPrioritySort } = useUserPreferences();
   const toast = useToast();
   const { initFavicon, updateBadge } = useFaviconBadge();
   const {
@@ -359,65 +358,25 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
     applyPendingBranchResolved(notification.repoFullName, notification.branchName);
   };
   branchSignalR.onPendingBranchAdded.value = (branch) => {
+    // Real-time pushes go to every user, so skip repositories this user has hidden.
+    if (isRepositoryHidden(branch.repoFullName)) return;
     applyPendingBranchAdded(branch);
   };
 
    const {
-     pullRequests: allPullRequests,
-     stats: serverStats,
+     pullRequests,
+     stats,
      loading,
      error,
      fetchPullRequests,
      refreshPullRequests,
-     mergedPRs: allMergedPRs,
+     mergedPRs,
      mergedPRsLoading,
      mergedPRsHasMore,
      loadMergedPRs,
      loadMoreMergedPRs,
      signalR,
    } = usePullRequests();
-
-// Repositories the user chose to hide. Preferences hold full names (owner/repo) while
-// PullRequest.repository is the bare repo name, so compare on the bare name.
-const bareRepoName = (name: string) => (name.split('/').pop() ?? name).toLowerCase();
-const hiddenRepoNames = computed(() => new Set((preferences.value.hiddenRepositories ?? []).map(bareRepoName)));
-const isRepoHidden = (repository: string) => hiddenRepoNames.value.has(bareRepoName(repository));
-
-const pullRequests = computed<GroupedPRs>(() => {
-  if (hiddenRepoNames.value.size === 0) return allPullRequests.value;
-  const result: GroupedPRs = {};
-  for (const [status, list] of Object.entries(allPullRequests.value)) {
-    const visible = list.filter(pr => !isRepoHidden(pr.repository));
-    if (visible.length > 0) result[status] = visible;
-  }
-  return result;
-});
-
-const mergedPRs = computed(() =>
-  hiddenRepoNames.value.size === 0 ? allMergedPRs.value : allMergedPRs.value.filter(pr => !isRepoHidden(pr.repository)));
-
-// Server stats cover every repository, so recompute them locally while a filter is active.
-const stats = computed<PRStats>(() => {
-  if (hiddenRepoNames.value.size === 0) return serverStats.value;
-  const prs = Object.values(pullRequests.value).flat();
-  const threads = prs.flatMap(pr => pr.reviewThreads ?? []);
-  const resolved = threads.filter(t => t.isResolved).length;
-  return {
-    totalOpen: prs.filter(pr => pr.status !== 'Closed' && pr.status !== 'Merged').length,
-    draft: prs.filter(pr => pr.status === 'Draft').length,
-    approved: prs.filter(pr => pr.status === 'Approved').length,
-    readyToMerge: prs.filter(pr => pr.status === 'ReadyToMerge').length,
-    awaitingReview: prs.filter(pr => pr.status === 'AwaitingReview').length,
-    totalComments: threads.length,
-    resolvedComments: resolved,
-    pendingComments: threads.length - resolved,
-  };
-});
-
-const visibleGroupedBranches = computed(() =>
-  hiddenRepoNames.value.size === 0
-    ? groupedBranchesWithoutPR.value
-    : groupedBranchesWithoutPR.value.filter(g => !isRepoHidden(g.repo)));
 
 const expandedGroups = ref<Record<string, boolean>>({});
 const hasAttemptedLoad = ref(false);
@@ -454,7 +413,7 @@ const hiddenGroups = computed(() => preferences.value.hiddenDashboardGroups ?? [
 const hasPRData = computed(() => Object.keys(pullRequests.value).length > 0);
 
 const totalBranchesWithoutPR = computed(() =>
-  visibleGroupedBranches.value.reduce((sum, g) => sum + g.branches.length, 0));
+  groupedBranchesWithoutPR.value.reduce((sum, g) => sum + g.branches.length, 0));
 
 // Context menu state
 const contextMenuVisible = ref(false);
@@ -659,6 +618,8 @@ const handleRetry = () => {
    fetchPullRequests();
   };
 
+let stopHiddenReposWatch: (() => void) | undefined;
+
 onMounted(async () => {
   initFavicon();
   
@@ -673,10 +634,20 @@ onMounted(async () => {
       fetchBranchesWithoutPR(),
       authStore.token ? signalR.connect(authStore.token) : Promise.resolve(),
     ]);
+
+    // Hidden repositories are filtered by the API, so reload when the preference changes.
+    // Registered after the initial load so loading the saved preference doesn't refetch twice.
+    stopHiddenReposWatch = watch(
+      () => (preferences.value.hiddenRepositories ?? []).join('|'),
+      () => {
+        void Promise.all([fetchPullRequests(), loadMergedPRs(true), fetchBranchesWithoutPR()]);
+      },
+    );
   }
 });
 
 onUnmounted(async () => {
+  stopHiddenReposWatch?.();
   clearInterval(refreshInterval);
   await signalR.disconnect();
 });

@@ -3,6 +3,7 @@ import { apiService } from '../services/api';
 import type { GroupedPRs, PRStats, PullRequest } from '../types';
 import { useSignalR, type PRListUpdate, type PRClosedNotification, type ReviewNotification, type ThreadNotification, type CommentNotification, type CheckRunsNotification, type PRPriorityNotification, type ReviewerNudgedNotification } from './useSignalR';
 import { useBrowserNotifications } from './useBrowserNotifications';
+import { useUserPreferences } from './useUserPreferences';
 
 export function usePullRequests() {
   const pullRequests = ref<GroupedPRs>({});
@@ -25,11 +26,14 @@ export function usePullRequests() {
   const mergedPRsTotal = ref(0);
   const mergedPRsHasMore = ref(true);
 
+  const { isRepositoryHidden } = useUserPreferences();
   const signalR = useSignalR();
   const browserNotifications = useBrowserNotifications();
 
   const setupSignalRHandlers = () => {
+    // Real-time pushes go to every user, so ignore PRs from repositories this user has hidden.
     signalR.onPRCreated.value = (pr: PRListUpdate) => {
+      if (isRepositoryHidden(pr.repository)) return;
       const newPR: PullRequest = {
         id: pr.id,
         gitHubId: pr.gitHubId,
@@ -135,7 +139,7 @@ export function usePullRequests() {
         }
       }
 
-      if (!found && pr.status) {
+      if (!found && pr.status && !isRepositoryHidden(pr.repository)) {
         const newPR: PullRequest = {
           id: pr.id,
           gitHubId: pr.gitHubId,

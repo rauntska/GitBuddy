@@ -3,4 +3,6 @@ using MediatR;
 
 namespace GitBuddy.Api.Features.Repositories.GetBranchesWithoutPRs;
 
-public record GetBranchesWithoutPRsQuery : IRequest<List<BranchWithoutPRDto>>;
+/// <param name="HiddenRepositories">Lower-cased bare repo names to leave out (per-user preference).</param>
+public record GetBranchesWithoutPRsQuery(IReadOnlyCollection<string>? HiddenRepositories = null)
+    : IRequest<List<BranchWithoutPRDto>>;

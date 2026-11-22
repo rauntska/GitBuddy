@@ -137,7 +137,7 @@ public class RepositoriesController(
     [HttpGet("branches-without-prs")]
     public async Task<IActionResult> GetBranchesWithoutPRs()
     {
-        var result = await mediator.Send(new GetBranchesWithoutPRsQuery());
+        var result = await mediator.Send(new GetBranchesWithoutPRsQuery(await GetHiddenRepositoriesAsync()));
         return Ok(result);
     }
 
