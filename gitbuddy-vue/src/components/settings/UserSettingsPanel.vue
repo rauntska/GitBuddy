@@ -122,18 +122,60 @@
       <h3 class="text-sm font-semibold uppercase tracking-wider text-slate-300 mb-2">Preferences</h3>
 
       <div class="space-y-4">
+        <div>
+          <span class="block text-sm text-slate-200 mb-1">Hidden repositories</span>
+          <p class="text-[11px] text-slate-500 mb-2">Pull requests from these repositories are not shown on the dashboard.</p>
+          <RepositoryMultiSelect
+            :model-value="hiddenRepositories"
+            :options="repositoryOptions"
+            :loading="repositoriesLoading"
+            empty-label="None hidden"
+            clear-label="Show all"
+            @update:model-value="saveHiddenRepositories"
+          />
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useUserPreferences } from '../../composables/useUserPreferences';
 import { useBrowserNotifications } from '../../composables/useBrowserNotifications';
+import { apiService } from '../../services/api';
 import type { NotificationPreferences } from '../../types';
+import RepositoryMultiSelect from './RepositoryMultiSelect.vue';
 
-const { preferences, loadPreferences, updatePreferences } = useUserPreferences();
+const { preferences, loadPreferences, updatePreferences, setHiddenRepositories } = useUserPreferences();
+
+const hiddenRepositories = computed(() => preferences.value.hiddenRepositories ?? []);
+const repositoryOptions = ref<string[]>([]);
+const repositoriesLoading = ref(false);
+
+async function loadRepositoryOptions() {
+  repositoriesLoading.value = true;
+  try {
+    const org = await apiService.getOrganizationRepositories();
+    repositoryOptions.value = org.repositories.map((r) => r.fullName);
+  } catch {
+    try {
+      repositoryOptions.value = (await apiService.getRepositories()).map((r) => r.fullName);
+    } catch {
+      repositoryOptions.value = [];
+    }
+  } finally {
+    repositoriesLoading.value = false;
+  }
+}
+
+async function saveHiddenRepositories(repos: string[]) {
+  try {
+    await setHiddenRepositories(repos);
+  } catch (error) {
+    console.error('Failed to save hidden repositories:', error);
+  }
+}
 const browserNotifications = useBrowserNotifications();
 
 const notificationPermission = computed(() => browserNotifications.permissionStatus.value);
@@ -190,6 +232,7 @@ function testNotification() {
 }
 
 onMounted(async () => {
+  void loadRepositoryOptions();
   await loadPreferences();
   browserNotifications.loadPreferences(preferences.value.notificationPreferences);
 });

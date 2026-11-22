@@ -60,7 +60,8 @@ public class UserService(AppDbContext context) : IUserService
             preferences.PinnedPrIds,
             preferences.DashboardGroupOrder,
             preferences.HiddenDashboardGroups,
-            preferences.NotificationPreferences
+            preferences.NotificationPreferences,
+            preferences.HiddenRepositories
         );
     }
 
@@ -114,6 +115,9 @@ public class UserService(AppDbContext context) : IUserService
         if (request.NotificationPreferences != null)
             preferences.NotificationPreferences = request.NotificationPreferences;
 
+        if (request.HiddenRepositories != null)
+            preferences.HiddenRepositories = request.HiddenRepositories;
+
         preferences.UpdatedAt = DateTime.UtcNow;
         await context.SaveChangesAsync();
 
@@ -130,7 +134,8 @@ public class UserService(AppDbContext context) : IUserService
             preferences.PinnedPrIds,
             preferences.DashboardGroupOrder,
             preferences.HiddenDashboardGroups,
-            preferences.NotificationPreferences
+            preferences.NotificationPreferences,
+            preferences.HiddenRepositories
         );
     }
 

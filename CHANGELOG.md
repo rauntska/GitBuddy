@@ -11,6 +11,13 @@ Body text (markdown, including optional images).
 
 Category is one of `feature`, `improvement`, `fix` (case-insensitive). Each `##` date heading can contain multiple `###` entries.
 
+## 2026-11-22
+
+### feature: Hide repositories from the dashboard
+You can now choose repositories whose pull requests you don't want to see. Open Settings → Preferences and pick one or more repositories under "Hidden repositories". Their PRs, merged/closed PRs and branches without a PR disappear from the dashboard, and the stats summary only counts what is still visible. Choose "Show all" to bring them back.
+
+![Hidden repositories preference](/changelog/hidden-repos.png)
+
 ## 2026-09-16
 
 ### feature: Prose diff view for markdown PRs

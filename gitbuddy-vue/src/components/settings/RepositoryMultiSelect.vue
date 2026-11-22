@@ -46,7 +46,7 @@
       </div>
 
       <div class="flex justify-between px-3 py-2 border-t border-slate-800 text-xs">
-        <button type="button" class="text-slate-400 hover:text-slate-200" @click="clear">All repositories</button>
+        <button type="button" class="text-slate-400 hover:text-slate-200" @click="clear">{{ clearLabel }}</button>
         <button type="button" class="text-sky-400 hover:text-sky-300" @click="open = false">Done</button>
       </div>
     </div>
@@ -64,7 +64,11 @@ const props = withDefaults(defineProps<{
   options: string[];
   loading?: boolean;
   disabled?: boolean;
-}>(), { loading: false, disabled: false });
+  /** Summary text shown when nothing is selected. */
+  emptyLabel?: string;
+  /** Label of the footer button that clears the selection. */
+  clearLabel?: string;
+}>(), { loading: false, disabled: false, emptyLabel: 'All repositories', clearLabel: 'All repositories' });
 
 const emit = defineEmits<{ (e: 'update:modelValue', value: string[]): void }>();
 
@@ -84,7 +88,7 @@ const filtered = computed(() => {
 });
 
 const summary = computed(() => {
-  if (props.modelValue.length === 0) return 'All repositories';
+  if (props.modelValue.length === 0) return props.emptyLabel;
   if (props.modelValue.length === 1) return props.modelValue[0];
   return `${props.modelValue.length} repositories selected`;
 });

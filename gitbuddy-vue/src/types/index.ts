@@ -362,6 +362,8 @@ export interface UserPreferences {
   pinnedPrIds?: number[];
   dashboardGroupOrder?: string[];
   hiddenDashboardGroups?: string[];
+  /** Repository full names (owner/repo) whose PRs are hidden from the dashboard. */
+  hiddenRepositories?: string[];
   prioritySort?: boolean;
   viewedFilesByPr?: Record<number, string[]>;
   notificationPreferences?: NotificationPreferences;

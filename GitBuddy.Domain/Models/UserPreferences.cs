@@ -25,6 +25,9 @@ public class UserPreferences
     public string? DashboardGroupOrder { get; set; }
     public string? HiddenDashboardGroups { get; set; }
 
+    // Repositories (full names, JSON array) whose PRs are hidden from the dashboard
+    public string? HiddenRepositories { get; set; }
+
     // Notification preferences (JSON-serialized)
     public string? NotificationPreferences { get; set; }
 

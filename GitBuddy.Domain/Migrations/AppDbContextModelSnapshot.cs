@@ -1115,6 +1115,9 @@ namespace GitBuddy.Domain.Migrations
                     b.Property<string>("HiddenDashboardGroups")
                         .HasColumnType("text");
 
+                    b.Property<string>("HiddenRepositories")
+                        .HasColumnType("text");
+
                     b.Property<string>("ListViewMode")
                         .IsRequired()
                         .HasColumnType("text");

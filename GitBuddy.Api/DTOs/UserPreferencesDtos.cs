@@ -13,7 +13,8 @@ public record UserPreferencesDto(
     string? PinnedPrIds,
     string? DashboardGroupOrder,
     string? HiddenDashboardGroups,
-    string? NotificationPreferences
+    string? NotificationPreferences,
+    string? HiddenRepositories
 );
 
 public record UpdatePreferencesRequest(
@@ -29,5 +30,6 @@ public record UpdatePreferencesRequest(
     string? PinnedPrIds,
     string? DashboardGroupOrder,
     string? HiddenDashboardGroups,
-    string? NotificationPreferences
+    string? NotificationPreferences,
+    string? HiddenRepositories
 );
